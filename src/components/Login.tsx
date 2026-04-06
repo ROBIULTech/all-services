@@ -17,8 +17,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [isAdminRoute, setIsAdminRoute] = useState(false);
 
   useEffect(() => {
-    setIsAdminRoute(window.location.pathname === '/admin');
-    if (window.location.pathname === '/admin') {
+    const path = window.location.pathname;
+    setIsAdminRoute(path === '/secure-node-portal-v1x9k');
+    if (path === '/secure-node-portal-v1x9k') {
       setIsLogin(true); // Admin can only login
     }
   }, []);
@@ -134,7 +135,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder={isAdminRoute ? "admin@example.com" : "you@example.com"}
+                  placeholder={isAdminRoute ? "secure.node.admin@gmail.com" : "you@example.com"}
                   required
                 />
               </div>

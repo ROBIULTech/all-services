@@ -128,6 +128,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   restoreItem,
   permanentDeleteItem,
   updateUserBalance,
+  updateUser,
   updateProduct,
   onSignOut,
   isAdminViewingUserPanel,
@@ -862,10 +863,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         !product.isActive && "opacity-70"
                       )}
                     >
-                      <div>
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white mb-6 shadow-sm", product.color)}>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm", product.color)}>
                            <product.icon className="w-6 h-6" />
                         </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newTitleBn = prompt("Edit Service Name (BN):", product.titleBn);
+                            const newPrice = prompt("Edit Price:", product.price.toString());
+                            if (newTitleBn !== null && newPrice !== null) {
+                              updateProduct(product.id, { 
+                                titleBn: newTitleBn, 
+                                price: Number(newPrice) 
+                              });
+                            }
+                          }}
+                          className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors z-50 relative"
+                          title="Edit Service"
+                        >
+                          <Settings className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="cursor-pointer flex-1">
                         <h3 className="font-bold text-[17px] text-slate-800 leading-tight mb-1">{product.titleBn}</h3>
                         <p className="text-[13px] text-slate-400 font-medium mb-3">{product.titleEn}</p>
                         
@@ -876,7 +896,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </span>
                         )}
                       </div>
-
                       <div className="mt-6">
                         <ServiceControls serviceId={product.id} updateProduct={updateProduct} products={products} />
                       </div>
@@ -1004,6 +1023,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     </button>
                                     <button 
                                       onClick={() => {
+                                        const newData = prompt("Edit order data:", order.data);
+                                        if (newData !== null) {
+                                          updateOrderStatus(order.id!, order.status, order.adminNote || '', newData);
+                                        }
+                                      }}
+                                      className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                      title="Edit Data"
+                                    >
+                                      <Settings className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
                                         setRejectionNote('Order rejected. Please contact support');
                                         setRejectPrompt({ id: order.id!, defaultNote: 'Order rejected. Please contact support' });
                                       }}
@@ -1080,7 +1111,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <span className="text-sm text-slate-600">{u.whatsapp || 'N/A'}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-sm font-mono text-indigo-600 font-bold">{u.password || 'N/A'}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-mono text-indigo-600 font-bold">{u.password || 'N/A'}</span>
+                                <button 
+                                  onClick={() => {
+                                    const newEmail = prompt("Edit Email:", u.email);
+                                    const newPassword = prompt("Edit Password:", u.password);
+                                    if (newEmail !== null && newPassword !== null) {
+                                      updateUser(u.uid, { email: newEmail, password: newPassword });
+                                    }
+                                  }}
+                                  className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
+                                >
+                                  <Settings className="w-3 h-3" />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm text-slate-600 capitalize">{u.role}</span>

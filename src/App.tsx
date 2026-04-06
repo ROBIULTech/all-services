@@ -265,13 +265,15 @@ export default function App() {
 
     // Check for local demo session
     const demoSession = localStorage.getItem('demo_session');
+    let unsubProfileDemo: (() => void) | null = null;
+
     if (demoSession) {
       const session = JSON.parse(demoSession);
       setUser(session.user);
       // Still set up a listener for the profile even for demo session if it has a real UID
       if (session.user.uid) {
         const userRef = doc(db, 'users', session.user.uid);
-        const unsubProfile = onSnapshot(userRef, (docSnap) => {
+        unsubProfileDemo = onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           } else {
@@ -281,16 +283,15 @@ export default function App() {
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, `users/${session.user.uid}`);
         });
-        return () => unsubProfile();
       }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         // Fetch user profile
         const userRef = doc(db, 'users', firebaseUser.uid);
-        const unsubProfile = onSnapshot(userRef, (docSnap) => {
+        onSnapshot(userRef, (docSnap) => {
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
           }
@@ -298,14 +299,49 @@ export default function App() {
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         });
-        return () => unsubProfile();
       } else {
         localStorage.removeItem('demo_session');
         setUserProfile(null);
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubSettings();
+      unsubscribeAuth();
+      if (unsubProfileDemo) unsubProfileDemo();
+    };
+  }, []);
+
+  useEffect(() => {
+    const bootstrapAdmin = async () => {
+      try {
+        const adminEmail = 'secure.node.admin@gmail.com';
+        const q = query(collection(db, 'users'), where('email', '==', adminEmail));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+          console.log('Bootstrapping admin user...');
+          const adminId = 'admin-user-id';
+          const adminProfile: UserProfile = {
+            uid: adminId,
+            email: adminEmail,
+            password: 'X9k@Secure2004',
+            displayName: 'Super Admin',
+            photoURL: 'https://ui-avatars.com/api/?name=Admin&background=f97316&color=fff',
+            role: 'admin',
+            balance: 0,
+            isPremium: true,
+            createdAt: Timestamp.now()
+          };
+          await setDoc(doc(db, 'users', adminId), adminProfile);
+          console.log('Admin user bootstrapped successfully.');
+        }
+      } catch (error) {
+        console.error('Error bootstrapping admin:', error);
+      }
+    };
+    bootstrapAdmin();
   }, []);
 
   useEffect(() => {
@@ -614,6 +650,17 @@ export default function App() {
     }
   };
 
+  const updateUser = async (uid: string, updates: Partial<UserProfile>) => {
+    try {
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, updates);
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error updating user: ' + (error instanceof Error ? error.message : String(error)));
+    }
+  };
+
   const updateUserBalance = async (uid: string, newBalance: number) => {
     try {
       const userRef = doc(db, 'users', uid);
@@ -628,7 +675,9 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAdminViewingUserPanel, setIsAdminViewingUserPanel] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const isAdminRoute = window.location.pathname === '/admin';
+  
+  // Check for the new secure admin route
+  const isAdminRoute = window.location.pathname === '/secure-node-portal-v1x9k' || window.location.pathname.startsWith('/secure-node-portal-v1x9k');
 
   useEffect(() => {
     if (showSuccess) {
@@ -694,6 +743,7 @@ export default function App() {
       restoreItem={restoreItem}
       permanentDeleteItem={permanentDeleteItem}
       updateUserBalance={updateUserBalance}
+      updateUser={updateUser}
       updateProduct={updateProduct}
       onSignOut={handleSignOut}
       isAdminViewingUserPanel={isAdminViewingUserPanel}
