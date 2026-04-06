@@ -699,6 +699,8 @@ export default function App() {
       isAdminViewingUserPanel={isAdminViewingUserPanel}
       setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}
       updateAdminProfile={updateUserProfile}
+      isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen={setIsSidebarOpen}
     />
   );
 }

@@ -18,6 +18,8 @@ import {
   CheckCircle, 
   XCircle, 
   Plus, 
+  ChevronLeft,
+  ChevronRight,
   UserCheck, 
   ShieldCheck,
   Send,
@@ -108,6 +110,8 @@ interface AdminPanelProps {
   isAdminViewingUserPanel: boolean;
   setIsAdminViewingUserPanel: (value: boolean) => void;
   updateAdminProfile: (displayName: string, photoURL: string) => Promise<void>;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (value: boolean) => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -128,7 +132,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   onSignOut,
   isAdminViewingUserPanel,
   setIsAdminViewingUserPanel,
-  updateAdminProfile
+  updateAdminProfile,
+  isSidebarOpen,
+  setIsSidebarOpen
 }) => {
   const handleDownloadReport = (reportType: string) => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -210,7 +216,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     document.body.removeChild(link);
   };
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [serviceFilter, setServiceFilter] = useState('All');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
@@ -431,16 +436,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 no-print",
-          !isSidebarOpen && "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out no-print flex flex-col",
+          isSidebarOpen ? "w-64" : "w-20"
         )}
       >
         <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <LayoutDashboard className="text-white w-5 h-5" />
+          <div className="p-6 flex items-center justify-between gap-3">
+            <div className={cn("flex items-center gap-3", !isSidebarOpen && "hidden")}>
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <LayoutDashboard className="text-white w-5 h-5" />
+              </div>
+              <span className="text-xl font-bold tracking-tight">AdminPro</span>
             </div>
-            <span className="text-xl font-bold tracking-tight">AdminPro</span>
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 hover:bg-slate-100 rounded-lg"
+            >
+              {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+            </button>
           </div>
 
           <nav className="flex-1 px-4 space-y-1">
@@ -456,7 +469,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 )}
               >
                 <item.icon className="w-5 h-5" />
-                {item.label}
+                {isSidebarOpen && <span>{item.label}</span>}
               </button>
             ))}
           </nav>
@@ -474,16 +487,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className={cn("flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300", isSidebarOpen ? "ml-64" : "ml-20")}>
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40 no-print">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 hover:bg-slate-100 rounded-lg"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
