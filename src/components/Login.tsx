@@ -28,52 +28,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     setError('');
     setLoading(true);
 
-    // Hardcoded bypass for demo accounts
-    if (email === 'admin@example.com' && password === 'admin123') {
-      const mockUser = {
-        uid: 'admin-demo-uid',
-        email: 'admin@example.com',
-        displayName: 'Admin User',
-        photoURL: 'https://ui-avatars.com/api/?name=Admin&background=random'
-      };
-      const mockProfile = {
-        uid: 'admin-demo-uid',
-        email: 'admin@example.com',
-        displayName: 'Admin User',
-        photoURL: 'https://ui-avatars.com/api/?name=Admin&background=random',
-        role: 'admin',
-        balance: 1000000,
-        createdAt: new Date()
-      };
-      onLogin(mockUser, mockProfile);
-      setLoading(false);
-      return;
-    }
-
-    if (email === 'user@example.com' && password === 'user123') {
-      const mockUser = {
-        uid: 'user-demo-uid',
-        email: 'user@example.com',
-        displayName: 'Demo User',
-        photoURL: 'https://ui-avatars.com/api/?name=User&background=random'
-      };
-      const mockProfile = {
-        uid: 'user-demo-uid',
-        email: 'user@example.com',
-        displayName: 'Demo User',
-        photoURL: 'https://ui-avatars.com/api/?name=User&background=random',
-        role: 'user',
-        balance: 500,
-        createdAt: new Date()
-      };
-      onLogin(mockUser, mockProfile);
-      setLoading(false);
-      return;
-    }
-
     try {
       if (isLogin) {
-        // Simulated Login: Query Firestore for user with this email
+        // Real Login: Query Firestore for user with this email
         const q = query(collection(db, 'users'), where('email', '==', email));
         const querySnapshot = await getDocs(q);
         
@@ -91,9 +48,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         if (isAdminRoute && profileData.role !== 'admin') {
           throw new Error('Access denied. Admin only.');
         }
+        
+        if (!isAdminRoute && profileData.role === 'admin') {
+          throw new Error('Admin login is only allowed through the Admin Panel.');
+        }
 
-        // In a real app, we would check the password here. 
-        // For this bypass, we'll allow login if the user exists.
         const mockUser = {
           uid: profileData.uid,
           email: profileData.email,
