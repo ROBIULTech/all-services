@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and balance",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "balance": { "type": "number" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "balance"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Service order placed by a user",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "serviceId": { "type": "number" },
+        "serviceTitle": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "rejected"] },
+        "data": { "type": "string" },
+        "price": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "adminNote": { "type": "string" }
+      },
+      "required": ["uid", "serviceId", "status", "data", "price", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Service configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "titleBn": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "category": { "type": "string" },
+        "price": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "price": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["id", "titleBn", "price", "isActive"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Service orders"
+    },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Service configurations"
+    }
+  }
+}

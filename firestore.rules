@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (request.auth.token.email == "shasultan2003@gmail.com");
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // User profiles
+    match /users/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Orders
+    match /orders/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Products
+    match /products/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Settings
+    match /settings/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Trash
+    match /trash/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Test connection
+    match /test/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}
