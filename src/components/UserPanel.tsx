@@ -340,6 +340,17 @@ Mobile-
     )
   );
 
+  const rechargeProduct = {
+    id: 999,
+    titleBn: 'রিচার্জ ব্যালেন্স',
+    titleEn: 'Recharge Balance',
+    price: 0,
+    isActive: true,
+    category: 'SYSTEM',
+    color: 'bg-emerald-500',
+    icon: Wallet
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
@@ -401,6 +412,13 @@ Mobile-
           >
             <Settings className="w-5 h-5" />
             Settings
+          </button>
+          <button 
+            onClick={() => setShowRechargeModal(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-medium text-emerald-500 hover:bg-emerald-500/10"
+          >
+            <Wallet className="w-5 h-5" />
+            Recharge Balance
           </button>
           <button 
             onClick={() => setActiveTab('premium')}
@@ -480,6 +498,16 @@ Mobile-
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20 lg:hidden">
+              <Wallet className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-bold text-emerald-400">৳{userProfile.balance.toLocaleString()}</span>
+              <button 
+                onClick={() => setShowRechargeModal(true)}
+                className="ml-1 p-1 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-all"
+              >
+                <Plus className="w-3 h-3" />
+              </button>
+            </div>
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -613,6 +641,30 @@ Mobile-
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                  {/* Recharge Card */}
+                  <motion.div 
+                    whileHover={{ y: -5 }}
+                    className="bg-[#1e293b] rounded-3xl border border-emerald-500/30 p-6 space-y-4 transition-all group relative overflow-hidden cursor-pointer hover:border-emerald-500/50"
+                    onClick={() => setShowRechargeModal(true)}
+                  >
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg bg-emerald-500">
+                      <Wallet className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold group-hover:text-emerald-400 transition-colors">রিচার্জ ব্যালেন্স</h3>
+                      <p className="text-xs text-slate-500 mt-1">Recharge Balance</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-500 text-xs font-medium">Min:</span>
+                        <span className="text-lg font-bold text-emerald-400">৳100</span>
+                      </div>
+                      <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-slate-800 group-hover:bg-emerald-600">
+                        <Plus className="w-4 h-4 text-white" />
+                      </div>
+                    </div>
+                  </motion.div>
+
                   {filteredProducts.map((product) => (
                   <motion.div 
                     key={product.id}
@@ -1224,6 +1276,47 @@ Mobile-
           </svg>
         </motion.a>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#1e293b] border-t border-slate-800 px-6 py-3 flex items-center justify-between z-50 pb-safe">
+        <button 
+          onClick={() => setActiveTab('services')} 
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'services' ? "text-indigo-500" : "text-slate-400")}
+        >
+          <LayoutDashboard className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Services</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('history')} 
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'history' ? "text-indigo-500" : "text-slate-400")}
+        >
+          <History className="w-5 h-5" />
+          <span className="text-[10px] font-bold">History</span>
+        </button>
+        <button 
+          onClick={() => setShowRechargeModal(true)} 
+          className="flex flex-col items-center gap-1 -mt-8"
+        >
+          <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/40 border-4 border-[#0f172a]">
+            <Wallet className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-[10px] font-bold text-emerald-500 mt-1">Recharge</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('premium')} 
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'premium' ? "text-yellow-500" : "text-slate-400")}
+        >
+          <Crown className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Premium</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('settings')} 
+          className={cn("flex flex-col items-center gap-1 transition-colors", activeTab === 'settings' ? "text-indigo-500" : "text-slate-400")}
+        >
+          <Settings className="w-5 h-5" />
+          <span className="text-[10px] font-bold">Settings</span>
+        </button>
+      </div>
 
       {/* Success Notification */}
       <AnimatePresence>
