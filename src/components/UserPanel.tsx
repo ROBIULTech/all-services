@@ -690,11 +690,7 @@ Mobile-
                       <h3 className="text-lg font-bold group-hover:text-indigo-400 transition-colors">{product.titleBn}</h3>
                       <p className="text-xs text-slate-500 mt-1">{product.titleEn}</p>
                     </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-500 text-xs font-medium">Price:</span>
-                        <span className="text-lg font-bold text-emerald-400">৳{product.price}</span>
-                      </div>
+                    <div className="flex items-center justify-end pt-4 border-t border-slate-800">
                       <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-800 group-hover:bg-indigo-600" : "bg-slate-800")}>
                         <ChevronRight className={cn("w-4 h-4", product.isActive ? "text-slate-500 group-hover:text-white" : "text-slate-600")} />
                       </div>

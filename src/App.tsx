@@ -388,40 +388,39 @@ export default function App() {
 
     if (userProfile?.role === 'admin') {
       initializeProducts();
-
-      // Sync products with Firestore
-      const q = collection(db, 'products');
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-          const productsData: Product[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data() as Product;
-            productsData.push(data);
-          });
-          
-          // Merge Firestore data with initialProducts to ensure icons and colors are present
-          const mergedProducts = initialProducts.map(ip => {
-            const found = productsData.find(pd => pd.id === ip.id);
-            if (found) {
-              let finalOptions = found.options;
-              if (ip.options) {
-                finalOptions = ip.options.map(ipOpt => {
-                  const existingOpt = found.options?.find((o: any) => o.name === ipOpt.name);
-                  return existingOpt ? existingOpt : ipOpt;
-                });
-              }
-              return { ...found, icon: ip.icon, color: ip.color, options: finalOptions };
-            }
-            return ip;
-          });
-
-          setProducts(mergedProducts.sort((a, b) => a.id - b.id));
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'products');
-      });
-      return () => unsubscribe();
-    } else {
-      setProducts(initialProducts);
     }
+
+    // Sync products with Firestore for everyone
+    const q = collection(db, 'products');
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+        const productsData: Product[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data() as Product;
+          productsData.push(data);
+        });
+        
+        // Merge Firestore data with initialProducts to ensure icons and colors are present
+        const mergedProducts = initialProducts.map(ip => {
+          const found = productsData.find(pd => pd.id === ip.id);
+          if (found) {
+            let finalOptions = found.options;
+            if (ip.options) {
+              finalOptions = ip.options.map(ipOpt => {
+                const existingOpt = found.options?.find((o: any) => o.name === ipOpt.name);
+                return existingOpt ? existingOpt : ipOpt;
+              });
+            }
+            return { ...found, icon: ip.icon, color: ip.color, options: finalOptions };
+          }
+          return ip;
+        });
+
+        setProducts(mergedProducts.sort((a, b) => a.id - b.id));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'products');
+    });
+
+    return () => unsubscribe();
   }, [userProfile?.role]);
 
   useEffect(() => {
