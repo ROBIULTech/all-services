@@ -893,7 +893,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <Filter className="w-4 h-4 text-slate-400 mr-2" />
                     <span className="text-sm font-bold text-slate-600">Category:</span>
                   </div>
-                  {['All', 'NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'KYC', 'Server', 'Tax', 'Government', 'Social'].map((filter) => (
+                  {['All', 'NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'].map((filter) => (
                     <button
                       key={filter}
                       onClick={() => setServiceCategoryFilter(filter)}
@@ -950,13 +950,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <h3 className="font-bold text-slate-900 mb-1">{product.titleBn}</h3>
                         <p className="text-[13px] text-slate-400 font-medium mb-3">{product.titleEn}</p>
                         
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="text-lg font-black text-indigo-600">৳{product.price}</span>
-                          {product.discountPrice && (
-                            <span className="text-sm text-slate-400 line-through">৳{product.discountPrice}</span>
-                          )}
-                        </div>
-
                         <div className="space-y-2 mb-4">
                           <div className="flex items-center gap-2 text-xs text-slate-500">
                             <Clock className="w-3 h-3" />
@@ -2087,6 +2080,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     orderButtonText: 'অর্ডার করুন',
     displayOrder: 0,
     isActive: true,
+    requiresFileUpload: false,
     color: 'bg-indigo-500',
     iconName: 'LayoutGrid',
     defaultData: '',
@@ -2115,6 +2109,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
         orderButtonText: 'অর্ডার করুন',
         displayOrder: 0,
         isActive: true,
+        requiresFileUpload: false,
         color: 'bg-indigo-500',
         iconName: 'LayoutGrid',
         defaultData: '',
@@ -2216,7 +2211,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                   >
-                    {['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'KYC', 'Server', 'Tax', 'Government', 'Social'].map(cat => (
+                    {['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'].map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -2355,6 +2350,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                   placeholder="Default: অর্ডার করুন"
                 />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <div>
+                  <p className="text-sm font-bold text-slate-900">Require File Upload</p>
+                  <p className="text-xs text-slate-500">Force user to upload a document</p>
+                </div>
+                <button 
+                  onClick={() => setFormData({ ...formData, requiresFileUpload: !formData.requiresFileUpload })}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    formData.requiresFileUpload ? "bg-indigo-600" : "bg-slate-300"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                    formData.requiresFileUpload ? "right-1" : "left-1"
+                  )} />
+                </button>
               </div>
 
               <div className="space-y-4 pt-4">

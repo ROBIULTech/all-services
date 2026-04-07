@@ -1367,7 +1367,8 @@ Mobile-
                     <div className="space-y-4">
                       <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
                         <Plus className="w-4 h-4" />
-                        Upload Document (Optional)
+                        {selectedProduct.requiresFileUpload ? "Upload Document (Required)" : "Upload Document (Optional)"}
+                        {selectedProduct.requiresFileUpload && <span className="text-red-500">*</span>}
                       </label>
                       <div className="flex items-center justify-center w-full">
                         <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
@@ -1434,7 +1435,7 @@ Mobile-
                   </button>
                   <button 
                     onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData}
+                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || (selectedProduct.requiresFileUpload && !orderFile)}
                     className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                   >
                     {isPlacingOrder ? (

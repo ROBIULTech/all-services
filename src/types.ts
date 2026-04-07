@@ -43,6 +43,7 @@ export interface Product {
   requiredDocuments?: string;
   instructions?: string;
   isActive: boolean;
+  requiresFileUpload?: boolean;
   icon?: any;
   iconName?: string;
   color?: string;
