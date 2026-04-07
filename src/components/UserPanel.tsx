@@ -25,7 +25,25 @@ import {
   ShoppingCart,
   Server,
   PhoneCall,
-  Upload
+  Upload,
+  Info,
+  Tag,
+  ShieldCheck,
+  Edit3,
+  LayoutGrid,
+  Smartphone,
+  CreditCard,
+  UserCheck,
+  MapPin,
+  Globe,
+  Fingerprint,
+  Landmark,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  HelpCircle,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -53,6 +71,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
 }) => {
   const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium'>('services');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedOption, setSelectedOption] = useState<{name: string, price: number} | null>(null);
@@ -126,8 +145,39 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
       setSelectedOption(null);
     }
 
-    // Set default text based on product ID
-    if (selectedProduct?.id === 11) {
+    // Set default text based on product ID or defaultData
+    if (selectedProduct?.defaultData && selectedProduct.defaultData.trim() !== '') {
+      setOrderData(selectedProduct.defaultData);
+    } else if (selectedProduct?.id === 13) {
+      setOrderData(`স্মার্ট কার্ড তথ্য প্রদান করুন:
+Name:
+NID:
+DOB:
+আপনার হোয়াটসঅ্যাপ নাম্বার:
+
+সুন্দরবন কুরিয়ার ঠিকানা:
+কুরিয়ার ঠিকানা দিন
+Received নাম:
+Received নাম্বার:
+জেলা:
+থানা:
+ইউনিয়ন:`);
+    } else if (selectedProduct?.id === 8) {
+      setOrderData(`কললিস্ট এর কাজের ফরমেট* ↩️
+✅ তার এক কপি ছবি
+
+⚠️নামঃ
+⚠️পিতার নাম:
+⚠️মাতার নামঃ 
+⚠️গ্রামঃ
+⚠️ইউনিয়নঃ 
+⚠️উপ উপজেলাঃ 
+⚠️জেলাঃ
+⚠️বিভাগঃ
+⚠️কত সালে ভোটার হয়েছেঃ
+⚠️জন্ম নিবন্ধন নাম্বার -(যদি থাকে) 
+*🚫সাথে ভোটার হওয়া ১জনের আইডিঃ* যদি থাকে`);
+    } else if (selectedProduct?.id === 11) {
       setOrderData(`*নাম ঠিকানা* এর- কাজের ফরমেট* ↩️
 ✅ তার এক কপি ছবি
 
@@ -332,13 +382,35 @@ Mobile-
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.category !== 'PREMIUM' && (
-      p.titleBn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.titleEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  );
+  const icons = {
+    LayoutGrid, Smartphone, CreditCard, FileText, ShieldCheck, 
+    UserCheck, MapPin, Globe, Search, Zap, Clock, Tag, 
+    Fingerprint, Landmark, Briefcase, GraduationCap, Heart, 
+    ShoppingCart, Settings, Bell, Info, HelpCircle, Mail, Phone
+  };
+
+  const getIcon = (product: Product) => {
+    if (product.iconName && icons[product.iconName as keyof typeof icons]) {
+      return icons[product.iconName as keyof typeof icons];
+    }
+    return product.icon || LayoutGrid;
+  };
+
+  const filteredProducts = products
+    .filter(p => p.category !== 'PREMIUM')
+    .filter(p => {
+      const matchesSearch = 
+        p.titleBn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.titleEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
+      
+      return matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+
+  const categories = ['All', ...Array.from(new Set(products.filter(p => p.category !== 'PREMIUM').map(p => p.category)))];
 
   const rechargeProduct = {
     id: 999,
@@ -490,7 +562,7 @@ Mobile-
               <input 
                 type="text" 
                 placeholder="Search services..." 
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               />
@@ -613,16 +685,41 @@ Mobile-
         <div className="p-6 lg:p-8">
           {activeTab === 'services' && (
             <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div>
-                  <h1 className="text-3xl font-bold tracking-tight">Available Services</h1>
-                  <p className="text-slate-400 mt-1">Select a service to place an order</p>
+                  <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-3">
+                    <LayoutGrid className="w-8 h-8 text-indigo-500" />
+                    Available Services
+                  </h1>
+                  <p className="text-slate-400 mt-1 font-medium">Select a service to place an order</p>
                 </div>
-                <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-2xl border border-slate-700">
-                  <span className="px-4 py-1.5 text-xs font-bold text-slate-400">Filter:</span>
-                  <button className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20">All</button>
-                  <button className="px-4 py-1.5 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all">NID</button>
-                  <button className="px-4 py-1.5 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all">Passport</button>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                    <input 
+                      type="text" 
+                      placeholder="Search services..." 
+                      value={searchQuery || ''}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-2xl border border-slate-700 overflow-x-auto max-w-full custom-scrollbar">
+                    {categories.map(cat => (
+                      <button 
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap",
+                          selectedCategory === cat 
+                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
+                            : "text-slate-400 hover:text-white hover:bg-slate-700"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -684,15 +781,29 @@ Mobile-
                       </div>
                     )}
                     <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg", product.color || 'bg-indigo-600')}>
-                      {product.icon ? <product.icon className="w-7 h-7 text-white" /> : <Package className="w-7 h-7 text-white" />}
+                      {(() => {
+                        const Icon = getIcon(product);
+                        return <Icon className="w-7 h-7 text-white" />;
+                      })()}
                     </div>
-                    <div>
-                      <h3 className="text-lg font-bold group-hover:text-indigo-400 transition-colors">{product.titleBn}</h3>
-                      <p className="text-xs text-slate-500 mt-1">{product.titleEn}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{product.category}</span>
+                        {product.discountPrice && (
+                          <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                            OFFER
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-lg font-black group-hover:text-indigo-400 transition-colors leading-tight">{product.titleBn}</h3>
+                      <p className="text-xs text-slate-500 mt-1 font-medium">{product.titleEn}</p>
+                      {product.shortDescription && (
+                        <p className="text-xs text-slate-400 mt-3 line-clamp-2 leading-relaxed">{product.shortDescription}</p>
+                      )}
                     </div>
-                    <div className="flex items-center justify-end pt-4 border-t border-slate-800">
-                      <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-800 group-hover:bg-indigo-600" : "bg-slate-800")}>
-                        <ChevronRight className={cn("w-4 h-4", product.isActive ? "text-slate-500 group-hover:text-white" : "text-slate-600")} />
+                    <div className="flex items-center justify-end pt-4 border-t border-slate-800/50">
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-800 group-hover:bg-indigo-600 shadow-lg group-hover:shadow-indigo-500/20" : "bg-slate-800")}>
+                        <ChevronRight className={cn("w-5 h-5", product.isActive ? "text-slate-500 group-hover:text-white" : "text-slate-600")} />
                       </div>
                     </div>
                   </motion.div>
@@ -881,7 +992,7 @@ Mobile-
                         <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (১০, ১২ বা ১৭ ডিজিট)</label>
                         <input 
                           type="text" 
-                          value={autoSignNid}
+                          value={autoSignNid || ''}
                           onChange={(e) => setAutoSignNid(e.target.value)}
                           placeholder="1234567890"
                           className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
@@ -936,7 +1047,7 @@ Mobile-
                         <div className="space-y-2">
                           <label className="block text-sm font-bold text-slate-700">ক্যাটাগরি</label>
                           <select 
-                            value={infoCategory}
+                            value={infoCategory || ''}
                             onChange={(e) => setInfoCategory(e.target.value)}
                             className="w-full border border-emerald-500 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
                           >
@@ -956,7 +1067,7 @@ Mobile-
                           <label className="block text-sm font-bold text-slate-700">নম্বর ইনপুট দিন</label>
                           <input 
                             type="text" 
-                            value={infoNumber}
+                            value={infoNumber || ''}
                             onChange={(e) => setInfoNumber(e.target.value)}
                             placeholder="নম্বর লিখুন..."
                             className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -1051,7 +1162,7 @@ Mobile-
                       <label className="text-sm font-medium text-slate-400">Display Name</label>
                       <input 
                         type="text" 
-                        value={profileForm.displayName}
+                        value={profileForm.displayName || ''}
                         onChange={(e) => setProfileForm({...profileForm, displayName: e.target.value})}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="Your Name"
@@ -1061,7 +1172,7 @@ Mobile-
                       <label className="text-sm font-medium text-slate-400">WhatsApp Number</label>
                       <input 
                         type="tel" 
-                        value={profileForm.whatsapp}
+                        value={profileForm.whatsapp || ''}
                         onChange={(e) => setProfileForm({...profileForm, whatsapp: e.target.value})}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="017XXXXXXXX"
@@ -1071,7 +1182,7 @@ Mobile-
                       <label className="text-sm font-medium text-slate-400">Password</label>
                       <input 
                         type="text" 
-                        value={profileForm.password}
+                        value={profileForm.password || ''}
                         onChange={(e) => setProfileForm({...profileForm, password: e.target.value})}
                         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="Enter new password"
@@ -1114,130 +1225,224 @@ Mobile-
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-[#1e293b] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-4xl bg-[#1e293b] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
                 <div className="flex items-center gap-3">
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", selectedProduct.color || 'bg-indigo-600')}>
-                    {selectedProduct.icon ? <selectedProduct.icon className="w-5 h-5 text-white" /> : <Package className="w-5 h-5 text-white" />}
+                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", selectedProduct.color || 'bg-indigo-600')}>
+                    {(() => {
+                      const Icon = getIcon(selectedProduct);
+                      return <Icon className="w-6 h-6 text-white" />;
+                    })()}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">{selectedProduct.titleBn}</h2>
-                    <p className="text-xs text-slate-500">{selectedProduct.titleEn}</p>
+                    <h2 className="text-xl font-bold text-white">{selectedProduct.titleBn}</h2>
+                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{selectedProduct.titleEn}</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setSelectedProduct(null)}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
                 >
                   <X className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
 
-              <div className="p-8 space-y-6">
-                {selectedProduct.options && selectedProduct.options.length > 0 && (
-                  <div className="space-y-4">
-                    <label className="text-sm font-medium text-slate-400">Select Option <span className="text-red-500">*</span></label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedProduct.options.map((option) => (
-                        <button
-                          key={option.name}
-                          onClick={() => setSelectedOption(option)}
-                          className={cn(
-                            "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",
-                            selectedOption?.name === option.name 
-                              ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
-                              : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
-                          )}
-                        >
-                          <span>{option.name}</span>
-                          <span className={cn("text-xs", selectedOption?.name === option.name ? "text-indigo-200" : "text-emerald-400")}>
-                            ৳{option.price}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="p-0 flex-1 overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-1 lg:grid-cols-2">
+                  {/* Left Side: Details */}
+                  <div className="p-8 space-y-8 border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-800/20">
+                    {selectedProduct.shortDescription && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                          <Info className="w-4 h-4" />
+                          About Service
+                        </h3>
+                        <p className="text-slate-300 leading-relaxed">{selectedProduct.shortDescription}</p>
+                      </div>
+                    )}
 
-                <div className="space-y-4">
-                  <label className="text-sm font-medium text-slate-400">Order Details / Data <span className="text-red-500">*</span></label>
-                  <textarea 
-                    value={orderData}
-                    onChange={(e) => setOrderData(e.target.value)}
-                    placeholder="Enter the required information for this service..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[250px] resize-none"
-                  />
-                </div>
+                    {selectedProduct.fullDescription && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Full Details
+                        </h3>
+                        <p className="text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedProduct.fullDescription}</p>
+                      </div>
+                    )}
 
-                {(selectedProduct.id === 11 || selectedProduct.id === 7 || selectedProduct.id === 16) && (
-                  <div className="space-y-4">
-                    <label className="text-sm font-medium text-slate-400">Upload Document (Optional)</label>
-                    <div className="flex items-center justify-center w-full">
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          {orderFile ? (
-                            <div className="flex items-center gap-2 text-emerald-400">
-                              <CheckCircle className="w-6 h-6" />
-                              <span className="text-sm font-bold">File Selected</span>
-                            </div>
-                          ) : (
-                            <>
-                              <Plus className="w-8 h-8 text-slate-500 mb-2" />
-                              <p className="text-sm text-slate-500">Click to upload or drag and drop</p>
-                            </>
-                          )}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Delivery Time</p>
+                        <div className="flex items-center gap-2 text-emerald-400">
+                          <Clock className="w-4 h-4" />
+                          <span className="font-bold">{selectedProduct.deliveryTime || '1-2 Hours'}</span>
                         </div>
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setOrderFile(reader.result as string);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
+                      </div>
+                      <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</p>
+                        <div className="flex items-center gap-2 text-indigo-400">
+                          <Tag className="w-4 h-4" />
+                          <span className="font-bold">{selectedProduct.category}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedProduct.requiredDocuments && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-black text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                          <ShieldCheck className="w-4 h-4" />
+                          Required Documents
+                        </h3>
+                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+                          <ul className="space-y-2">
+                            {selectedProduct.requiredDocuments.split('\n').map((doc, idx) => (
+                              <li key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0" />
+                                {doc}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedProduct.instructions && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
+                          <Zap className="w-4 h-4" />
+                          Instructions
+                        </h3>
+                        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
+                          <p className="text-sm text-slate-300 leading-relaxed">{selectedProduct.instructions}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Side: Form */}
+                  <div className="p-8 space-y-6">
+                    {selectedProduct.options && selectedProduct.options.length > 0 && (
+                      <div className="space-y-4">
+                        <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                          <LayoutGrid className="w-4 h-4" />
+                          Select Option <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {selectedProduct.options.map((option) => (
+                            <button
+                              key={option.name}
+                              onClick={() => setSelectedOption(option)}
+                              className={cn(
+                                "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",
+                                selectedOption?.name === option.name 
+                                  ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                                  : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
+                              )}
+                            >
+                              <span>{option.name}</span>
+                              <span className={cn("text-xs", selectedOption?.name === option.name ? "text-indigo-200" : "text-emerald-400")}>
+                                ৳{option.price}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                        <Edit3 className="w-4 h-4" />
+                        Order Details / Data <span className="text-red-500">*</span>
                       </label>
+                      <textarea 
+                        value={orderData || ''}
+                        onChange={(e) => setOrderData(e.target.value)}
+                        placeholder={selectedProduct.defaultData ? "Fill in the template below..." : "Enter the required information for this service..."}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[200px] resize-none font-medium"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                        <Plus className="w-4 h-4" />
+                        Upload Document (Optional)
+                      </label>
+                      <div className="flex items-center justify-center w-full">
+                        <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            {orderFile ? (
+                              <div className="flex items-center gap-2 text-emerald-400">
+                                <CheckCircle className="w-6 h-6" />
+                                <span className="text-sm font-bold">File Selected</span>
+                              </div>
+                            ) : (
+                              <>
+                                <Plus className="w-6 h-6 text-slate-500 mb-2" />
+                                <p className="text-xs text-slate-500">Click to upload document</p>
+                              </>
+                            )}
+                          </div>
+                          <input 
+                            type="file" 
+                            className="hidden" 
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => {
+                                  setOrderFile(reader.result as string);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
-                )}
+                </div>
+              </div>
 
-                <div className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Total Price</p>
-                    <p className="text-2xl font-bold text-emerald-400">৳{currentPrice}</p>
+              <div className="p-6 border-t border-slate-800 bg-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-6 w-full sm:w-auto">
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Total Price</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-3xl font-black text-emerald-400">৳{currentPrice}</p>
+                      {selectedProduct.discountPrice && (
+                        <span className="text-sm text-slate-500 line-through">৳{selectedProduct.price}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Your Balance</p>
-                    <p className={cn("text-lg font-bold", userProfile.balance >= currentPrice ? "text-emerald-400" : "text-red-400")}>
+                  <div className="h-10 w-px bg-slate-700 hidden sm:block" />
+                  <div className="flex flex-col">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Your Balance</p>
+                    <p className={cn("text-xl font-bold", userProfile.balance >= currentPrice ? "text-emerald-400" : "text-red-400")}>
                       ৳{userProfile.balance.toLocaleString()}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button 
                     onClick={() => setSelectedProduct(null)}
-                    className="flex-1 py-4 bg-slate-800 text-slate-300 font-bold rounded-2xl hover:bg-slate-700 transition-all"
+                    className="flex-1 sm:flex-none px-6 py-3 bg-slate-800 text-slate-400 rounded-xl font-bold hover:bg-slate-700 transition-all"
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder || !orderData.trim() || userProfile.balance < currentPrice}
-                    className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData}
+                    className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                   >
                     {isPlacingOrder ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <>
-                        <Plus className="w-5 h-5" />
-                        Place Order
+                        <ShoppingCart className="w-5 h-5" />
+                        {selectedProduct.orderButtonText || 'অর্ডার করুন'}
                       </>
                     )}
                   </button>
@@ -1247,31 +1452,6 @@ Mobile-
           </div>
         )}
       </AnimatePresence>
-
-      {/* Floating WhatsApp Button */}
-      {globalSettings?.whatsappGroupLink && (
-        <motion.a
-          href={globalSettings.whatsappGroupLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          className="fixed bottom-8 left-8 z-[100] bg-[#25D366] text-white p-4 rounded-full shadow-2xl hover:bg-[#128C7E] transition-all flex items-center justify-center group"
-        >
-          <div className="absolute left-full ml-3 bg-white text-slate-900 px-4 py-2 rounded-xl font-bold text-sm shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none border border-slate-100">
-            Join WhatsApp Group
-          </div>
-          <svg 
-            viewBox="0 0 24 24" 
-            className="w-7 h-7 fill-current"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-          </svg>
-        </motion.a>
-      )}
 
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#1e293b] border-t border-slate-800 px-6 py-3 flex items-center justify-between z-50 pb-safe">
@@ -1382,9 +1562,9 @@ Mobile-
               </div>
 
               <div className="space-y-4">
-                <input type="number" placeholder="Amount (Min 100৳)" value={rechargeData.amount} onChange={(e) => setRechargeData({...rechargeData, amount: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <input type="text" placeholder="Sender Number" value={rechargeData.senderNumber} onChange={(e) => setRechargeData({...rechargeData, senderNumber: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-                <input type="text" placeholder="Transaction ID" value={rechargeData.trxID} onChange={(e) => setRechargeData({...rechargeData, trxID: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input type="number" placeholder="Amount (Min 100৳)" value={rechargeData.amount || ''} onChange={(e) => setRechargeData({...rechargeData, amount: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input type="text" placeholder="Sender Number" value={rechargeData.senderNumber || ''} onChange={(e) => setRechargeData({...rechargeData, senderNumber: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+                <input type="text" placeholder="Transaction ID" value={rechargeData.trxID || ''} onChange={(e) => setRechargeData({...rechargeData, trxID: e.target.value})} className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div className="flex gap-4">
                 <button onClick={() => setShowRechargeModal(false)} className="flex-1 py-3 bg-slate-800 rounded-xl font-bold hover:bg-slate-700">Cancel</button>

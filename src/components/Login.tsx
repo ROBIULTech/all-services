@@ -17,11 +17,18 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [isAdminRoute, setIsAdminRoute] = useState(false);
 
   useEffect(() => {
-    const path = window.location.pathname;
-    setIsAdminRoute(path === '/secure-node-portal-v1x9k');
-    if (path === '/secure-node-portal-v1x9k') {
-      setIsLogin(true); // Admin can only login
-    }
+    const checkPath = () => {
+      const path = window.location.pathname;
+      const isAdmin = path === '/secure-node-portal-v1x9k';
+      setIsAdminRoute(isAdmin);
+      if (isAdmin) {
+        setIsLogin(true);
+      }
+    };
+
+    checkPath();
+    window.addEventListener('popstate', checkPath);
+    return () => window.removeEventListener('popstate', checkPath);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,7 +139,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 </div>
                 <input
                   type="email"
-                  value={email}
+                  value={email || ''}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   placeholder={isAdminRoute ? "secure.node.admin@gmail.com" : "you@example.com"}
@@ -149,7 +156,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 </div>
                 <input
                   type="password"
-                  value={password}
+                  value={password || ''}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   placeholder="••••••••"
@@ -170,7 +177,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </div>
                   <input
                     type="tel"
-                    value={whatsapp}
+                    value={whatsapp || ''}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder="017XXXXXXXX"
@@ -197,15 +204,27 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </form>
 
           {!isAdminRoute && (
-            <div className="text-center pt-2 border-t border-slate-700/50">
+            <div className="text-center pt-2 space-y-4 border-t border-slate-700/50">
               <button
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError('');
                 }}
-                className="text-sm text-slate-400 hover:text-indigo-400 transition-colors"
+                className="text-sm text-slate-400 hover:text-indigo-400 transition-colors block w-full"
               >
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+              </button>
+              
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/secure-node-portal-v1x9k');
+                  setIsAdminRoute(true);
+                  setIsLogin(true);
+                  setError('');
+                }}
+                className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors uppercase tracking-widest font-bold"
+              >
+                Admin Access
               </button>
             </div>
           )}

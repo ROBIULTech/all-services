@@ -28,10 +28,30 @@ import {
   FileUp,
   Download,
   Eye,
+  EyeOff,
   Trash2,
   Crown,
   Upload,
-  RotateCcw
+  RotateCcw,
+  Tag,
+  Filter,
+  Edit3,
+  LayoutGrid,
+  Smartphone,
+  CreditCard,
+  FileText,
+  MapPin,
+  Globe,
+  Fingerprint,
+  Landmark,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  ShoppingCart,
+  Info,
+  HelpCircle,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -106,6 +126,8 @@ interface AdminPanelProps {
   permanentDeleteItem: (item: TrashItem) => Promise<void>;
   updateUserBalance: (userId: string, newBalance: number) => Promise<void>;
   updateProduct: (productId: number, updates: Partial<Product>) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  deleteProduct: (productId: number) => Promise<void>;
   onSignOut: () => Promise<void>;
   isAdminViewingUserPanel: boolean;
   setIsAdminViewingUserPanel: (value: boolean) => void;
@@ -113,6 +135,13 @@ interface AdminPanelProps {
   isSidebarOpen: boolean;
   setIsSidebarOpen: (value: boolean) => void;
 }
+
+const icons = {
+  LayoutGrid, Smartphone, CreditCard, FileText, ShieldCheck, 
+  UserCheck, MapPin, Globe, Search, Zap, Clock, Tag, 
+  Fingerprint, Landmark, Briefcase, GraduationCap, Heart, 
+  ShoppingCart, Settings, Bell, Info, HelpCircle, Mail, Phone
+};
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   userProfile,
@@ -130,6 +159,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   updateUserBalance,
   updateUser,
   updateProduct,
+  addProduct,
+  deleteProduct,
   onSignOut,
   isAdminViewingUserPanel,
   setIsAdminViewingUserPanel,
@@ -236,6 +267,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [userReportModalOpen, setUserReportModalOpen] = useState<UserProfile | null>(null);
   const [reportUserSearchModalOpen, setReportUserSearchModalOpen] = useState(false);
   const [reportUserSearchQuery, setReportUserSearchQuery] = useState('');
+  
+  // Service Management States
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<Product | null>(null);
+  const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  const [serviceCategoryFilter, setServiceCategoryFilter] = useState('All');
 
   const filteredUsers = allUsers.filter(u => 
     u.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
@@ -328,7 +365,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
-    { id: 'products', label: 'Products', icon: Package, isSpecial: false },
+    { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
     { id: 'trash', label: 'Trash', icon: Trash2, isSpecial: false },
@@ -497,7 +534,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <input 
                 type="text" 
                 placeholder="Search (try 'User Panel')..." 
-                value={adminSearchQuery}
+                value={adminSearchQuery || ''}
                 onChange={(e) => {
                   setAdminSearchQuery(e.target.value);
                   setShowAdminSearchResults(true);
@@ -818,89 +855,148 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
 
-            {activeTab === 'products' && (
+            {activeTab === 'services' && (
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
                     <h1 className="text-2xl font-bold tracking-tight">Service Management</h1>
-                    <p className="text-slate-500">Manage and update service prices and availability.</p>
+                    <p className="text-slate-500">Add, edit, and manage all platform services.</p>
                   </div>
                   
-                  {/* Filter Component */}
-                  <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 shadow-sm overflow-x-auto max-w-full no-scrollbar">
-                    <span className="text-sm font-medium text-slate-500 px-4 sticky left-0 bg-white">Filter:</span>
-                    {['All', 'NID', 'Passport', 'Server', 'Tax', 'Government', 'Form', 'PSC', 'EPI', 'Info', 'Biometric', 'Location', 'Call List', 'Disability', 'Premium'].map((filter) => (
-                      <button
-                        key={filter}
-                        onClick={() => setServiceFilter(filter)}
-                        className={cn(
-                          "px-6 py-1.5 rounded-full text-sm font-bold transition-all whitespace-nowrap",
-                          serviceFilter === filter 
-                            ? "bg-indigo-600 text-white shadow-sm" 
-                            : "text-slate-600 hover:text-slate-900"
-                        )}
-                      >
-                        {filter}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search services..." 
+                        value={serviceSearchQuery || ''}
+                        onChange={(e) => setServiceSearchQuery(e.target.value)}
+                        className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setEditingService(null);
+                        setIsServiceModalOpen(true);
+                      }}
+                      className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Service
+                    </button>
                   </div>
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 shadow-sm overflow-x-auto max-w-full no-scrollbar">
+                  <div className="flex items-center px-4 sticky left-0 bg-white border-r border-slate-100 mr-2">
+                    <Filter className="w-4 h-4 text-slate-400 mr-2" />
+                    <span className="text-sm font-bold text-slate-600">Category:</span>
+                  </div>
+                  {['All', 'NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'KYC', 'Server', 'Tax', 'Government', 'Social'].map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setServiceCategoryFilter(filter)}
+                      className={cn(
+                        "px-6 py-1.5 rounded-full text-sm font-bold transition-all whitespace-nowrap",
+                        serviceCategoryFilter === filter 
+                          ? "bg-indigo-600 text-white shadow-sm" 
+                          : "text-slate-600 hover:text-slate-900"
+                      )}
+                    >
+                      {filter}
+                    </button>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {products.filter(p => {
-                    if (serviceFilter === 'All') return true;
-                    return p.category?.toLowerCase() === serviceFilter.toLowerCase() || 
-                           p.titleEn?.toLowerCase().includes(serviceFilter.toLowerCase()) || 
-                           p.titleBn?.toLowerCase().includes(serviceFilter.toLowerCase());
-                  }).map((product, i) => (
+                    const matchesSearch = p.titleEn?.toLowerCase().includes(serviceSearchQuery.toLowerCase()) || 
+                                        p.titleBn?.toLowerCase().includes(serviceSearchQuery.toLowerCase());
+                    const matchesCategory = serviceCategoryFilter === 'All' || p.category?.toLowerCase() === serviceCategoryFilter.toLowerCase();
+                    return matchesSearch && matchesCategory;
+                  }).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)).map((product, i) => {
+                    const IconComponent = product.iconName && icons[product.iconName as keyof typeof icons] 
+                      ? icons[product.iconName as keyof typeof icons] 
+                      : (product.icon || LayoutGrid);
+                    
+                    return (
                     <motion.div
                       key={product.id || i}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      className={cn(
-                        "bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group flex flex-col justify-between h-full",
-                        !product.isActive && "opacity-70"
-                      )}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group overflow-hidden flex flex-col"
                     >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-sm", product.color)}>
-                           <product.icon className="w-6 h-6" />
+                      <div className="p-5 flex-1">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg", product.color || 'bg-indigo-500')}>
+                            <IconComponent className="w-6 h-6" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => updateProduct(product.id, { isActive: !product.isActive })}
+                              className={cn(
+                                "p-2 rounded-lg transition-all",
+                                product.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
+                              )}
+                              title={product.isActive ? "Active" : "Inactive"}
+                            >
+                              {product.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const newTitleBn = prompt("Edit Service Name (BN):", product.titleBn);
-                            const newPrice = prompt("Edit Price:", product.price.toString());
-                            if (newTitleBn !== null && newPrice !== null) {
-                              updateProduct(product.id, { 
-                                titleBn: newTitleBn, 
-                                price: Number(newPrice) 
-                              });
-                            }
-                          }}
-                          className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors z-50 relative"
-                          title="Edit Service"
-                        >
-                          <Settings className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="cursor-pointer flex-1">
-                        <h3 className="font-bold text-[17px] text-slate-800 leading-tight mb-1">{product.titleBn}</h3>
+                        
+                        <h3 className="font-bold text-slate-900 mb-1">{product.titleBn}</h3>
                         <p className="text-[13px] text-slate-400 font-medium mb-3">{product.titleEn}</p>
                         
-                        {/* Category Tag */}
-                        {product.category && (
-                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">
-                            {product.category}
-                          </span>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-lg font-black text-indigo-600">৳{product.price}</span>
+                          {product.discountPrice && (
+                            <span className="text-sm text-slate-400 line-through">৳{product.discountPrice}</span>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Clock className="w-3 h-3" />
+                            <span>{product.deliveryTime || 'Standard Delivery'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Tag className="w-3 h-3" />
+                            <span>{product.category}</span>
+                          </div>
+                        </div>
+
+                        {product.shortDescription && (
+                          <p className="text-xs text-slate-500 line-clamp-2 mb-4">{product.shortDescription}</p>
                         )}
                       </div>
-                      <div className="mt-6">
-                        <ServiceControls serviceId={product.id} updateProduct={updateProduct} products={products} />
+
+                      <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
+                        <button 
+                          onClick={() => {
+                            setEditingService(product);
+                            setIsServiceModalOpen(true);
+                          }}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-all"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          Edit Details
+                        </button>
+                        <button 
+                          onClick={() => {
+                            if (confirm('Are you sure you want to delete this service?')) {
+                              deleteProduct(product.id);
+                            }
+                          }}
+                          className="p-2 bg-white border border-slate-200 rounded-xl text-red-500 hover:bg-red-50 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </motion.div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )}
@@ -917,7 +1013,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <input 
                       type="text" 
                       placeholder="Search orders..." 
-                      value={orderSearchQuery}
+                      value={orderSearchQuery || ''}
                       onChange={(e) => setOrderSearchQuery(e.target.value)}
                       className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
@@ -1075,7 +1171,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <input 
                       type="text" 
                       placeholder="Search users..." 
-                      value={userSearchQuery}
+                      value={userSearchQuery || ''}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
                       className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
@@ -1305,7 +1401,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-sm font-medium text-slate-700">Display Name</label>
                         <input 
                           type="text"
-                          value={profileForm.displayName}
+                          value={profileForm.displayName || ''}
                           onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="Enter your name"
@@ -1315,7 +1411,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-sm font-medium text-slate-700">Profile Photo URL</label>
                         <input 
                           type="text"
-                          value={profileForm.photoURL}
+                          value={profileForm.photoURL || ''}
                           onChange={(e) => setProfileForm({ ...profileForm, photoURL: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="Enter image URL"
@@ -1410,7 +1506,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-sm font-medium text-slate-700">Premium Unlock Fee (৳)</label>
                       <input 
                         type="number"
-                        value={premiumSettingsForm.premiumUnlockFee}
+                        value={premiumSettingsForm.premiumUnlockFee || 0}
                         onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, premiumUnlockFee: Number(e.target.value) })}
                         className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="e.g. 500"
@@ -1423,7 +1519,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-sm font-medium text-slate-700">Bkash Number</label>
                         <input 
                           type="text"
-                          value={premiumSettingsForm.bkashNumber}
+                          value={premiumSettingsForm.bkashNumber || ''}
                           onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, bkashNumber: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="017XXXXXXXX"
@@ -1433,7 +1529,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-sm font-medium text-slate-700">Nagad Number</label>
                         <input 
                           type="text"
-                          value={premiumSettingsForm.nagadNumber}
+                          value={premiumSettingsForm.nagadNumber || ''}
                           onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, nagadNumber: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="017XXXXXXXX"
@@ -1443,7 +1539,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <label className="text-sm font-medium text-slate-700">Rocket Number</label>
                         <input 
                           type="text"
-                          value={premiumSettingsForm.rocketNumber}
+                          value={premiumSettingsForm.rocketNumber || ''}
                           onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, rocketNumber: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="017XXXXXXXX"
@@ -1455,7 +1551,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <label className="text-sm font-medium text-slate-700">WhatsApp Group Link</label>
                       <input 
                         type="text"
-                        value={premiumSettingsForm.whatsappGroupLink}
+                        value={premiumSettingsForm.whatsappGroupLink || ''}
                         onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, whatsappGroupLink: e.target.value })}
                         className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                         placeholder="https://chat.whatsapp.com/..."
@@ -1519,7 +1615,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Admin Note</label>
                   <textarea 
-                    value={adminNote}
+                    value={adminNote || ''}
                     onChange={(e) => setAdminNote(e.target.value)}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
                     rows={3}
@@ -1639,7 +1735,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">Rejection Reason</label>
                   <textarea 
-                    value={rejectionNote}
+                    value={rejectionNote || ''}
                     onChange={(e) => setRejectionNote(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[100px]"
                     placeholder="Enter reason for rejection..."
@@ -1686,7 +1782,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <label className="text-sm font-medium text-slate-700">New Balance (৳)</label>
                   <input 
                     type="number"
-                    value={newBalanceValue}
+                    value={newBalanceValue || ''}
                     onChange={(e) => setNewBalanceValue(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                     placeholder="Enter amount..."
@@ -1881,7 +1977,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <input 
                   type="text" 
                   placeholder="Search users by name or email..." 
-                  value={reportUserSearchQuery}
+                  value={reportUserSearchQuery || ''}
                   onChange={(e) => setReportUserSearchQuery(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                 />
@@ -1947,6 +2043,432 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Service Modal */}
+      <ServiceModal 
+        isOpen={isServiceModalOpen}
+        onClose={() => {
+          setIsServiceModalOpen(false);
+          setEditingService(null);
+        }}
+        service={editingService}
+        onSave={async (data) => {
+          if (editingService) {
+            await updateProduct(editingService.id, data);
+          } else {
+            await addProduct(data as any);
+          }
+          setIsServiceModalOpen(false);
+          setEditingService(null);
+        }}
+      />
+    </div>
+  );
+};
+
+interface ServiceModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  service: Product | null;
+  onSave: (data: Partial<Product>) => Promise<void>;
+}
+
+const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, onSave }) => {
+  const [formData, setFormData] = useState<Partial<Product>>({
+    titleBn: '',
+    titleEn: '',
+    category: 'NID',
+    shortDescription: '',
+    fullDescription: '',
+    price: 0,
+    discountPrice: undefined,
+    deliveryTime: '',
+    requiredDocuments: '',
+    instructions: '',
+    orderButtonText: 'অর্ডার করুন',
+    displayOrder: 0,
+    isActive: true,
+    color: 'bg-indigo-500',
+    iconName: 'LayoutGrid',
+    defaultData: '',
+    options: []
+  });
+
+  useEffect(() => {
+    if (service) {
+      setFormData({
+        ...service,
+        iconName: service.iconName || 'LayoutGrid',
+        options: service.options || []
+      });
+    } else {
+      setFormData({
+        titleBn: '',
+        titleEn: '',
+        category: 'NID',
+        shortDescription: '',
+        fullDescription: '',
+        price: 0,
+        discountPrice: undefined,
+        deliveryTime: '',
+        requiredDocuments: '',
+        instructions: '',
+        orderButtonText: 'অর্ডার করুন',
+        displayOrder: 0,
+        isActive: true,
+        color: 'bg-indigo-500',
+        iconName: 'LayoutGrid',
+        defaultData: '',
+        options: []
+      });
+    }
+  }, [service, isOpen]);
+
+  const addOption = () => {
+    const currentOptions = formData.options || [];
+    setFormData({
+      ...formData,
+      options: [...currentOptions, { name: '', price: 0 }]
+    });
+  };
+
+  const removeOption = (index: number) => {
+    const currentOptions = formData.options || [];
+    setFormData({
+      ...formData,
+      options: currentOptions.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateOption = (index: number, field: 'name' | 'price', value: string | number) => {
+    const currentOptions = formData.options || [];
+    const newOptions = [...currentOptions];
+    newOptions[index] = { ...newOptions[index], [field]: value };
+    setFormData({ ...formData, options: newOptions });
+  };
+
+  const colors = [
+    { name: 'Indigo', class: 'bg-indigo-500' },
+    { name: 'Blue', class: 'bg-blue-600' },
+    { name: 'Emerald', class: 'bg-emerald-500' },
+    { name: 'Amber', class: 'bg-amber-500' },
+    { name: 'Rose', class: 'bg-rose-500' },
+    { name: 'Violet', class: 'bg-violet-600' },
+    { name: 'Cyan', class: 'bg-cyan-500' },
+    { name: 'Slate', class: 'bg-slate-700' },
+    { name: 'Orange', class: 'bg-orange-500' },
+    { name: 'Teal', class: 'bg-teal-500' },
+    { name: 'Pink', class: 'bg-pink-500' },
+    { name: 'Red', class: 'bg-red-600' }
+  ];
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+      >
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div>
+            <h2 className="text-xl font-black text-slate-900">{service ? 'Edit Service' : 'Add New Service'}</h2>
+            <p className="text-sm text-slate-500">Fill in the details below to {service ? 'update' : 'create'} a service.</p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white rounded-full transition-all shadow-sm border border-transparent hover:border-slate-200">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Basic Info */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest">Basic Information</h3>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Service Name (Bangla)</label>
+                <input 
+                  type="text"
+                  value={formData.titleBn || ''}
+                  onChange={(e) => setFormData({ ...formData, titleBn: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  placeholder="উদা: নতুন জন্ম নিবন্ধন"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Service Name (English)</label>
+                <input 
+                  type="text"
+                  value={formData.titleEn || ''}
+                  onChange={(e) => setFormData({ ...formData, titleEn: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  placeholder="e.g. New Birth Registration"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Category</label>
+                  <select 
+                    value={formData.category || 'NID'}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  >
+                    {['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'KYC', 'Server', 'Tax', 'Government', 'Social'].map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Display Order</label>
+                  <input 
+                    type="number"
+                    value={formData.displayOrder || 0}
+                    onChange={(e) => setFormData({ ...formData, displayOrder: Number(e.target.value) })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Price (৳)</label>
+                  <input 
+                    type="number"
+                    value={formData.price || 0}
+                    onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">Discount Price (৳)</label>
+                  <input 
+                    type="number"
+                    value={formData.discountPrice || ''}
+                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Delivery Time</label>
+                <input 
+                  type="text"
+                  value={formData.deliveryTime || ''}
+                  onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  placeholder="e.g. 1-2 Hours, 24 Hours"
+                />
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest">Visual Style</h3>
+                
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-slate-700">Select Icon</label>
+                  <div className="grid grid-cols-6 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200 custom-scrollbar">
+                    {Object.entries(icons).map(([name, Icon]) => (
+                      <button
+                        key={name}
+                        onClick={() => setFormData({ ...formData, iconName: name })}
+                        className={cn(
+                          "p-3 rounded-xl flex items-center justify-center transition-all",
+                          formData.iconName === name 
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" 
+                            : "bg-white text-slate-400 hover:text-slate-600 border border-slate-100"
+                        )}
+                        title={name}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-slate-700">Select Color Theme</label>
+                  <div className="grid grid-cols-6 gap-2">
+                    {colors.map((color) => (
+                      <button
+                        key={color.class}
+                        onClick={() => setFormData({ ...formData, color: color.class })}
+                        className={cn(
+                          "w-full aspect-square rounded-xl transition-all border-2",
+                          formData.color === color.class 
+                            ? "border-indigo-600 scale-110 shadow-md" 
+                            : "border-transparent hover:scale-105"
+                        )}
+                        title={color.name}
+                      >
+                        <div className={cn("w-full h-full rounded-lg", color.class)} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Descriptions & Details */}
+            <div className="space-y-6">
+              <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest">Service Details</h3>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Short Description</label>
+                <textarea 
+                  value={formData.shortDescription || ''}
+                  onChange={(e) => setFormData({ ...formData, shortDescription: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium h-20 resize-none"
+                  placeholder="A brief overview of the service..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Required Documents</label>
+                <textarea 
+                  value={formData.requiredDocuments || ''}
+                  onChange={(e) => setFormData({ ...formData, requiredDocuments: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium h-24 resize-none"
+                  placeholder="List documents required (one per line)..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Instructions / Notes</label>
+                <textarea 
+                  value={formData.instructions || ''}
+                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium h-24 resize-none"
+                  placeholder="Special instructions for the user..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Order Button Text</label>
+                <input 
+                  type="text"
+                  value={formData.orderButtonText || ''}
+                  onChange={(e) => setFormData({ ...formData, orderButtonText: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                  placeholder="Default: অর্ডার করুন"
+                />
+              </div>
+
+              <div className="space-y-4 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest">Service Options</h3>
+                  <button 
+                    onClick={addOption}
+                    className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    <Plus className="w-3 h-3" /> Add Option
+                  </button>
+                </div>
+                
+                <div className="space-y-3">
+                  {(formData.options || []).map((option, index) => (
+                    <div key={index} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                      <div className="flex-1 space-y-2">
+                        <input 
+                          type="text"
+                          value={option.name || ''}
+                          onChange={(e) => updateOption(index, 'name', e.target.value)}
+                          placeholder="Option Name (e.g. 3 Months)"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        />
+                        <input 
+                          type="number"
+                          value={option.price || 0}
+                          onChange={(e) => updateOption(index, 'price', Number(e.target.value))}
+                          placeholder="Price"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => removeOption(index)}
+                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {(formData.options || []).length === 0 && (
+                    <div className="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      <p className="text-xs text-slate-400">No options added yet. Click "Add Option" to create variations.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Full Description & Form Template */}
+            <div className="md:col-span-2 space-y-6">
+              <h3 className="text-sm font-black text-indigo-600 uppercase tracking-widest">Advanced Configuration</h3>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Full Description (Markdown supported)</label>
+                <textarea 
+                  value={formData.fullDescription || ''}
+                  onChange={(e) => setFormData({ ...formData, fullDescription: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium h-32 resize-none"
+                  placeholder="Detailed information about the service..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-bold text-slate-700">Order Form Template (JSON)</label>
+                  <span className="text-[10px] bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full font-bold uppercase">Advanced</span>
+                </div>
+                <textarea 
+                  value={formData.defaultData || ''}
+                  onChange={(e) => setFormData({ ...formData, defaultData: e.target.value })}
+                  className="w-full px-4 py-3 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono text-xs h-40 resize-none"
+                  placeholder='[{"label": "NID Number", "type": "text", "required": true}]'
+                />
+                <p className="text-[10px] text-slate-400">Define the fields users need to fill when ordering this service.</p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <div>
+                  <h4 className="font-bold text-slate-900">Service Status</h4>
+                  <p className="text-xs text-slate-500">Toggle visibility of this service on the user panel.</p>
+                </div>
+                <div 
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative cursor-pointer",
+                    formData.isActive ? "bg-emerald-500" : "bg-slate-300"
+                  )} 
+                  onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                    formData.isActive ? "left-7" : "left-1"
+                  )} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-white transition-all border border-transparent hover:border-slate-200"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={() => onSave(formData)}
+            className="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+          >
+            {service ? 'Update Service' : 'Create Service'}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 };

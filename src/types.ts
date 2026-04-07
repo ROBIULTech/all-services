@@ -36,13 +36,23 @@ export interface Product {
   titleEn: string;
   category: string;
   price: number;
+  discountPrice?: number;
+  shortDescription?: string;
+  fullDescription?: string;
+  deliveryTime?: string;
+  requiredDocuments?: string;
+  instructions?: string;
   isActive: boolean;
   icon?: any;
+  iconName?: string;
   color?: string;
+  orderButtonText?: string;
+  displayOrder?: number;
   options?: {
     name: string;
     price: number;
   }[];
+  defaultData?: string;
 }
 
 export interface GlobalSettings {

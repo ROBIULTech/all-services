@@ -44,7 +44,8 @@ import {
   CheckCircle,
   XCircle,
   Plus,
-  Send
+  Send,
+  LayoutGrid
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -164,30 +165,96 @@ import UserPanel from './components/UserPanel';
 import AdminPanel from './components/AdminPanel';
 
 const initialProducts: Product[] = [
-  { id: 1, titleBn: 'সাইন কপি অর্ডার', titleEn: 'Sign Copy Order', category: 'NID', icon: FileText, color: 'bg-blue-500', price: 40, isActive: true, options: [{ name: 'FORM_NO', price: 40 }, { name: 'NID_NO', price: 40 }, { name: 'VOTER_NO', price: 40 }, { name: 'BIRTH_NO', price: 40 }] },
-  { id: 2, titleBn: 'এনআইডি কপি অর্ডার', titleEn: 'NID Copy Order', category: 'NID', icon: CreditCard, color: 'bg-indigo-500', price: 50, isActive: true, options: [{ name: 'FORM_NO', price: 50 }, { name: 'NID_NO', price: 50 }, { name: 'VOTER_NO', price: 50 }, { name: 'BIRTH_NO', price: 50 }] },
-  { id: 3, titleBn: 'অফিসিয়াল সার্ভার কপি', titleEn: 'Official Server Copy', category: 'SERVER', icon: Server, color: 'bg-slate-700', price: 80, isActive: true, options: [{ name: 'FORM_NO', price: 80 }, { name: 'NID_NO', price: 80 }, { name: 'VOTER_NO', price: 80 }, { name: 'BIRTH_NO', price: 80 }] },
+  { id: 1, titleBn: 'সাইন কপি অর্ডার', titleEn: 'Sign Copy Order', category: 'NID', icon: FileText, color: 'bg-blue-500', price: 40, isActive: true, options: [{ name: 'FORM_NO', price: 40 }, { name: 'NID_NO', price: 40 }, { name: 'VOTER_NO', price: 40 }, { name: 'BIRTH_NO', price: 40 }], defaultData: `এনআইডি নম্বর:
+জন্ম তারিখ:
+ভোটার নম্বর (যদি থাকে):` },
+  { id: 2, titleBn: 'এনআইডি কপি অর্ডার', titleEn: 'NID Copy Order', category: 'NID', icon: CreditCard, color: 'bg-indigo-500', price: 50, isActive: true, options: [{ name: 'FORM_NO', price: 50 }, { name: 'NID_NO', price: 50 }, { name: 'VOTER_NO', price: 50 }, { name: 'BIRTH_NO', price: 50 }], defaultData: `এনআইডি নম্বর:
+জন্ম তারিখ:` },
+  { id: 3, titleBn: 'অফিসিয়াল সার্ভার কপি', titleEn: 'Official Server Copy', category: 'SERVER', icon: Server, color: 'bg-slate-700', price: 80, isActive: true, options: [{ name: 'FORM_NO', price: 80 }, { name: 'NID_NO', price: 80 }, { name: 'VOTER_NO', price: 80 }, { name: 'BIRTH_NO', price: 80 }], defaultData: `এনআইডি নম্বর:
+জন্ম তারিখ:` },
   { id: 4, titleBn: 'টিন সার্টিফিকেট অর্ডার করুন', titleEn: 'TIN Certificate Order', category: 'TAX', icon: FileText, color: 'bg-orange-500', price: 100, isActive: true },
-  { id: 5, titleBn: 'বায়োমেট্রিক অর্ডার', titleEn: 'Biometric Order', category: 'SECURITY', icon: ShieldCheck, color: 'bg-pink-500', price: 200, isActive: true, options: [{ name: 'Grameenphone', price: 100 }, { name: 'Banglalink', price: 100 }, { name: 'Robi', price: 100 }, { name: 'Airtel', price: 100 }, { name: 'Teletalk', price: 100 }] },
+  { id: 5, titleBn: 'বায়োমেট্রিক অর্ডার', titleEn: 'Biometric Order', category: 'SECURITY', icon: ShieldCheck, color: 'bg-pink-500', price: 200, isActive: true, options: [{ name: 'Grameenphone', price: 100 }, { name: 'Banglalink', price: 100 }, { name: 'Robi', price: 100 }, { name: 'Airtel', price: 100 }, { name: 'Teletalk', price: 100 }], defaultData: `নাম:
+এনআইডি নম্বর:
+মোবাইল নম্বর:
+অপারেটর:
+পিতার নাম:
+মাতার নাম:` },
   { id: 6, titleBn: 'লোকেশন অর্ডার', titleEn: 'Location Order', category: 'TRACKING', icon: MapPin, color: 'bg-slate-800', price: 300, isActive: true },
-  { id: 7, titleBn: 'নতুন জন্ম নিবন্ধন', titleEn: 'New Birth Registration', category: 'GOVERNMENT', icon: Baby, color: 'bg-cyan-500', price: 1200, isActive: true, options: [{ name: 'মিনিস্ট্রি', price: 1200 }] },
-  { id: 8, titleBn: 'কললিস্ট অর্ডার', titleEn: 'Call List Order', category: 'COMMUNICATION', icon: PhoneCall, color: 'bg-orange-600', price: 750, isActive: true, options: [{ name: '৩ মাস কল লিস্ট', price: 750 }, { name: '৬ মাস কল লিস্ট', price: 1200 }] },
+  { id: 7, titleBn: 'নতুন জন্ম নিবন্ধন', titleEn: 'New Birth Registration', category: 'GOVERNMENT', icon: Baby, color: 'bg-cyan-500', price: 1200, isActive: true, options: [{ name: 'মিনিস্ট্রি', price: 1200 }], defaultData: `• Name (English):*
+• পিতার নাম (বাংলা):*
+• Father's Name:*
+• মাতার নাম (বাংলা):*
+• Mother's Name:*
+• জন্মতারিখ:*
+• Date of Birth:*
+• লিঙ্গ:*
+• জন্মস্থান (বাংলা):*
+• জন্মস্থান (ইংরেজি):*
+• স্থায়ী ঠিকানা (বাংলা):*
+• স্থায়ী ঠিকানা (ইংরেজি):*
+• বর্তমান ঠিকানা (বাংলা):*
+• বর্তমান ঠিকানা (ইংরেজি):*` },
+  { id: 8, titleBn: 'কললিস্ট অর্ডার', titleEn: 'Call List Order', category: 'COMMUNICATION', icon: PhoneCall, color: 'bg-orange-600', price: 750, isActive: true, options: [{ name: '৩ মাস কল লিস্ট', price: 750 }, { name: '৬ মাস কল লিস্ট', price: 1200 }], defaultData: `কললিস্ট এর কাজের ফরমেট* ↩️
+✅ তার এক কপি ছবি
+
+⚠️নামঃ
+⚠️পিতার নাম:
+⚠️মাতার নামঃ 
+⚠️গ্রামঃ
+⚠️ইউনিয়নঃ 
+⚠️উপ উপজেলাঃ 
+⚠️জেলাঃ
+⚠️বিভাগঃ
+⚠️কত সালে ভোটার হয়েছেঃ
+⚠️জন্ম নিবন্ধন নাম্বার -(যদি থাকে) 
+*🚫সাথে ভোটার হওয়া ১জনের আইডিঃ* যদি থাকে` },
   { id: 9, titleBn: 'NID টু অল নাম্বার অর্ডার', titleEn: 'NID to All Number', category: 'NID', icon: Hash, color: 'bg-indigo-600', price: 500, isActive: true },
   { id: 10, titleBn: 'Nid ইউজার পাসওয়ার্ড চেঞ্জ', titleEn: 'NID Password Change', category: 'NID', icon: Key, color: 'bg-pink-600', price: 220, isActive: true },
   { id: 11, titleBn: 'নাম ঠিকানা NID', titleEn: 'Name Address NID', category: 'NID', icon: UserCheck, color: 'bg-blue-600', price: 350, isActive: true },
-  { id: 12, titleBn: 'INFO অর্ডার', titleEn: 'INFO Order', category: 'INFORMATION', icon: Info, color: 'bg-sky-500', price: 1150, isActive: true, options: [{ name: 'Bkash', price: 900 }, { name: 'Nagad', price: 1150 }, { name: 'Bkash Agent', price: 950 }, { name: 'BKash Merchant', price: 1000 }] },
-  { id: 13, titleBn: 'অরজিনাল স্মার্ট কার্ড অর্ডার', titleEn: 'Original Smart Card Order', category: 'NID', icon: Smartphone, color: 'bg-blue-700', price: 3800, isActive: true, options: [{ name: 'নতুন স্মার্ট কার্ড প্রিন্ট', price: 3300 }, { name: 'রি-প্রিন্ট স্মার্ট কার্ড', price: 3800 }] },
-  { id: 14, titleBn: 'পাসপোর্ট SB কপি', titleEn: 'Passport SB Copy', category: 'PASSPORT', icon: Globe, color: 'bg-indigo-700', price: 800, isActive: true, options: [{ name: 'MRP Passport SB Copy', price: 500 }, { name: 'E Passport SB Copy', price: 800 }] },
-  { id: 15, titleBn: 'পাসপোর্ট মূল কপি', titleEn: 'Passport Main Copy', category: 'PASSPORT', icon: Globe, color: 'bg-sky-700', price: 1200, isActive: true, options: [{ name: 'MRP Passport Main Copy', price: 1000 }, { name: 'E Passport Main Copy', price: 1200 }] },
+  { id: 12, titleBn: 'INFO অর্ডার', titleEn: 'INFO Order', category: 'INFORMATION', icon: Info, color: 'bg-sky-500', price: 1150, isActive: true, options: [{ name: 'Bkash', price: 900 }, { name: 'Nagad', price: 1150 }, { name: 'Bkash Agent', price: 950 }, { name: 'BKash Merchant', price: 1000 }], defaultData: `নাম:
+মোবাইল নম্বর:
+তথ্য যা প্রয়োজন:
+এনআইডি নম্বর (যদি থাকে):` },
+  { id: 13, titleBn: 'অরজিনাল স্মার্ট কার্ড অর্ডার', titleEn: 'Original Smart Card Order', category: 'NID', icon: Smartphone, color: 'bg-blue-700', price: 3800, isActive: true, options: [{ name: 'নতুন স্মার্ট কার্ড প্রিন্ট', price: 3300 }, { name: 'রি-প্রিন্ট স্মার্ট কার্ড', price: 3800 }], defaultData: `স্মার্ট কার্ড তথ্য প্রদান করুন:
+Name:
+NID:
+DOB:
+আপনার হোয়াটসঅ্যাপ নাম্বার:
+
+সুন্দরবন কুরিয়ার ঠিকানা:
+কুরিয়ার ঠিকানা দিন
+Received নাম:
+Received নাম্বার:
+জেলা:
+থানা:
+ইউনিয়ন:` },
+  { id: 14, titleBn: 'পাসপোর্ট SB কপি', titleEn: 'Passport SB Copy', category: 'PASSPORT', icon: Globe, color: 'bg-indigo-700', price: 800, isActive: true, options: [{ name: 'MRP Passport SB Copy', price: 500 }, { name: 'E Passport SB Copy', price: 800 }], defaultData: `পাসপোর্ট নম্বর:
+এনআইডি নম্বর:
+নাম:` },
+  { id: 15, titleBn: 'পাসপোর্ট মূল কপি', titleEn: 'Passport Main Copy', category: 'PASSPORT', icon: Globe, color: 'bg-sky-700', price: 1200, isActive: true, options: [{ name: 'MRP Passport Main Copy', price: 1000 }, { name: 'E Passport Main Copy', price: 1200 }], defaultData: `পাসপোর্ট নম্বর:
+এনআইডি নম্বর:
+নাম:` },
   { id: 16, titleBn: 'সুুবর্ণ প্রতিবন্ধী কার্ড', titleEn: 'Disability Card', category: 'SOCIAL', icon: HeartHandshake, color: 'bg-slate-900', price: 1250, isActive: true },
   { id: 17, titleBn: 'হারিয়ে যাওয়া জন্ম সনদ', titleEn: 'Lost Birth Certificate', category: 'GOVERNMENT', icon: FileSearch, color: 'bg-orange-400', price: 30, isActive: true },
   { id: 18, titleBn: 'হারিয়ে যাওয়া মৃত্যু সনদ', titleEn: 'Lost Death Certificate', category: 'GOVERNMENT', icon: FileSearch, color: 'bg-red-500', price: 30, isActive: true },
-  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'FORM', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ওয়াড ফাইল', price: 150 }] },
-  { id: 20, titleBn: 'পিএসসি সার্টিফিকেট ভেক্টর ফাইল', titleEn: 'PSC Certificate Vector', category: 'EDUCATION', icon: GraduationCap, color: 'bg-indigo-400', price: 150, isActive: true, options: [{ name: 'ভেক্টর ফাইল', price: 150 }] },
-  { id: 21, titleBn: 'ইপিআইড/শিশুদের টিকা কার্ড ভেক্টর ফাইল', titleEn: 'EPI/Vaccine Card Vector', category: 'HEALTH', icon: Stethoscope, color: 'bg-blue-400', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ভেক্টর ফাইল', price: 150 }] },
-  { id: 22, titleBn: 'আন অফিসিয়াল সার্ভার কপি', titleEn: 'Unofficial Server Copy', category: 'SERVER', icon: Server, color: 'bg-slate-600', price: 30, isActive: true, options: [{ name: 'Server Copy Type 1', price: 30 }, { name: 'Server Copy Type 2', price: 30 }] },
+  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'FORM', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ওয়াড ফাইল', price: 150 }], defaultData: `নাম:
+পিতার নাম:
+মাতার নাম:
+ঠিকানা:` },
+  { id: 20, titleBn: 'পিএসসি সার্টিফিকেট ভেক্টর ফাইল', titleEn: 'PSC Certificate Vector', category: 'EDUCATION', icon: GraduationCap, color: 'bg-indigo-400', price: 150, isActive: true, options: [{ name: 'ভেক্টর ফাইল', price: 150 }], defaultData: `রোল নম্বর:
+রেজিস্ট্রেশন নম্বর:
+সাল:
+বোর্ড:` },
+  { id: 21, titleBn: 'ইপিআইড/শিশুদের টিকা কার্ড ভেক্টর ফাইল', titleEn: 'EPI/Vaccine Card Vector', category: 'HEALTH', icon: Stethoscope, color: 'bg-blue-400', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ভেক্টর ফাইল', price: 150 }], defaultData: `শিশুর নাম:
+পিতার নাম:
+মাতার নাম:
+জন্ম তারিখ:` },
+  { id: 22, titleBn: 'আন অফিসিয়াল সার্ভার কপি', titleEn: 'Unofficial Server Copy', category: 'SERVER', icon: Server, color: 'bg-slate-600', price: 30, isActive: true, options: [{ name: 'Server Copy Type 1', price: 30 }, { name: 'Server Copy Type 2', price: 30 }], defaultData: `এনআইডি নম্বর:
+জন্ম তারিখ:` },
   { id: 23, titleBn: 'এনআইডি সংশোধন কপি', titleEn: 'NID Correction Copy', category: 'NID', icon: CreditCard, color: 'bg-indigo-400', price: 150, isActive: true },
-  { id: 24, titleBn: 'পাসপোর্ট ইনফরমেশন', titleEn: 'Passport Information', category: 'PASSPORT', icon: FileSearch, color: 'bg-teal-600', price: 500, isActive: true, options: [{ name: 'MRP Passport Information', price: 500 }, { name: 'E Passport Information', price: 500 }] },
+  { id: 24, titleBn: 'পাসপোর্ট ইনফরমেশন', titleEn: 'Passport Information', category: 'PASSPORT', icon: FileSearch, color: 'bg-teal-600', price: 500, isActive: true, options: [{ name: 'MRP Passport Information', price: 500 }, { name: 'E Passport Information', price: 500 }], defaultData: `পাসপোর্ট নম্বর:
+এনআইডি নম্বর:
+নাম:` },
   { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true },
   { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }] }
 ];
@@ -358,21 +425,33 @@ export default function App() {
           const found = productsData.find(pd => pd.id === p.id);
           if (!found) return p;
           
+          let needsUpdate = false;
+          const updatedProduct = { ...found };
+
           // For product 102, we want to force the new options
           if (p.id === 102) {
-            return { ...found, options: p.options };
+            updatedProduct.options = p.options;
+            needsUpdate = true;
+          } else {
+            // If options changed (new options added), we should sync them
+            const hasNewOptions = p.options && (!found.options || p.options.some(opt => !found.options.some((fo: any) => fo.name === opt.name)));
+            if (hasNewOptions) {
+              const mergedOptions = p.options!.map(opt => {
+                const existing = found.options?.find((fo: any) => fo.name === opt.name);
+                return existing ? existing : opt;
+              });
+              updatedProduct.options = mergedOptions;
+              needsUpdate = true;
+            }
+          }
+
+          // Sync defaultData if it's in initialProducts but missing or different in Firestore
+          if (p.defaultData && found.defaultData !== p.defaultData) {
+            updatedProduct.defaultData = p.defaultData;
+            needsUpdate = true;
           }
           
-          // If options changed (new options added), we should sync them
-          const hasNewOptions = p.options && (!found.options || p.options.some(opt => !found.options.some((fo: any) => fo.name === opt.name)));
-          if (hasNewOptions) {
-            const mergedOptions = p.options.map(opt => {
-              const existing = found.options?.find((fo: any) => fo.name === opt.name);
-              return existing ? existing : opt;
-            });
-            return { ...found, options: mergedOptions };
-          }
-          return null;
+          return needsUpdate ? updatedProduct : null;
         }).filter(p => p !== null) as Product[];
         
         if (productsToSync.length > 0) {
@@ -393,29 +472,44 @@ export default function App() {
     // Sync products with Firestore for everyone
     const q = collection(db, 'products');
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const productsData: Product[] = [];
+        const firestoreProducts: Product[] = [];
         snapshot.forEach((doc) => {
           const data = doc.data() as Product;
-          productsData.push(data);
+          firestoreProducts.push(data);
         });
         
+        // Create a map of initial products for easy lookup of icons/colors
+        const initialProductsMap = new Map(initialProducts.map(p => [p.id, p]));
+
         // Merge Firestore data with initialProducts to ensure icons and colors are present
-        const mergedProducts = initialProducts.map(ip => {
-          const found = productsData.find(pd => pd.id === ip.id);
-          if (found) {
-            let finalOptions = found.options;
+        const mergedProducts: Product[] = firestoreProducts.map(fp => {
+          const ip = initialProductsMap.get(fp.id);
+          if (ip) {
+            let finalOptions = fp.options;
             if (ip.options) {
               finalOptions = ip.options.map(ipOpt => {
-                const existingOpt = found.options?.find((o: any) => o.name === ipOpt.name);
+                const existingOpt = fp.options?.find((o: any) => o.name === ipOpt.name);
                 return existingOpt ? existingOpt : ipOpt;
               });
             }
-            return { ...found, icon: ip.icon, color: ip.color, options: finalOptions };
+            return { ...fp, icon: ip.icon, color: ip.color, options: finalOptions };
           }
-          return ip;
+          // For new products added via Admin Panel, provide default icon/color if missing
+          return { 
+            ...fp, 
+            icon: fp.icon || LayoutGrid, 
+            color: fp.color || 'bg-indigo-500' 
+          };
         });
 
-        setProducts(mergedProducts.sort((a, b) => a.id - b.id));
+        // Add any initial products that are NOT in Firestore yet (though initializeProducts should handle this)
+        initialProducts.forEach(ip => {
+          if (!firestoreProducts.some(fp => fp.id === ip.id)) {
+            mergedProducts.push(ip);
+          }
+        });
+
+        setProducts(mergedProducts.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0) || a.id - b.id));
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'products');
     });
@@ -465,13 +559,45 @@ export default function App() {
   const updateProduct = async (id: number, updates: Partial<Product>) => {
     try {
       const productRef = doc(db, 'products', id.toString());
-      // Filter out non-serializable fields like 'icon'
-      const { icon, color, ...serializableUpdates } = updates;
+      // Filter out non-serializable fields like 'icon' (React component)
+      const { icon, ...serializableUpdates } = updates;
       await setDoc(productRef, serializableUpdates, { merge: true });
       setShowSuccess(true);
     } catch (error) {
-      console.error('Error updating product:', error);
-      alert('Error updating product: ' + (error instanceof Error ? error.message : String(error)));
+      handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
+    }
+  };
+
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
+    try {
+      // Find the highest ID to increment
+      const maxId = products.length > 0 ? Math.max(...products.map(p => p.id)) : 0;
+      const newId = maxId + 1;
+      
+      const productRef = doc(db, 'products', newId.toString());
+      // Filter out non-serializable fields like 'icon'
+      const { icon, ...serializableProduct } = productData as any;
+      
+      await setDoc(productRef, {
+        ...serializableProduct,
+        id: newId,
+        isActive: true,
+        createdAt: serverTimestamp()
+      });
+      setShowSuccess(true);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, 'products');
+    }
+  };
+
+  const deleteProduct = async (id: number) => {
+    try {
+      const productRef = doc(db, 'products', id.toString());
+      await deleteDoc(productRef);
+      setShowSuccess(true);
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      alert('Error deleting product: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
@@ -744,6 +870,8 @@ export default function App() {
       updateUserBalance={updateUserBalance}
       updateUser={updateUser}
       updateProduct={updateProduct}
+      addProduct={addProduct}
+      deleteProduct={deleteProduct}
       onSignOut={handleSignOut}
       isAdminViewingUserPanel={isAdminViewingUserPanel}
       setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}

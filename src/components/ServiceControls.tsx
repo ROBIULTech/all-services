@@ -97,6 +97,16 @@ const ServiceControls: React.FC<ServiceControlsProps> = ({ serviceId, updateProd
               </div>
             )}
           </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-600">Default Order Template (Placeholder Data)</label>
+            <textarea 
+              defaultValue={product.defaultData || ''}
+              onBlur={(e) => updateProduct(serviceId, { defaultData: e.target.value })}
+              placeholder="Enter default template text for this service..."
+              className="w-full p-3 bg-white border border-slate-200 rounded-xl text-sm min-h-[150px] focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+            />
+          </div>
         </div>
       </div>
     );
