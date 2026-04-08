@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, auth, db, doc, getDoc, setDoc, serverTimestamp, query, where, collection, getDocs } from '../firebase';
 import { motion } from 'motion/react';
+import { Logo } from './Logo';
 
 interface LoginProps {
   onLogin: (user: any, profile: any) => void;
@@ -115,8 +116,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       >
         <div className="p-8 space-y-6">
           <div className="text-center space-y-2">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-lg mb-4 ${isAdminRoute ? 'bg-[#f97316] shadow-orange-500/20' : 'bg-indigo-600 shadow-indigo-500/20'}`}>
-              {isAdminRoute ? <Shield className="w-8 h-8 text-white" /> : <ShieldCheck className="w-8 h-8 text-white" />}
+            <div className="flex flex-col items-center justify-center mx-auto mb-6">
+              <Logo className="w-16 h-16 mb-2" />
+              <div className="flex flex-col items-center">
+                <span className="text-2xl font-black tracking-tight text-white leading-none mt-1">All Services</span>
+                <span className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-1">Platform</span>
+              </div>
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
               {isAdminRoute ? 'Admin Panel' : (isLogin ? 'Welcome Back' : 'Create Account')}
