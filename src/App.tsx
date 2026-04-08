@@ -239,7 +239,7 @@ Received নাম্বার:
   { id: 16, titleBn: 'সুুবর্ণ প্রতিবন্ধী কার্ড', titleEn: 'Disability Card', category: 'Social', icon: HeartHandshake, color: 'bg-slate-900', price: 1250, isActive: true },
   { id: 17, titleBn: 'হারিয়ে যাওয়া জন্ম সনদ', titleEn: 'Lost Birth Certificate', category: 'Government', icon: FileSearch, color: 'bg-orange-400', price: 30, isActive: true },
   { id: 18, titleBn: 'হারিয়ে যাওয়া মৃত্যু সনদ', titleEn: 'Lost Death Certificate', category: 'Government', icon: FileSearch, color: 'bg-red-500', price: 30, isActive: true },
-  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ (বাংলা)', price: 150 }, { name: 'পিডিএফ (English)', price: 150 }, { name: 'ওয়াড ফাইল (বাংলা)', price: 150 }, { name: 'ওয়াড ফাইল (English)', price: 150 }], defaultData: `নাম:
+  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ (বাংলা)', price: 300 }, { name: 'পিডিএফ (English)', price: 300 }, { name: 'ওয়াড ফাইল (বাংলা)', price: 400 }, { name: 'ওয়াড ফাইল (English)', price: 400 }], defaultData: `নাম:
 পিতার নাম:
 মাতার নাম:
 ঠিকানা:` },
@@ -492,12 +492,19 @@ export default function App() {
         const mergedProducts: Product[] = firestoreProducts.map(fp => {
           const ip = initialProductsMap.get(fp.id);
           if (ip) {
-            let finalOptions = fp.options;
+            let finalOptions = fp.options || [];
             if (ip.options) {
-              finalOptions = ip.options.map(ipOpt => {
-                const existingOpt = fp.options?.find((o: any) => o.name === ipOpt.name);
-                return existingOpt ? existingOpt : ipOpt;
+              // Start with Firestore options
+              const mergedOpts = [...(fp.options || [])];
+              
+              // Add any initial options that are missing in Firestore
+              ip.options.forEach(ipOpt => {
+                const exists = mergedOpts.find((o: any) => o.name === ipOpt.name);
+                if (!exists) {
+                  mergedOpts.push(ipOpt);
+                }
               });
+              finalOptions = mergedOpts;
             }
             return { ...fp, icon: ip.icon, color: ip.color, options: finalOptions };
           }

@@ -44,7 +44,10 @@ import {
   Heart,
   HelpCircle,
   Mail,
-  Phone
+  Phone,
+  HeadphonesIcon,
+  Loader2,
+  Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -88,6 +91,9 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
+  const [rechargeStep, setRechargeStep] = useState<1 | 2 | 3>(1);
+  const [rechargeMethod, setRechargeMethod] = useState<{id: string, name: string, color: string, logo: string, number?: string} | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [rechargeData, setRechargeData] = useState({ amount: '', senderNumber: '', trxID: '' });
   const [orderFile, setOrderFile] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({ 
