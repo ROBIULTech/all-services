@@ -61,6 +61,7 @@ import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth } from '../firebase';
 import ServiceControls from './ServiceControls';
+import { Logo } from './Logo';
 
 enum OperationType {
   CREATE = 'create',
@@ -574,10 +575,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center justify-between gap-3">
             <div className={cn("flex items-center gap-3", !isSidebarOpen && "hidden")}>
-              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <LayoutDashboard className="text-white w-5 h-5" />
+              <Logo className="w-8 h-8 flex-shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">All Services</span>
+                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">Platform</span>
               </div>
-              <span className="text-xl font-bold tracking-tight">All Services</span>
             </div>
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}

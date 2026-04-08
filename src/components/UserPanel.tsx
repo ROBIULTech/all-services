@@ -55,6 +55,8 @@ import { UserProfile, Order, Product, GlobalSettings } from '../types';
 import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc } from '../firebase';
 import axios from 'axios';
 
+import { Logo } from './Logo';
+
 interface UserPanelProps {
   userProfile: UserProfile;
   products: Product[];
@@ -487,10 +489,13 @@ Mobile-
       )}>
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Package className="w-6 h-6 text-white" />
-            </div>
-            {isSidebarOpen && <span className="text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap">All Services</span>}
+            <Logo className="w-10 h-10 flex-shrink-0" />
+            {isSidebarOpen && (
+              <div className="flex flex-col">
+                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">All Services</span>
+                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">Platform</span>
+              </div>
+            )}
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
