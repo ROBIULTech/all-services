@@ -115,6 +115,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [infoCategory, setInfoCategory] = useState('NID/PIN');
   const [infoNumber, setInfoNumber] = useState('');
   const [serverCopyNid, setServerCopyNid] = useState('');
+  const [photoNid, setPhotoNid] = useState('');
+  const [photoDob, setPhotoDob] = useState('');
 
   const sendAdminSMS = async (message: string) => {
     try {
@@ -797,30 +799,6 @@ Mobile-
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
-                  {/* Recharge Card */}
-                  <motion.div 
-                    whileHover={{ y: -5 }}
-                    className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 transition-all group relative overflow-hidden cursor-pointer hover:border-emerald-500/50 shadow-sm"
-                    onClick={() => setShowRechargeModal(true)}
-                  >
-                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg bg-emerald-500">
-                      <Wallet className="w-7 h-7 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold group-hover:text-emerald-600 transition-colors text-slate-900">রিচার্জ ব্যালেন্স</h3>
-                      <p className="text-xs text-slate-500 mt-1">Recharge Balance</p>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-500 text-xs font-medium">Min:</span>
-                        <span className="text-lg font-bold text-emerald-600">৳100</span>
-                      </div>
-                      <div className="w-8 h-8 rounded-xl flex items-center justify-center transition-all bg-slate-50 group-hover:bg-emerald-600">
-                        <Plus className="w-4 h-4 text-slate-400 group-hover:text-white" />
-                      </div>
-                    </div>
-                  </motion.div>
-
                   {filteredProducts.map((product) => (
                   <motion.div 
                     key={product.id}
@@ -1144,6 +1122,63 @@ Mobile-
                       >
                         <Search className="w-5 h-5" />
                         তথ্য যাচাই করুন (৳{(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0).toFixed(2)})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Photo Extraction Card */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {!(products.find(p => p.id === 103)?.isActive ?? true) && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
+                          <AlertTriangle className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
+                        <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
+                      </div>
+                    )}
+                    <div className="p-6 border-b border-slate-200">
+                      <h3 className="text-xl font-bold text-blue-600 flex items-center gap-2">
+                        <Search className="w-6 h-6" />
+                        তথ্য খুঁজুন
+                      </h3>
+                    </div>
+                    <div className="p-6 space-y-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (NID)</label>
+                        <input 
+                          type="text" 
+                          value={photoNid || ''}
+                          onChange={(e) => setPhotoNid(e.target.value)}
+                          placeholder="যেমন: 1981493909"
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
+                        <input 
+                          type="text" 
+                          value={photoDob || ''}
+                          onChange={(e) => setPhotoDob(e.target.value)}
+                          placeholder="যেমন: 2007-05-26"
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <button 
+                        onClick={async () => {
+                          const success = await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}`);
+                          if (success) {
+                            setPhotoNid('');
+                            setPhotoDob('');
+                          }
+                        }}
+                        disabled={!photoNid || !photoDob || isPlacingOrder || !(products.find(p => p.id === 103)?.isActive ?? true)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                      >
+                        <Edit3 className="w-5 h-5" />
+                        ছবি বের করুন (চার্জ ৳{products.find(p => p.id === 103)?.price || 85})
                       </button>
                     </div>
                   </div>

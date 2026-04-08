@@ -212,7 +212,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleSendNotification = (type: 'whatsapp' | 'email', user: UserProfile | 'all') => {
+  const handleSendNotification = (type: 'whatsapp' | 'email', target: UserProfile | 'all' | 'selected') => {
     if (!notificationMessage) {
       alert('Please enter a message.');
       return;
@@ -221,28 +221,58 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const message = encodeURIComponent(notificationMessage);
     const subject = encodeURIComponent(notificationSubject);
 
-    if (user === 'all') {
-      alert('Broadcast mode: Please select individual users from the list to send this message.');
-      return;
+    let targetUsers: UserProfile[] = [];
+
+    if (target === 'all') {
+      targetUsers = allUsers;
+    } else if (target === 'selected') {
+      targetUsers = allUsers.filter(u => selectedUserIds.includes(u.uid));
+      if (targetUsers.length === 0) {
+        alert('No users selected.');
+        return;
+      }
+    } else {
+      targetUsers = [target];
     }
 
     if (type === 'whatsapp') {
-      if (!user.whatsapp) {
-        alert('This user does not have a WhatsApp number.');
-        return;
+      if (targetUsers.length > 1) {
+        if (!confirm(`You are about to send messages to ${targetUsers.length} users. This will open multiple WhatsApp tabs. Continue?`)) {
+          return;
+        }
+        targetUsers.forEach((user, index) => {
+          if (user.whatsapp) {
+            const cleanNumber = user.whatsapp.replace(/\D/g, '');
+            const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
+            // Delay to prevent browser blocking multiple popups
+            setTimeout(() => {
+              window.open(whatsappUrl, '_blank');
+            }, index * 1000);
+          }
+        });
+      } else {
+        const user = targetUsers[0];
+        if (!user.whatsapp) {
+          alert('This user does not have a WhatsApp number.');
+          return;
+        }
+        const cleanNumber = user.whatsapp.replace(/\D/g, '');
+        const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
+        window.open(whatsappUrl, '_blank');
       }
-      // Clean number: remove non-digits
-      const cleanNumber = user.whatsapp.replace(/\D/g, '');
-      const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
-      window.open(whatsappUrl, '_blank');
     } else {
-      const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${message}`;
-      window.open(mailtoUrl, '_blank');
+      if (targetUsers.length > 1) {
+        const emails = targetUsers.map(u => u.email).join(',');
+        const mailtoUrl = `mailto:?bcc=${emails}&subject=${subject}&body=${message}`;
+        window.open(mailtoUrl, '_blank');
+      } else {
+        const user = targetUsers[0];
+        const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${message}`;
+        window.open(mailtoUrl, '_blank');
+      }
     }
     
     setNotificationModalOpen(null);
-    // Keep message for broadcast if needed, or clear it
-    // setNotificationMessage('');
   };
 
   const handleDownloadUserReport = (user: UserProfile, type: 'recharge' | 'orders' | 'profile') => {
@@ -307,9 +337,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [reportUserSearchQuery, setReportUserSearchQuery] = useState('');
   
   // Notification States
-  const [notificationModalOpen, setNotificationModalOpen] = useState<UserProfile | 'all' | null>(null);
+  const [notificationModalOpen, setNotificationModalOpen] = useState<UserProfile | 'all' | 'selected' | null>(null);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationSubject, setNotificationSubject] = useState('Important Update from User Panel');
+  const [notificationUserSearch, setNotificationUserSearch] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   
   // Service Management States
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -1535,13 +1567,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <h1 className="text-2xl font-bold tracking-tight">Notification Center</h1>
                     <p className="text-slate-500">Send customized messages to your users via Email or WhatsApp.</p>
                   </div>
-                  <button 
-                    onClick={() => setNotificationModalOpen('all')}
-                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
-                  >
-                    <Megaphone className="w-4 h-4" />
-                    Broadcast to All Users
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {selectedUserIds.length > 0 && (
+                      <button 
+                        onClick={() => setNotificationModalOpen('selected')}
+                        className="px-6 py-2.5 bg-emerald-600 text-white rounded-full text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                      >
+                        <Send className="w-4 h-4" />
+                        Send to Selected ({selectedUserIds.length})
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setNotificationModalOpen('all')}
+                      className="px-6 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                    >
+                      <Megaphone className="w-4 h-4" />
+                      Broadcast to All Users
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1591,26 +1634,97 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
 
                   <div className="space-y-6">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                      <h3 className="font-bold text-lg mb-4">Recent Users</h3>
-                      <div className="space-y-4">
-                        {allUsers.slice(0, 5).map(u => (
-                          <div key={u.uid} className="flex items-center justify-between group">
-                            <div className="flex items-center gap-3">
-                              <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full" />
-                              <div>
-                                <p className="text-sm font-bold text-slate-900">{u.displayName}</p>
-                                <p className="text-[10px] text-slate-500">{u.userId}</p>
-                              </div>
-                            </div>
-                            <button 
-                              onClick={() => setNotificationModalOpen(u)}
-                              className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col h-[600px]">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg">Users List</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                            {selectedUserIds.length} Selected
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="text"
+                          placeholder="Search users..."
+                          value={notificationUserSearch}
+                          onChange={(e) => setNotificationUserSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between px-2 py-2 bg-slate-50 rounded-lg mb-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox"
+                            checked={selectedUserIds.length === allUsers.length && allUsers.length > 0}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedUserIds(allUsers.map(u => u.uid));
+                              } else {
+                                setSelectedUserIds([]);
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-xs font-bold text-slate-600">Select All</span>
+                        </label>
+                        {selectedUserIds.length > 0 && (
+                          <button 
+                            onClick={() => setSelectedUserIds([])}
+                            className="text-[10px] font-bold text-red-500 hover:text-red-600 uppercase"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                        {allUsers
+                          .filter(u => 
+                            u.displayName?.toLowerCase().includes(notificationUserSearch.toLowerCase()) ||
+                            u.email?.toLowerCase().includes(notificationUserSearch.toLowerCase()) ||
+                            u.userId?.toLowerCase().includes(notificationUserSearch.toLowerCase())
+                          )
+                          .map(u => (
+                            <div 
+                              key={u.uid} 
+                              className={cn(
+                                "flex items-center justify-between p-3 rounded-xl border transition-all group",
+                                selectedUserIds.includes(u.uid) 
+                                  ? "bg-indigo-50 border-indigo-200" 
+                                  : "bg-white border-slate-100 hover:border-slate-200"
+                              )}
                             >
-                              <Send className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
+                              <div className="flex items-center gap-3">
+                                <input 
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(u.uid)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedUserIds([...selectedUserIds, u.uid]);
+                                    } else {
+                                      setSelectedUserIds(selectedUserIds.filter(id => id !== u.uid));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full border border-slate-200" />
+                                <div>
+                                  <p className="text-sm font-bold text-slate-900 line-clamp-1">{u.displayName}</p>
+                                  <p className="text-[10px] text-slate-500">{u.userId || u.email}</p>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => setNotificationModalOpen(u)}
+                                className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"
+                              >
+                                <Send className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
                       </div>
                     </div>
                   </div>
@@ -1895,7 +2009,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div>
                       <h3 className="font-bold text-lg">Send Notification</h3>
                       <p className="text-xs text-slate-500">
-                        {notificationModalOpen === 'all' ? 'Broadcasting to all users' : `Sending to ${notificationModalOpen.displayName}`}
+                        {notificationModalOpen === 'all' ? 'Broadcasting to all users' : 
+                         notificationModalOpen === 'selected' ? `Broadcasting to ${selectedUserIds.length} selected users` :
+                         `Sending to ${notificationModalOpen.displayName}`}
                       </p>
                     </div>
                   </div>

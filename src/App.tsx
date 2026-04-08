@@ -46,7 +46,8 @@ import {
   XCircle,
   Plus,
   Send,
-  LayoutGrid
+  LayoutGrid,
+  User
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -238,7 +239,7 @@ Received নাম্বার:
   { id: 16, titleBn: 'সুুবর্ণ প্রতিবন্ধী কার্ড', titleEn: 'Disability Card', category: 'Social', icon: HeartHandshake, color: 'bg-slate-900', price: 1250, isActive: true },
   { id: 17, titleBn: 'হারিয়ে যাওয়া জন্ম সনদ', titleEn: 'Lost Birth Certificate', category: 'Government', icon: FileSearch, color: 'bg-orange-400', price: 30, isActive: true },
   { id: 18, titleBn: 'হারিয়ে যাওয়া মৃত্যু সনদ', titleEn: 'Lost Death Certificate', category: 'Government', icon: FileSearch, color: 'bg-red-500', price: 30, isActive: true },
-  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ওয়াড ফাইল', price: 150 }], defaultData: `নাম:
+  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ (বাংলা)', price: 150 }, { name: 'পিডিএফ (English)', price: 150 }, { name: 'ওয়াড ফাইল (বাংলা)', price: 150 }, { name: 'ওয়াড ফাইল (English)', price: 150 }], defaultData: `নাম:
 পিতার নাম:
 মাতার নাম:
 ঠিকানা:` },
@@ -260,7 +261,8 @@ Received নাম্বার:
 সংশোধন এর বিবরণ:` },
   { id: 26, titleBn: 'ট্যাক্স রিটার্ন', titleEn: 'Tax Return', category: 'Tax', icon: Landmark, color: 'bg-emerald-600', price: 500, isActive: true, requiresFileUpload: true, instructions: 'দয়া করে আপনার ট্যাক্স ফাইলটি আপলোড করুন।' },
   { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'Premium', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true },
-  { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'Premium', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }] }
+  { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'Premium', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }] },
+  { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'Premium', icon: User, color: 'bg-blue-600', price: 85, isActive: true }
 ];
 
 export default function App() {
