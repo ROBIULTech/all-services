@@ -67,6 +67,20 @@ export interface GlobalSettings {
   whatsappGroupLink?: string;
   smsGatewayToken?: string;
   adminPhoneNumber?: string;
+  porichoyApiKey?: string;
+  enkimaaApiKey?: string;
+  isAutoSignApiActive?: boolean;
+  autoSignApiKey?: string;
+  isInfoVerifyApiActive?: boolean;
+  infoVerifyApiKey?: string;
+  isServerCopyApiActive?: boolean;
+  serverCopyApiKey?: string;
+  isAutoNidApiActive?: boolean;
+  autoNidApiKey?: string;
+  isAutoSignMaintenance?: boolean;
+  isInfoVerifyMaintenance?: boolean;
+  isServerCopyMaintenance?: boolean;
+  isAutoNidMaintenance?: boolean;
 }
 
 export interface TrashItem {

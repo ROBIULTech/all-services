@@ -125,6 +125,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [serverCopyNid, setServerCopyNid] = useState('');
   const [photoNid, setPhotoNid] = useState('');
   const [photoDob, setPhotoDob] = useState('');
+  const [autoNidNumber, setAutoNidNumber] = useState('');
+  const [autoNidDob, setAutoNidDob] = useState('');
 
   const sendAdminSMS = async (message: string) => {
     try {
@@ -1009,6 +1011,15 @@ Mobile-
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {/* Auto Sign Copy Card */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {globalSettings?.isAutoSignMaintenance && (
+                      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-3">
+                          <Server className="w-6 h-6 text-red-500 animate-pulse" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
+                        <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
+                      </div>
+                    )}
                     {!(products.find(p => p.id === 101)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -1049,10 +1060,47 @@ Mobile-
 
                       <button 
                         onClick={async () => {
-                          const success = await handlePlacePremiumOrder(101, `NID: ${autoSignNid}`);
-                          if (success) setAutoSignNid('');
+                          if (globalSettings?.isAutoSignApiActive) {
+                            // API Mode
+                            setIsPlacingOrder(true);
+                            try {
+                              const price = products.find(p => p.id === 101)?.price || 0;
+                              if (userProfile.balance < price) {
+                                alert('Insufficient balance!');
+                                setIsPlacingOrder(false);
+                                return;
+                              }
+                              
+                              const response = await fetch('/api/service/auto-sign', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  nid: autoSignNid,
+                                  apiKey: globalSettings.autoSignApiKey || 'mock-key' 
+                                })
+                              });
+                              
+                              const result = await response.json();
+                              if (result.success) {
+                                // Deduct balance and create completed order
+                                await handlePlacePremiumOrder(101, `NID: ${autoSignNid}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                setAutoSignNid('');
+                                alert('Auto Sign Copy generated successfully via API!');
+                              } else {
+                                alert(`API Error: ${result.error}`);
+                              }
+                            } catch (error) {
+                              alert('Failed to connect to API');
+                            } finally {
+                              setIsPlacingOrder(false);
+                            }
+                          } else {
+                            // Manual Mode
+                            const success = await handlePlacePremiumOrder(101, `NID: ${autoSignNid}`);
+                            if (success) setAutoSignNid('');
+                          }
                         }}
-                        disabled={!autoSignNid || isPlacingOrder || !(products.find(p => p.id === 101)?.isActive ?? true)}
+                        disabled={!autoSignNid || isPlacingOrder || !(products.find(p => p.id === 101)?.isActive ?? true) || globalSettings?.isAutoSignMaintenance}
                         className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <ShoppingCart className="w-5 h-5" />
@@ -1063,6 +1111,15 @@ Mobile-
 
                   {/* Info Verification Card */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {globalSettings?.isInfoVerifyMaintenance && (
+                      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-3">
+                          <Server className="w-6 h-6 text-red-500 animate-pulse" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
+                        <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
+                      </div>
+                    )}
                     {!(products.find(p => p.id === 102)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -1125,10 +1182,47 @@ Mobile-
 
                       <button 
                         onClick={async () => {
-                          const success = await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}`);
-                          if (success) setInfoNumber('');
+                          if (globalSettings?.isInfoVerifyApiActive) {
+                            // API Mode
+                            setIsPlacingOrder(true);
+                            try {
+                              const price = products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0;
+                              if (userProfile.balance < price) {
+                                alert('Insufficient balance!');
+                                setIsPlacingOrder(false);
+                                return;
+                              }
+                              
+                              const response = await fetch('/api/service/info-verify', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  category: infoCategory,
+                                  number: infoNumber,
+                                  apiKey: globalSettings.infoVerifyApiKey || 'mock-key' 
+                                })
+                              });
+                              
+                              const result = await response.json();
+                              if (result.success) {
+                                await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                setInfoNumber('');
+                                alert('Information verified successfully via API!');
+                              } else {
+                                alert(`API Error: ${result.error}`);
+                              }
+                            } catch (error) {
+                              alert('Failed to connect to API');
+                            } finally {
+                              setIsPlacingOrder(false);
+                            }
+                          } else {
+                            // Manual Mode
+                            const success = await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}`);
+                            if (success) setInfoNumber('');
+                          }
                         }}
-                        disabled={!infoNumber || isPlacingOrder || !(products.find(p => p.id === 102)?.isActive ?? true)}
+                        disabled={!infoNumber || isPlacingOrder || !(products.find(p => p.id === 102)?.isActive ?? true) || globalSettings?.isInfoVerifyMaintenance}
                         className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                       >
                         <Search className="w-5 h-5" />
@@ -1139,6 +1233,15 @@ Mobile-
 
                   {/* Photo Extraction Card */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {globalSettings?.isServerCopyMaintenance && (
+                      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-3">
+                          <Server className="w-6 h-6 text-red-500 animate-pulse" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
+                        <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
+                      </div>
+                    )}
                     {!(products.find(p => p.id === 103)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -1179,17 +1282,156 @@ Mobile-
 
                       <button 
                         onClick={async () => {
-                          const success = await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}`);
-                          if (success) {
-                            setPhotoNid('');
-                            setPhotoDob('');
+                          if (globalSettings?.isServerCopyApiActive) {
+                            // API Mode
+                            setIsPlacingOrder(true);
+                            try {
+                              const price = products.find(p => p.id === 103)?.price || 0;
+                              if (userProfile.balance < price) {
+                                alert('Insufficient balance!');
+                                setIsPlacingOrder(false);
+                                return;
+                              }
+                              
+                              const response = await fetch('/api/service/server-copy', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  nid: photoNid,
+                                  dob: photoDob,
+                                  apiKey: globalSettings.serverCopyApiKey || 'mock-key' 
+                                })
+                              });
+                              
+                              const result = await response.json();
+                              if (result.success) {
+                                await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                setPhotoNid('');
+                                setPhotoDob('');
+                                alert('Server copy extracted successfully via API!');
+                              } else {
+                                alert(`API Error: ${result.error}`);
+                              }
+                            } catch (error) {
+                              alert('Failed to connect to API');
+                            } finally {
+                              setIsPlacingOrder(false);
+                            }
+                          } else {
+                            // Manual Mode
+                            const success = await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}`);
+                            if (success) {
+                              setPhotoNid('');
+                              setPhotoDob('');
+                            }
                           }
                         }}
-                        disabled={!photoNid || !photoDob || isPlacingOrder || !(products.find(p => p.id === 103)?.isActive ?? true)}
+                        disabled={!photoNid || !photoDob || isPlacingOrder || !(products.find(p => p.id === 103)?.isActive ?? true) || globalSettings?.isServerCopyMaintenance}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
                       >
                         <Edit3 className="w-5 h-5" />
                         ছবি বের করুন (চার্জ ৳{products.find(p => p.id === 103)?.price || 85})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Auto NID Card */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {globalSettings?.isAutoNidMaintenance && (
+                      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center mb-3">
+                          <Server className="w-6 h-6 text-red-500 animate-pulse" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
+                        <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
+                      </div>
+                    )}
+                    {!(products.find(p => p.id === 104)?.isActive ?? true) && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
+                          <AlertTriangle className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
+                        <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
+                      </div>
+                    )}
+                    <div className="p-6 border-b border-slate-200">
+                      <h3 className="text-xl font-bold text-purple-600 flex items-center gap-2">
+                        <CreditCard className="w-6 h-6" />
+                        অটো এনআইডি
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">অটোমেটিক এনআইডি কার্ড মেকার</p>
+                    </div>
+                    <div className="p-6 space-y-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর</label>
+                        <input 
+                          type="text" 
+                          value={autoNidNumber || ''}
+                          onChange={(e) => setAutoNidNumber(e.target.value)}
+                          placeholder="1234567890"
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
+                        <input 
+                          type="text" 
+                          value={autoNidDob || ''}
+                          onChange={(e) => setAutoNidDob(e.target.value)}
+                          placeholder="2000-01-01"
+                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                        />
+                      </div>
+                      <button 
+                        onClick={async () => {
+                          if (globalSettings?.isAutoNidApiActive) {
+                            setIsPlacingOrder(true);
+                            try {
+                              const price = products.find(p => p.id === 104)?.price || 0;
+                              if (userProfile.balance < price) {
+                                alert('Insufficient balance!');
+                                setIsPlacingOrder(false);
+                                return;
+                              }
+                              
+                              const response = await fetch('/api/service/auto-nid', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                  nid: autoNidNumber,
+                                  dob: autoNidDob,
+                                  apiKey: globalSettings.autoNidApiKey || 'mock-key' 
+                                })
+                              });
+                              
+                              const result = await response.json();
+                              if (result.success) {
+                                await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                setAutoNidNumber('');
+                                setAutoNidDob('');
+                                alert('Auto NID generated successfully via API!');
+                              } else {
+                                alert(`API Error: ${result.error}`);
+                              }
+                            } catch (error) {
+                              alert('Failed to connect to API');
+                            } finally {
+                              setIsPlacingOrder(false);
+                            }
+                          } else {
+                            const success = await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}`);
+                            if (success) {
+                              setAutoNidNumber('');
+                              setAutoNidDob('');
+                            }
+                          }
+                        }}
+                        disabled={!autoNidNumber || !autoNidDob || isPlacingOrder || !(products.find(p => p.id === 104)?.isActive ?? true) || globalSettings?.isAutoNidMaintenance}
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        <CreditCard className="w-5 h-5" />
+                        অর্ডার করুন (৳{products.find(p => p.id === 104)?.price || 100})
                       </button>
                     </div>
                   </div>

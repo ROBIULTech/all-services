@@ -53,7 +53,8 @@ import {
   Megaphone,
   Info,
   HelpCircle,
-  Phone
+  Phone,
+  Server
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -430,7 +431,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     rocketNumber: globalSettings?.rocketNumber || '',
     whatsappGroupLink: globalSettings?.whatsappGroupLink || '',
     smsGatewayToken: globalSettings?.smsGatewayToken || '',
-    adminPhoneNumber: globalSettings?.adminPhoneNumber || '01811152997'
+    adminPhoneNumber: globalSettings?.adminPhoneNumber || '01811152997',
+    porichoyApiKey: globalSettings?.porichoyApiKey || '',
+    enkimaaApiKey: globalSettings?.enkimaaApiKey || '',
+    isAutoSignApiActive: globalSettings?.isAutoSignApiActive ?? false,
+    autoSignApiKey: globalSettings?.autoSignApiKey || '',
+    isInfoVerifyApiActive: globalSettings?.isInfoVerifyApiActive ?? false,
+    infoVerifyApiKey: globalSettings?.infoVerifyApiKey || '',
+    isServerCopyApiActive: globalSettings?.isServerCopyApiActive ?? false,
+    serverCopyApiKey: globalSettings?.serverCopyApiKey || '',
+    isAutoNidApiActive: globalSettings?.isAutoNidApiActive ?? false,
+    autoNidApiKey: globalSettings?.autoNidApiKey || '',
+    isAutoSignMaintenance: globalSettings?.isAutoSignMaintenance ?? false,
+    isInfoVerifyMaintenance: globalSettings?.isInfoVerifyMaintenance ?? false,
+    isServerCopyMaintenance: globalSettings?.isServerCopyMaintenance ?? false,
+    isAutoNidMaintenance: globalSettings?.isAutoNidMaintenance ?? false
   });
 
   useEffect(() => {
@@ -449,7 +464,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         bkashNumber: globalSettings.bkashNumber || '',
         nagadNumber: globalSettings.nagadNumber || '',
         rocketNumber: globalSettings.rocketNumber || '',
-        whatsappGroupLink: globalSettings.whatsappGroupLink || ''
+        whatsappGroupLink: globalSettings.whatsappGroupLink || '',
+        smsGatewayToken: globalSettings.smsGatewayToken || '',
+        adminPhoneNumber: globalSettings.adminPhoneNumber || '01811152997',
+        porichoyApiKey: globalSettings.porichoyApiKey || '',
+        enkimaaApiKey: globalSettings.enkimaaApiKey || '',
+        isAutoSignApiActive: globalSettings.isAutoSignApiActive ?? false,
+        autoSignApiKey: globalSettings.autoSignApiKey || '',
+        isInfoVerifyApiActive: globalSettings.isInfoVerifyApiActive ?? false,
+        infoVerifyApiKey: globalSettings.infoVerifyApiKey || '',
+        isServerCopyApiActive: globalSettings.isServerCopyApiActive ?? false,
+        serverCopyApiKey: globalSettings.serverCopyApiKey || '',
+        isAutoNidApiActive: globalSettings.isAutoNidApiActive ?? false,
+        autoNidApiKey: globalSettings.autoNidApiKey || '',
+        isAutoSignMaintenance: globalSettings.isAutoSignMaintenance ?? false,
+        isInfoVerifyMaintenance: globalSettings.isInfoVerifyMaintenance ?? false,
+        isServerCopyMaintenance: globalSettings.isServerCopyMaintenance ?? false,
+        isAutoNidMaintenance: globalSettings.isAutoNidMaintenance ?? false
       });
     }
   }, [globalSettings]);
@@ -1958,6 +1989,197 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </p>
                     </div>
 
+                    <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 space-y-4">
+                      <h4 className="font-bold text-orange-900 flex items-center gap-2">
+                        <Server className="w-4 h-4" />
+                        Service API Settings
+                      </h4>
+                      
+                      {/* Auto Sign Copy API Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-800">অটো সাইন কপি (Auto Sign Copy)</h5>
+                          <div className="flex items-center gap-4">
+                            <label className="relative inline-flex items-center cursor-pointer" title="Maintenance Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isAutoSignMaintenance}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isAutoSignMaintenance: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isAutoSignMaintenance ? 'Maintenance ON' : 'Maintenance OFF'}
+                              </span>
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer" title="API Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isAutoSignApiActive}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isAutoSignApiActive: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isAutoSignApiActive ? 'API Mode' : 'Manual Mode'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        {premiumSettingsForm.isAutoSignApiActive && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">API Key</label>
+                            <input 
+                              type="password"
+                              value={premiumSettingsForm.autoSignApiKey || ''}
+                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoSignApiKey: e.target.value })}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                              placeholder="Enter API Key for Auto Sign Copy"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info Verification API Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-800">তথ্য যাচাই (Info Verification)</h5>
+                          <div className="flex items-center gap-4">
+                            <label className="relative inline-flex items-center cursor-pointer" title="Maintenance Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isInfoVerifyMaintenance}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isInfoVerifyMaintenance: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isInfoVerifyMaintenance ? 'Maintenance ON' : 'Maintenance OFF'}
+                              </span>
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer" title="API Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isInfoVerifyApiActive}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isInfoVerifyApiActive: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isInfoVerifyApiActive ? 'API Mode' : 'Manual Mode'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        {premiumSettingsForm.isInfoVerifyApiActive && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">API Key (e.g. Porichoy)</label>
+                            <input 
+                              type="password"
+                              value={premiumSettingsForm.infoVerifyApiKey || ''}
+                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, infoVerifyApiKey: e.target.value })}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                              placeholder="Enter API Key for Info Verification"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Server Copy API Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-800">তথ্য খুঁজুন / ছবি বের করুন (Server Copy)</h5>
+                          <div className="flex items-center gap-4">
+                            <label className="relative inline-flex items-center cursor-pointer" title="Maintenance Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isServerCopyMaintenance}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isServerCopyMaintenance: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isServerCopyMaintenance ? 'Maintenance ON' : 'Maintenance OFF'}
+                              </span>
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer" title="API Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isServerCopyApiActive}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isServerCopyApiActive: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isServerCopyApiActive ? 'API Mode' : 'Manual Mode'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        {premiumSettingsForm.isServerCopyApiActive && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">API Key</label>
+                            <input 
+                              type="password"
+                              value={premiumSettingsForm.serverCopyApiKey || ''}
+                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, serverCopyApiKey: e.target.value })}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                              placeholder="Enter API Key for Server Copy"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Auto NID API Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-800">অটো এনআইডি (Auto NID)</h5>
+                          <div className="flex items-center gap-4">
+                            <label className="relative inline-flex items-center cursor-pointer" title="Maintenance Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isAutoNidMaintenance}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isAutoNidMaintenance: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isAutoNidMaintenance ? 'Maintenance ON' : 'Maintenance OFF'}
+                              </span>
+                            </label>
+                            <label className="relative inline-flex items-center cursor-pointer" title="API Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isAutoNidApiActive}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isAutoNidApiActive: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isAutoNidApiActive ? 'API Mode' : 'Manual Mode'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        {premiumSettingsForm.isAutoNidApiActive && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">API Key</label>
+                            <input 
+                              type="password"
+                              value={premiumSettingsForm.autoNidApiKey || ''}
+                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoNidApiKey: e.target.value })}
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                              placeholder="Enter API Key for Auto NID"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-[10px] text-orange-600 font-medium">
+                        * When API Mode is ON, the system will automatically fetch results using the provided API Key. When OFF, orders will be placed manually for admins to process.
+                      </p>
+                    </div>
+
                     <div className="pt-4">
                       <button 
                         onClick={async () => {
@@ -1970,7 +2192,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             rocketNumber: premiumSettingsForm.rocketNumber,
                             whatsappGroupLink: premiumSettingsForm.whatsappGroupLink,
                             smsGatewayToken: premiumSettingsForm.smsGatewayToken,
-                            adminPhoneNumber: premiumSettingsForm.adminPhoneNumber
+                            adminPhoneNumber: premiumSettingsForm.adminPhoneNumber,
+                            porichoyApiKey: premiumSettingsForm.porichoyApiKey,
+                            enkimaaApiKey: premiumSettingsForm.enkimaaApiKey,
+                            isAutoSignApiActive: premiumSettingsForm.isAutoSignApiActive,
+                            autoSignApiKey: premiumSettingsForm.autoSignApiKey,
+                            isInfoVerifyApiActive: premiumSettingsForm.isInfoVerifyApiActive,
+                            infoVerifyApiKey: premiumSettingsForm.infoVerifyApiKey,
+                            isServerCopyApiActive: premiumSettingsForm.isServerCopyApiActive,
+                            serverCopyApiKey: premiumSettingsForm.serverCopyApiKey,
+                            isAutoNidApiActive: premiumSettingsForm.isAutoNidApiActive,
+                            autoNidApiKey: premiumSettingsForm.autoNidApiKey,
+                            isAutoSignMaintenance: premiumSettingsForm.isAutoSignMaintenance,
+                            isInfoVerifyMaintenance: premiumSettingsForm.isInfoVerifyMaintenance,
+                            isServerCopyMaintenance: premiumSettingsForm.isServerCopyMaintenance,
+                            isAutoNidMaintenance: premiumSettingsForm.isAutoNidMaintenance
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);
