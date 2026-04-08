@@ -396,6 +396,7 @@ export default function App() {
           const adminId = 'admin-user-id';
           const adminProfile: UserProfile = {
             uid: adminId,
+            userId: '100001',
             email: adminEmail,
             password: 'X9k@Secure2004',
             displayName: 'Super Admin',
@@ -858,6 +859,8 @@ export default function App() {
           }} 
           onSignOut={handleSignOut}
           updateUserProfile={updateUserProfile}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
         />
       </div>
     );

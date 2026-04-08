@@ -48,9 +48,11 @@ import {
   GraduationCap,
   Heart,
   ShoppingCart,
+  Mail,
+  MessageSquare,
+  Megaphone,
   Info,
   HelpCircle,
-  Mail,
   Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -125,6 +127,7 @@ interface AdminPanelProps {
   restoreItem: (item: TrashItem) => Promise<void>;
   permanentDeleteItem: (item: TrashItem) => Promise<void>;
   updateUserBalance: (userId: string, newBalance: number) => Promise<void>;
+  updateUser: (uid: string, updates: Partial<UserProfile>) => Promise<void>;
   updateProduct: (productId: number, updates: Partial<Product>) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: number) => Promise<void>;
@@ -209,6 +212,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     document.body.removeChild(link);
   };
 
+  const handleSendNotification = (type: 'whatsapp' | 'email', user: UserProfile | 'all') => {
+    if (!notificationMessage) {
+      alert('Please enter a message.');
+      return;
+    }
+
+    const message = encodeURIComponent(notificationMessage);
+    const subject = encodeURIComponent(notificationSubject);
+
+    if (user === 'all') {
+      alert('Broadcast mode: Please select individual users from the list to send this message.');
+      return;
+    }
+
+    if (type === 'whatsapp') {
+      if (!user.whatsapp) {
+        alert('This user does not have a WhatsApp number.');
+        return;
+      }
+      // Clean number: remove non-digits
+      const cleanNumber = user.whatsapp.replace(/\D/g, '');
+      const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
+      window.open(whatsappUrl, '_blank');
+    } else {
+      const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${message}`;
+      window.open(mailtoUrl, '_blank');
+    }
+    
+    setNotificationModalOpen(null);
+    // Keep message for broadcast if needed, or clear it
+    // setNotificationMessage('');
+  };
+
   const handleDownloadUserReport = (user: UserProfile, type: 'recharge' | 'orders' | 'profile') => {
     let csvContent = "data:text/csv;charset=utf-8,";
     let fileName = `user_${user.uid}_${type}.csv`;
@@ -257,6 +293,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
   
+  const [rechargeSearchQuery, setRechargeSearchQuery] = useState('');
+  
   // Confirmation states
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'user' | 'order', id: string } | null>(null);
   const [rejectPrompt, setRejectPrompt] = useState<{ id: string, defaultNote: string } | null>(null);
@@ -268,6 +306,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [reportUserSearchModalOpen, setReportUserSearchModalOpen] = useState(false);
   const [reportUserSearchQuery, setReportUserSearchQuery] = useState('');
   
+  // Notification States
+  const [notificationModalOpen, setNotificationModalOpen] = useState<UserProfile | 'all' | null>(null);
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationSubject, setNotificationSubject] = useState('Important Update from User Panel');
+  
   // Service Management States
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Product | null>(null);
@@ -276,12 +319,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const filteredUsers = allUsers.filter(u => 
     u.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase())
+    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    u.userId?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    u.whatsapp?.toLowerCase().includes(userSearchQuery.toLowerCase())
   );
 
   const filteredReportUsers = allUsers.filter(u => 
     u.displayName?.toLowerCase().includes(reportUserSearchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(reportUserSearchQuery.toLowerCase())
+    u.email?.toLowerCase().includes(reportUserSearchQuery.toLowerCase()) ||
+    u.userId?.toLowerCase().includes(reportUserSearchQuery.toLowerCase()) ||
+    u.whatsapp?.toLowerCase().includes(reportUserSearchQuery.toLowerCase())
   );
 
   const handleBlockUser = async (uid: string, isBlocked: boolean) => {
@@ -310,8 +357,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const filteredOrders = orders.filter(o => 
-    o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
-    o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    o.serviceTitle !== 'Recharge Request' && (
+      o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+      o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    )
+  );
+
+  const filteredRechargeRequests = orders.filter(o => 
+    o.serviceTitle === 'Recharge Request' && (
+      o.userEmail?.toLowerCase().includes(rechargeSearchQuery.toLowerCase()) ||
+      o.trxID?.toLowerCase().includes(rechargeSearchQuery.toLowerCase()) ||
+      o.senderNumber?.toLowerCase().includes(rechargeSearchQuery.toLowerCase())
+    )
   );
   const [resultFile, setResultFile] = useState<string | null>(null);
   const [adminNote, setAdminNote] = useState('Order completed successfully');
@@ -367,6 +424,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, isSpecial: false },
+    { id: 'recharge-requests', label: 'Recharge Requests', icon: CreditCard, isSpecial: false },
+    { id: 'notifications', label: 'Notifications', icon: Megaphone, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
     { id: 'trash', label: 'Trash', icon: Trash2, isSpecial: false },
   ];
@@ -1031,11 +1090,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="px-6 py-4">
                               <p className="text-sm font-bold">
                                 {order.serviceTitle}
-                                {order.serviceTitle === 'Recharge Request' && (
-                                  <span className="block text-xs text-slate-500 font-normal">
-                                    Amount: ৳{order.amount} | Number: {order.senderNumber} | TrxID: {order.trxID}
-                                  </span>
-                                )}
                               </p>
                               <p className="text-[10px] text-slate-400">৳{order.price || 0} • {order.createdAt?.toDate?.()?.toLocaleString()}</p>
                             </td>
@@ -1059,88 +1113,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                {order.serviceTitle === 'Recharge Request' && order.status === 'pending' ? (
-                                  <>
-                                    <button 
-                                      onClick={async () => {
-                                        // Approve: Update order status and add balance
-                                        const user = allUsers.find(u => u.uid === order.uid);
-                                        if (user) {
-                                          const newBalance = user.balance + (order.amount || 0);
-                                          await updateUserBalance(order.uid, newBalance);
-                                          await updateOrderStatus(order.id!, 'completed', 'Recharge approved');
-                                          alert('Recharge approved and balance updated.');
-                                        } else {
-                                          alert('User not found.');
-                                        }
-                                      }}
-                                      className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
-                                      title="Approve Recharge"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => updateOrderStatus(order.id!, 'rejected', 'Recharge rejected')}
-                                      className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                                      title="Reject Recharge"
-                                    >
-                                      <XCircle className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
-                                      className="p-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                                      title="Delete Order"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button 
-                                      onClick={() => updateOrderStatus(order.id!, 'processing', 'Processing your request')}
-                                      className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                                      title="Mark Processing"
-                                    >
-                                      <Zap className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => setCompletingOrder(order)}
-                                      className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
-                                      title="Mark Completed"
-                                    >
-                                      <CheckCircle className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => {
-                                        const newData = prompt("Edit order data:", order.data);
-                                        if (newData !== null) {
-                                          updateOrderStatus(order.id!, order.status, order.adminNote || '', newData);
-                                        }
-                                      }}
-                                      className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
-                                      title="Edit Data"
-                                    >
-                                      <Settings className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => {
-                                        setRejectionNote('Order rejected. Please contact support');
-                                        setRejectPrompt({ id: order.id!, defaultNote: 'Order rejected. Please contact support' });
-                                      }}
-                                      className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                                      title="Reject Order"
-                                    >
-                                      <XCircle className="w-4 h-4" />
-                                    </button>
-                                    <button 
-                                      onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
-                                      className="p-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-                                      title="Delete Order"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </>
-                                )}
+                                <button 
+                                  onClick={() => updateOrderStatus(order.id!, 'processing', 'Processing your request')}
+                                  className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                  title="Mark Processing"
+                                >
+                                  <Zap className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setCompletingOrder(order)}
+                                  className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                                  title="Mark Completed"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    const newData = prompt("Edit order data:", order.data);
+                                    if (newData !== null) {
+                                      updateOrderStatus(order.id!, order.status, order.adminNote || '', newData);
+                                    }
+                                  }}
+                                  className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                  title="Edit Data"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setRejectionNote('Order rejected. Please contact support');
+                                    setRejectPrompt({ id: order.id!, defaultNote: 'Order rejected. Please contact support' });
+                                  }}
+                                  className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                                  title="Reject Order"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
+                                  className="p-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -1156,7 +1171,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+                    <div className="flex items-center gap-3">
+                      <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+                      <button 
+                        onClick={async () => {
+                          const usersWithoutId = allUsers.filter(u => !u.userId);
+                          if (usersWithoutId.length === 0) {
+                            alert('All users already have a UserID.');
+                            return;
+                          }
+                          if (confirm(`Found ${usersWithoutId.length} users without UserID. Generate IDs for them?`)) {
+                            let count = 0;
+                            for (const u of usersWithoutId) {
+                              const shortId = Math.floor(100000 + Math.random() * 900000).toString();
+                              await updateUser(u.uid, { userId: shortId });
+                              count++;
+                            }
+                            alert(`Successfully generated IDs for ${count} users.`);
+                          }
+                        }}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-200 transition-all flex items-center gap-1.5"
+                      >
+                        <Fingerprint className="w-3.5 h-3.5" />
+                        Fix Missing IDs
+                      </button>
+                    </div>
                     <p className="text-slate-500">Manage user balances, roles, and status.</p>
                   </div>
                   <div className="relative">
@@ -1177,6 +1216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Password</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Role</th>
@@ -1195,6 +1235,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <p className="text-xs text-slate-500">{u.email}</p>
                                 </div>
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-mono text-indigo-600 font-bold">{u.userId || 'N/A'}</span>
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm text-slate-600">{u.whatsapp || 'N/A'}</span>
@@ -1240,6 +1283,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="px-6 py-4 text-right space-x-2">
                               {u.role.toLowerCase() !== 'admin' && (
                                 <>
+                                  <button 
+                                    onClick={() => setNotificationModalOpen(u)}
+                                    className="text-xs font-bold text-emerald-600 hover:underline"
+                                    title="Send Notification"
+                                  >
+                                    Notify
+                                  </button>
                                   <button 
                                     onClick={() => setUserReportModalOpen(u)}
                                     className="text-xs font-bold text-indigo-600 hover:underline"
@@ -1356,6 +1406,211 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         )}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'recharge-requests' && (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Recharge Requests</h1>
+                    <p className="text-slate-500">Review and approve user balance recharge requests.</p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search by Email or TrxID..." 
+                      value={rechargeSearchQuery || ''}
+                      onChange={(e) => setRechargeSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Amount & Method</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Transaction Details</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredRechargeRequests.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">
+                              No recharge requests found.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredRechargeRequests.map((order, i) => (
+                            <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
+                              <td className="px-6 py-4">
+                                <p className="text-sm font-bold text-slate-900">{order.userEmail}</p>
+                                <p className="text-[10px] text-slate-400">{order.createdAt?.toDate?.()?.toLocaleString()}</p>
+                              </td>
+                              <td className="px-6 py-4">
+                                <p className="text-sm font-black text-emerald-600">৳{order.amount}</p>
+                                <p className="text-[10px] text-slate-500">Manual Recharge</p>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium text-slate-700">Sender: <span className="font-bold">{order.senderNumber}</span></p>
+                                  <p className="text-xs font-medium text-slate-700">TrxID: <span className="font-bold text-indigo-600">{order.trxID}</span></p>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={cn(
+                                  "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase",
+                                  order.status === 'pending' ? "bg-amber-100 text-amber-700" :
+                                  order.status === 'processing' ? "bg-blue-100 text-blue-700" :
+                                  order.status === 'completed' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                                )}>
+                                  {order.status}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  {order.status === 'pending' && (
+                                    <>
+                                      <button 
+                                        onClick={async () => {
+                                          const user = allUsers.find(u => u.uid === order.uid);
+                                          if (user) {
+                                            const newBalance = user.balance + (order.amount || 0);
+                                            await updateUserBalance(order.uid, newBalance);
+                                            await updateOrderStatus(order.id!, 'completed', `Recharge of ৳${order.amount} approved.`);
+                                            setSuccessMessage({ title: 'Success!', message: `Recharge of ৳${order.amount} approved and balance updated.` });
+                                            setShowSuccess(true);
+                                          } else {
+                                            alert('User not found.');
+                                          }
+                                        }}
+                                        className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all"
+                                        title="Approve Recharge"
+                                      >
+                                        <CheckCircle className="w-4 h-4" />
+                                      </button>
+                                      <button 
+                                        onClick={() => updateOrderStatus(order.id!, 'rejected', 'Recharge request rejected by admin.')}
+                                        className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-all"
+                                        title="Reject Recharge"
+                                      >
+                                        <XCircle className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                  <button 
+                                    onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
+                                    className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-all"
+                                    title="Delete Request"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'notifications' && (
+              <div className="space-y-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Notification Center</h1>
+                    <p className="text-slate-500">Send customized messages to your users via Email or WhatsApp.</p>
+                  </div>
+                  <button 
+                    onClick={() => setNotificationModalOpen('all')}
+                    className="px-6 py-2.5 bg-indigo-600 text-white rounded-full text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                  >
+                    <Megaphone className="w-4 h-4" />
+                    Broadcast to All Users
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6">
+                      <h3 className="font-bold text-lg flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-indigo-600" />
+                        Quick Message
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Subject (for Email)</label>
+                          <input 
+                            type="text"
+                            value={notificationSubject}
+                            onChange={(e) => setNotificationSubject(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            placeholder="Enter subject..."
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Message Content</label>
+                          <textarea 
+                            rows={6}
+                            value={notificationMessage}
+                            onChange={(e) => setNotificationMessage(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                            placeholder="Type your message here..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-indigo-50 rounded-2xl border border-indigo-100 p-6 flex items-start gap-4">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center shrink-0">
+                        <Info className="w-5 h-5 text-indigo-600" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-indigo-900">How it works</p>
+                        <p className="text-xs text-indigo-700 leading-relaxed">
+                          When you click "Send", the system will generate a direct link for WhatsApp or Email. 
+                          For individual users, it uses their registered contact details. 
+                          For broadcasts, you can select users from the list below to send messages sequentially.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                      <h3 className="font-bold text-lg mb-4">Recent Users</h3>
+                      <div className="space-y-4">
+                        {allUsers.slice(0, 5).map(u => (
+                          <div key={u.uid} className="flex items-center justify-between group">
+                            <div className="flex items-center gap-3">
+                              <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full" />
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{u.displayName}</p>
+                                <p className="text-[10px] text-slate-500">{u.userId}</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => setNotificationModalOpen(u)}
+                              className="p-2 bg-slate-50 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              <Send className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1578,6 +1833,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             )}
           </div>
         </div>
+        {/* Notification Modal */}
+        <AnimatePresence>
+          {notificationModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setNotificationModalOpen(null)}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-lg bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <Megaphone className="w-5 h-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">Send Notification</h3>
+                      <p className="text-xs text-slate-500">
+                        {notificationModalOpen === 'all' ? 'Broadcasting to all users' : `Sending to ${notificationModalOpen.displayName}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => setNotificationModalOpen(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-8 space-y-6">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Subject</label>
+                      <input 
+                        type="text"
+                        value={notificationSubject}
+                        onChange={(e) => setNotificationSubject(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                        placeholder="Enter subject..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Message</label>
+                      <textarea 
+                        rows={5}
+                        value={notificationMessage}
+                        onChange={(e) => setNotificationMessage(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
+                        placeholder="Type your message here..."
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => handleSendNotification('whatsapp', notificationModalOpen)}
+                      className="flex flex-col items-center gap-3 p-6 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                        <MessageSquare className="w-6 h-6" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-emerald-900">WhatsApp</p>
+                        <p className="text-[10px] text-emerald-600 font-medium">Send via WA.me</p>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => handleSendNotification('email', notificationModalOpen)}
+                      className="flex flex-col items-center gap-3 p-6 bg-indigo-50 border border-indigo-100 rounded-2xl hover:bg-indigo-100 transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+                        <Mail className="w-6 h-6" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-indigo-900">Email</p>
+                        <p className="text-[10px] text-indigo-600 font-medium">Send via Mailto</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Note: This will open your default Email client or WhatsApp application.
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Complete Order Modal */}

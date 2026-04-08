@@ -72,8 +72,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       } else {
         // Simulated Sign Up: Create a new user profile in Firestore
         const newUserId = doc(collection(db, 'users')).id;
+        const shortId = Math.floor(100000 + Math.random() * 900000).toString();
         const newProfile = {
           uid: newUserId,
+          userId: shortId,
           email: email,
           password: password,
           whatsapp: whatsapp,

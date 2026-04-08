@@ -2,6 +2,7 @@ import { Timestamp } from './firebase';
 
 export interface UserProfile {
   uid: string;
+  userId?: string;
   email: string;
   role: 'user' | 'admin';
   balance: number;
