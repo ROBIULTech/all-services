@@ -260,9 +260,10 @@ Received নাম্বার:
   { id: 25, titleBn: 'টিন সাটিফিকেট সংশোধন', titleEn: 'TIN Certificate Correction', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 150, isActive: true, defaultData: `টিন নম্বর:
 সংশোধন এর বিবরণ:` },
   { id: 26, titleBn: 'ট্যাক্স রিটার্ন', titleEn: 'Tax Return', category: 'Tax', icon: Landmark, color: 'bg-emerald-600', price: 500, isActive: true, requiresFileUpload: true, instructions: 'দয়া করে আপনার ট্যাক্স ফাইলটি আপলোড করুন।' },
-  { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'Premium', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true },
-  { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'Premium', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }] },
-  { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'Premium', icon: User, color: 'bg-blue-600', price: 85, isActive: true }
+  { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'এনআইডি নম্বর:' },
+  { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'নম্বর:' },
+  { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
+  { id: 104, titleBn: 'অটো এনআইডি', titleEn: 'Auto NID', category: 'PREMIUM', icon: CreditCard, color: 'bg-purple-600', price: 100, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' }
 ];
 
 export default function App() {

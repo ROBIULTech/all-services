@@ -436,7 +436,7 @@ Mobile-
   };
 
   const filteredProducts = products
-    .filter(p => p.category !== 'PREMIUM')
+    .filter(p => p.category !== 'PREMIUM' || userProfile.isPremium)
     .filter(p => {
       const matchesSearch = 
         p.titleBn.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -549,18 +549,19 @@ Mobile-
             <Wallet className="w-5 h-5 flex-shrink-0" />
             {isSidebarOpen && <span>Recharge Balance</span>}
           </button>
-          <button 
-            onClick={() => setActiveTab('premium')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-              activeTab === 'premium' ? "bg-yellow-50 text-yellow-700 shadow-sm" : "text-yellow-600 hover:bg-yellow-50/50"
-            )}
-            title={!isSidebarOpen ? "Premium Services" : ""}
-          >
-            <Crown className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span>Premium Services</span>}
-            {isSidebarOpen && !userProfile.isPremium && <Lock className="w-4 h-4 ml-auto" />}
-          </button>
+          {userProfile.isPremium && (
+            <button 
+              onClick={() => setActiveTab('premium')}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
+                activeTab === 'premium' ? "bg-yellow-50 text-yellow-700 shadow-sm" : "text-yellow-600 hover:bg-yellow-50/50"
+              )}
+              title={!isSidebarOpen ? "Premium Services" : ""}
+            >
+              <Crown className="w-5 h-5 flex-shrink-0" />
+              {isSidebarOpen && <span>Premium Services</span>}
+            </button>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-200">
@@ -813,51 +814,86 @@ Mobile-
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
                   {filteredProducts.map((product) => (
-                  <motion.div 
-                    key={product.id}
-                    whileHover={product.isActive ? { y: -5 } : {}}
-                    className={cn(
-                      "bg-white rounded-3xl border border-slate-200 p-6 space-y-4 transition-all group relative overflow-hidden shadow-sm",
-                      product.isActive ? "hover:border-indigo-500/50 cursor-pointer" : "opacity-75 cursor-not-allowed"
-                    )}
-                    onClick={() => product.isActive && setSelectedProduct(product)}
-                  >
-                    {!product.isActive && (
-                      <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-4 text-center rounded-3xl">
-                        <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-100 mb-2">
-                          Temporarily Closed
+                    <motion.div 
+                      key={product.id}
+                      whileHover={product.isActive ? { y: -5 } : {}}
+                      className={cn(
+                        "bg-white rounded-3xl border border-slate-200 p-6 space-y-4 transition-all group relative overflow-hidden shadow-sm",
+                        product.isActive ? "hover:border-indigo-500/50 cursor-pointer" : "opacity-75 cursor-not-allowed"
+                      )}
+                      onClick={() => {
+                        if (!product.isActive) return;
+                        if (product.category === 'PREMIUM') {
+                          setActiveTab('premium');
+                        } else {
+                          setSelectedProduct(product);
+                        }
+                      }}
+                    >
+                      {!product.isActive && (
+                        <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-4 text-center rounded-3xl">
+                          <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-100 mb-2">
+                            Temporarily Closed
+                          </div>
+                          <p className="text-xs text-slate-900 font-medium">কাজ বন্ধ আছে</p>
                         </div>
-                        <p className="text-xs text-slate-900 font-medium">কাজ বন্ধ আছে</p>
+                      )}
+                      <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg", product.color || 'bg-indigo-600')}>
+                        {(() => {
+                          const Icon = getIcon(product);
+                          return <Icon className="w-7 h-7 text-white" />;
+                        })()}
                       </div>
-                    )}
-                    <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg", product.color || 'bg-indigo-600')}>
-                      {(() => {
-                        const Icon = getIcon(product);
-                        return <Icon className="w-7 h-7 text-white" />;
-                      })()}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{product.category}</span>
-                        {product.discountPrice && (
-                          <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-lg border border-emerald-100">
-                            OFFER
-                          </span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{product.category}</span>
+                          {product.discountPrice && (
+                            <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-lg border border-emerald-100">
+                              OFFER
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-black group-hover:text-indigo-600 transition-colors leading-tight text-slate-900">{product.titleBn}</h3>
+                        <p className="text-xs text-slate-500 mt-1 font-medium">{product.titleEn}</p>
+                        {product.shortDescription && (
+                          <p className="text-xs text-slate-500 mt-3 line-clamp-2 leading-relaxed">{product.shortDescription}</p>
                         )}
                       </div>
-                      <h3 className="text-lg font-black group-hover:text-indigo-600 transition-colors leading-tight text-slate-900">{product.titleBn}</h3>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">{product.titleEn}</p>
-                      {product.shortDescription && (
-                        <p className="text-xs text-slate-500 mt-3 line-clamp-2 leading-relaxed">{product.shortDescription}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-end pt-4 border-t border-slate-100">
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-50 group-hover:bg-indigo-600 shadow-lg group-hover:shadow-indigo-500/20" : "bg-slate-50")}>
-                        <ChevronRight className={cn("w-5 h-5", product.isActive ? "text-slate-400 group-hover:text-white" : "text-slate-300")} />
+                      <div className="flex items-center justify-end pt-4 border-t border-slate-100">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-50 group-hover:bg-indigo-600 shadow-lg group-hover:shadow-indigo-500/20" : "bg-slate-50")}>
+                          <ChevronRight className={cn("w-5 h-5", product.isActive ? "text-slate-400 group-hover:text-white" : "text-slate-300")} />
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))}
+
+                  {/* Premium Unlock Card for non-premium users */}
+                  {!userProfile.isPremium && (
+                    <motion.div 
+                      whileHover={{ y: -5 }}
+                      className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl p-6 space-y-4 transition-all cursor-pointer relative overflow-hidden shadow-lg shadow-yellow-500/20 group"
+                      onClick={() => setActiveTab('premium')}
+                    >
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                        <Crown className="w-24 h-24 text-white" />
+                      </div>
+                      <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                        <Crown className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="flex-1 relative z-10">
+                        <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Exclusive</span>
+                        <h3 className="text-lg font-black text-white leading-tight mt-1">প্রিমিয়াম সার্ভিস আনলক করুন</h3>
+                        <p className="text-xs text-white/80 mt-1 font-medium">Unlock Premium Services</p>
+                        <p className="text-xs text-white/70 mt-3 leading-relaxed">অটো সাইন কপি, তথ্য যাচাই এবং আরও অনেক প্রিমিয়াম সার্ভিস পেতে আনলক করুন।</p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-white/20 relative z-10">
+                        <span className="text-white font-bold text-sm">৳{globalSettings?.premiumUnlockFee || 500}</span>
+                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white group-hover:text-yellow-600 transition-all">
+                          <ChevronRight className="w-5 h-5" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
               </div>
             )}
           </div>
@@ -1008,7 +1044,7 @@ Mobile-
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {/* Auto Sign Copy Card */}
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
                     {globalSettings?.isAutoSignMaintenance && (
