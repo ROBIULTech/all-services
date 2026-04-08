@@ -13,9 +13,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
+  const [showVerification, setShowVerification] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isAdminRoute, setIsAdminRoute] = useState(false);
+  const [pendingProfile, setPendingProfile] = useState<any>(null);
 
   useEffect(() => {
     const checkPath = () => {
@@ -85,19 +87,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           role: 'user',
           balance: 0,
           isPremium: false,
-          createdAt: new Date()
+          createdAt: new Date(),
+          isVerified: false // New field
         };
 
-        await setDoc(doc(db, 'users', newUserId), newProfile);
-        
-        const mockUser = {
-          uid: newUserId,
-          email: email,
-          displayName: newProfile.displayName,
-          photoURL: newProfile.photoURL
-        };
-        
-        onLogin(mockUser, newProfile);
+        setPendingProfile(newProfile);
+        setShowVerification(true);
+        setLoading(false);
       }
     } catch (err: any) {
       console.error('Simulated Auth error:', err);
@@ -137,80 +133,104 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'ইমেইল' : 'Email'}</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  type="email"
-                  value={email || ''}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder={isAdminRoute ? "secure.node.admin@gmail.com" : "you@example.com"}
-                  required
-                />
+          {showVerification ? (
+            <div className="space-y-6 text-center">
+              <div className="p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-xl text-emerald-500">
+                <p className="font-bold">Almost there!</p>
+                <p className="text-sm mt-1">Please verify your WhatsApp number to activate your account.</p>
               </div>
+              <a
+                href={`https://wa.me/8801811152997?text=${encodeURIComponent(`Hello, I want to activate my account. My Email: ${pendingProfile.email}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={async () => {
+                  await setDoc(doc(db, 'users', pendingProfile.uid), pendingProfile);
+                  alert('Verification message sent. Admin will activate your account soon.');
+                  setIsLogin(true);
+                  setShowVerification(false);
+                }}
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 block"
+              >
+                Verify via WhatsApp
+              </a>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'পাসওয়ার্ড' : 'Password'}</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
-                </div>
-                <input
-                  type="password"
-                  value={password || ''}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-
-            {!isLogin && !isAdminRoute && (
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* ... existing form fields ... */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">WhatsApp Number</label>
+                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'ইমেইল' : 'Email'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
+                    <Mail className="h-5 w-5 text-slate-500" />
                   </div>
                   <input
-                    type="tel"
-                    value={whatsapp || ''}
-                    onChange={(e) => setWhatsapp(e.target.value)}
+                    type="email"
+                    value={email || ''}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    placeholder="017XXXXXXXX"
+                    placeholder={isAdminRoute ? "secure.node.admin@gmail.com" : "you@example.com"}
                     required
                   />
                 </div>
               </div>
-            )}
 
-            <button 
-              type="submit"
-              disabled={loading}
-              className={`w-full py-3.5 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed ${isAdminRoute ? 'bg-[#f43f5e] hover:bg-rose-600 shadow-rose-500/25' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'}`}
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  {isAdminRoute ? null : <LogIn className="w-5 h-5" />}
-                  {isAdminRoute ? 'লগইন করুন' : (isLogin ? 'Sign In' : 'Sign Up')}
-                </>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'পাসওয়ার্ড' : 'Password'}</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-slate-500" />
+                  </div>
+                  <input
+                    type="password"
+                    value={password || ''}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="••••••••"
+                    required
+                    minLength={6}
+                  />
+                </div>
+              </div>
+
+              {!isLogin && !isAdminRoute && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">WhatsApp Number</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="tel"
+                      value={whatsapp || ''}
+                      onChange={(e) => setWhatsapp(e.target.value)}
+                      className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      placeholder="017XXXXXXXX"
+                      required
+                    />
+                  </div>
+                </div>
               )}
-            </button>
-          </form>
 
-          {!isAdminRoute && (
+              <button 
+                type="submit"
+                disabled={loading}
+                className={`w-full py-3.5 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed ${isAdminRoute ? 'bg-[#f43f5e] hover:bg-rose-600 shadow-rose-500/25' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'}`}
+              >
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {isAdminRoute ? null : <LogIn className="w-5 h-5" />}
+                    {isAdminRoute ? 'লগইন করুন' : (isLogin ? 'Sign In' : 'Sign Up')}
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {!isAdminRoute && !showVerification && (
             <div className="text-center pt-2 space-y-4 border-t border-slate-700/50">
               <button
                 onClick={() => {

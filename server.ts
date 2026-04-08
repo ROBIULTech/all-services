@@ -46,13 +46,14 @@ async function startServer() {
       
       // GreenWeb returns plain text starting with "Error:" on failure
       if (typeof response.data === 'string' && response.data.startsWith('Error')) {
-        return res.status(400).json({ success: false, error: response.data });
+        console.warn("SMS Gateway Warning:", response.data);
+        return res.status(200).json({ success: false, error: response.data });
       }
 
       res.json({ success: true, data: response.data });
-    } catch (error) {
-      console.error("Error sending SMS:", error);
-      res.status(500).json({ success: false, error: "Failed to send SMS" });
+    } catch (error: any) {
+      console.error("Error sending SMS:", error.message || error);
+      res.status(200).json({ success: false, error: "Failed to send SMS" });
     }
   });
 

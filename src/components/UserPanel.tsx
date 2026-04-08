@@ -130,13 +130,16 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
 
   const sendAdminSMS = async (message: string) => {
     try {
-      await axios.post('/api/send-sms', { 
+      const response = await axios.post('/api/send-sms', { 
         message,
         token: globalSettings?.smsGatewayToken,
         adminPhone: globalSettings?.adminPhoneNumber
       });
-    } catch (error) {
-      console.error('Failed to send admin SMS:', error);
+      if (!response.data.success) {
+        console.warn('SMS not sent:', response.data.error || response.data.message);
+      }
+    } catch (error: any) {
+      console.error('Failed to send admin SMS:', error.message || error);
     }
   };
 

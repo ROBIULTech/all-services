@@ -715,14 +715,26 @@ export default function App() {
       
       if (userSnap.exists()) {
         const userData = userSnap.data() as UserProfile;
+        
+        // Fetch orders for this user
+        const ordersQ = query(collection(db, 'orders'), where('uid', '==', userId));
+        const ordersSnap = await getDocs(ordersQ);
+        const userOrders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
         // Move to trash
         const trashRef = doc(db, 'trash', userId);
         await setDoc(trashRef, {
           id: userId,
           type: 'user',
-          data: userData,
+          data: { ...userData, orders: userOrders }, // Include orders here
           deletedAt: Timestamp.now()
         });
+
+        // Delete orders
+        for (const order of ordersSnap.docs) {
+          await deleteDoc(order.ref);
+        }
+
         await deleteDoc(userRef);
         setShowSuccess(true);
       }
@@ -761,8 +773,18 @@ export default function App() {
             });
           }
         }
+        await deleteDoc(doc(db, 'trash', item.id));
+      } else if (item.type === 'user') {
+        // Archive user instead of permanent delete
+        const archiveRef = doc(db, 'archived_users', item.id);
+        await setDoc(archiveRef, {
+          ...item.data,
+          archivedAt: Timestamp.now()
+        });
+        await deleteDoc(doc(db, 'trash', item.id));
+      } else {
+        await deleteDoc(doc(db, 'trash', item.id));
       }
-      await deleteDoc(doc(db, 'trash', item.id));
       setShowSuccess(true);
     } catch (error) {
       console.error('Error permanently deleting item:', error);

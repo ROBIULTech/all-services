@@ -1145,7 +1145,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
@@ -1162,6 +1162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-sm text-slate-600">{order.userEmail}</p>
+                              <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
                               <div className="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-500 font-mono">
@@ -1436,10 +1437,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                    item.type === 'order' ? item.data.serviceTitle : 
                                    item.data.titleEn}
                                 </div>
-                                <div className="text-xs text-slate-500">
-                                  {item.type === 'user' ? item.data.email : 
-                                   item.type === 'order' ? `Order ID: ${item.id}` : 
-                                   `Product ID: ${item.id}`}
+                                <div className="text-xs text-slate-500 mt-1">
+                                  {item.type === 'user' ? (
+                                    <>
+                                      {item.data.email} <br/>
+                                      <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || 'N/A'}</span>
+                                      {item.data.orders && item.data.orders.length > 0 && (
+                                        <div className="mt-2 p-2 bg-slate-100 rounded-lg max-h-20 overflow-y-auto">
+                                          <p className="font-bold text-slate-700 text-[10px]">Orders ({item.data.orders.length}):</p>
+                                          {item.data.orders.map((o: any) => (
+                                            <p key={o.id} className="text-[10px] text-slate-600">{o.serviceTitle} - {o.status}</p>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : item.type === 'order' ? (
+                                    <>
+                                      Order ID: {item.id} <br/>
+                                      User: {item.data.userEmail} <br/>
+                                      <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</span>
+                                    </>
+                                  ) : `Product ID: ${item.id}`}
                                 </div>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
@@ -1521,6 +1539,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
                               <td className="px-6 py-4">
                                 <p className="text-sm font-bold text-slate-900">{order.userEmail}</p>
+                                <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                                 <p className="text-[10px] text-slate-400">{order.createdAt?.toDate?.()?.toLocaleString()}</p>
                               </td>
                               <td className="px-6 py-4">
