@@ -577,7 +577,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
                 <LayoutDashboard className="text-white w-5 h-5" />
               </div>
-              <span className="text-xl font-bold tracking-tight">AdminPro</span>
+              <span className="text-xl font-bold tracking-tight">All Services</span>
             </div>
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}

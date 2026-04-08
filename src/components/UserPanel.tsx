@@ -490,7 +490,7 @@ Mobile-
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Package className="w-6 h-6 text-white" />
             </div>
-            {isSidebarOpen && <span className="text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap">User Panel</span>}
+            {isSidebarOpen && <span className="text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap">All Services</span>}
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
