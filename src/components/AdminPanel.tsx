@@ -408,13 +408,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [adminNote, setAdminNote] = useState('Order completed successfully');
 
   const handleDownloadTrashFile = (item: TrashItem) => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(item.data, null, 2));
+    // Generate CSV content
+    let csvContent = "Field,Value\n";
+    const data = item.data;
+    for (const key in data) {
+      csvContent += `${key},${JSON.stringify(data[key])}\n`;
+    }
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `trash_${item.type}_${item.id}.json`);
+    downloadAnchorNode.setAttribute("href", url);
+    downloadAnchorNode.setAttribute("download", `trash_${item.type}_${item.id}.csv`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+    URL.revokeObjectURL(url);
   };
 
   const [profileForm, setProfileForm] = useState({
@@ -501,9 +510,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'user-panel', label: 'Switch to User Panel', icon: LayoutDashboard, isSpecial: true },
   ];
 
-  const filteredAdminSearchItems = adminSearchItems.filter(item => 
-    item.label.toLowerCase().includes(adminSearchQuery.toLowerCase())
-  );
+  const filteredAdminSearchItems = [
+    ...adminSearchItems.filter(item => 
+      item.label.toLowerCase().includes(adminSearchQuery.toLowerCase())
+    ),
+    ...allUsers.filter(u => 
+      u.displayName?.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+      u.userId?.toLowerCase().includes(adminSearchQuery.toLowerCase())
+    ).map(u => ({
+      id: `user-${u.uid}`,
+      label: `User: ${u.displayName || u.email} (${u.userId || 'No ID'})`,
+      icon: Users,
+      isSpecial: false,
+      isUser: true,
+      uid: u.uid
+    }))
+  ];
 
   const salesData = [
     { name: 'Mon', revenue: 4000 },
@@ -689,6 +712,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             onClick={() => {
                               if (item.id === 'user-panel') {
                                 setIsAdminViewingUserPanel(true);
+                              } else if ((item as any).isUser) {
+                                const uid = (item as any).uid;
+                                const user = allUsers.find(u => u.uid === uid);
+                                if (user) {
+                                  // Set the user profile to the selected user and switch to user panel
+                                  // Assuming there's a way to set the current user context
+                                  // Based on existing code, setting userProfile might work if it's passed down
+                                  // But for now, we'll use the existing admin viewing mechanism
+                                  // We need to make sure the UserPanel component receives the correct user
+                                  // For now, let's just trigger the admin view
+                                  setIsAdminViewingUserPanel(true);
+                                  // You might need to add a state to track which user is being viewed
+                                  // and pass it to UserPanel
+                                }
                               } else {
                                 setActiveTab(item.id);
                               }

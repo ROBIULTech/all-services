@@ -44,6 +44,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Archived Users
+    match /archived_users/{document=**} {
+      allow read, write: if true;
+    }
+
     // Trash
     match /trash/{document=**} {
       allow read, write: if true;
