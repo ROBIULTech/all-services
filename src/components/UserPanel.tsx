@@ -50,6 +50,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
 import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc } from '../firebase';
+import axios from 'axios';
 
 interface UserPanelProps {
   userProfile: UserProfile;
@@ -114,6 +115,18 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [infoCategory, setInfoCategory] = useState('NID/PIN');
   const [infoNumber, setInfoNumber] = useState('');
   const [serverCopyNid, setServerCopyNid] = useState('');
+
+  const sendAdminSMS = async (message: string) => {
+    try {
+      await axios.post('/api/send-sms', { 
+        message,
+        token: globalSettings?.smsGatewayToken,
+        adminPhone: globalSettings?.adminPhoneNumber
+      });
+    } catch (error) {
+      console.error('Failed to send admin SMS:', error);
+    }
+  };
 
   const handleUnlockPremium = async () => {
     const fee = globalSettings?.premiumUnlockFee || 500;
@@ -330,6 +343,9 @@ Mobile-
 
       await addDoc(collection(db, 'orders'), newOrder);
       
+      // Send SMS to admin
+      sendAdminSMS(`New Premium Order! User: ${userProfile.email}, Service: ${product.titleBn}`);
+
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
         balance: userProfile.balance - product.price
@@ -371,6 +387,9 @@ Mobile-
 
       await addDoc(collection(db, 'orders'), newOrder);
       
+      // Send SMS to admin
+      sendAdminSMS(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+
       // Deduct balance
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
@@ -1692,6 +1711,10 @@ Mobile-
                       trxID: rechargeData.trxID,
                       createdAt: serverTimestamp()
                     });
+
+                    // Send SMS to admin
+                    sendAdminSMS(`New Recharge Request! User: ${userProfile.email}, Amount: ৳${amount}, TrxID: ${rechargeData.trxID}`);
+
                     setShowRechargeModal(false);
                     setRechargeData({ amount: '', senderNumber: '', trxID: '' });
                     alert('Recharge request sent to admin.');

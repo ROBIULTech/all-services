@@ -65,6 +65,8 @@ export interface GlobalSettings {
   nagadNumber?: string;
   rocketNumber?: string;
   whatsappGroupLink?: string;
+  smsGatewayToken?: string;
+  adminPhoneNumber?: string;
 }
 
 export interface TrashItem {

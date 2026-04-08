@@ -395,7 +395,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     bkashNumber: globalSettings?.bkashNumber || '',
     nagadNumber: globalSettings?.nagadNumber || '',
     rocketNumber: globalSettings?.rocketNumber || '',
-    whatsappGroupLink: globalSettings?.whatsappGroupLink || ''
+    whatsappGroupLink: globalSettings?.whatsappGroupLink || '',
+    smsGatewayToken: globalSettings?.smsGatewayToken || '',
+    adminPhoneNumber: globalSettings?.adminPhoneNumber || '01811152997'
   });
 
   useEffect(() => {
@@ -1807,6 +1809,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-xs text-slate-500">Leave empty to hide the group join button from users.</p>
                     </div>
 
+                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-4">
+                      <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                        <Smartphone className="w-4 h-4" />
+                        SMS Notification Settings
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Admin Phone Number</label>
+                          <input 
+                            type="text"
+                            value={premiumSettingsForm.adminPhoneNumber || ''}
+                            onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, adminPhoneNumber: e.target.value })}
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            placeholder="01811152997"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">SMS Gateway Token (GreenWeb)</label>
+                          <input 
+                            type="password"
+                            value={premiumSettingsForm.smsGatewayToken || ''}
+                            onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, smsGatewayToken: e.target.value })}
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            placeholder="Enter your API Token"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-indigo-600 font-medium">
+                        * This token is used to send SMS alerts to your phone when new orders arrive. 
+                        Get your token from <a href="https://greenweb.com.bd" target="_blank" className="underline">GreenWeb.com.bd</a>
+                      </p>
+                    </div>
+
                     <div className="pt-4">
                       <button 
                         onClick={async () => {
@@ -1817,7 +1852,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             bkashNumber: premiumSettingsForm.bkashNumber,
                             nagadNumber: premiumSettingsForm.nagadNumber,
                             rocketNumber: premiumSettingsForm.rocketNumber,
-                            whatsappGroupLink: premiumSettingsForm.whatsappGroupLink
+                            whatsappGroupLink: premiumSettingsForm.whatsappGroupLink,
+                            smsGatewayToken: premiumSettingsForm.smsGatewayToken,
+                            adminPhoneNumber: premiumSettingsForm.adminPhoneNumber
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);

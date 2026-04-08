@@ -439,11 +439,6 @@ export default function App() {
               needsUpdate = true;
             }
 
-            // For product 102, we want to force the new options
-          if (p.id === 102) {
-            updatedProduct.options = p.options;
-            needsUpdate = true;
-          } else {
             // If options changed (new options added), we should sync them
             const hasNewOptions = p.options && (!found.options || p.options.some(opt => !found.options.some((fo: any) => fo.name === opt.name)));
             if (hasNewOptions) {
@@ -454,7 +449,6 @@ export default function App() {
               updatedProduct.options = mergedOptions;
               needsUpdate = true;
             }
-          }
 
           // Sync defaultData if it's in initialProducts but missing or different in Firestore
           if (p.defaultData && found.defaultData !== p.defaultData) {
