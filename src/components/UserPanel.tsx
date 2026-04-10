@@ -130,18 +130,46 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [autoNidNumber, setAutoNidNumber] = useState('');
   const [autoNidDob, setAutoNidDob] = useState('');
 
-  const sendAdminSMS = async (message: string) => {
+  const sendAdminNotifications = async (message: string) => {
+    // 1. Send SMS (Existing)
     try {
-      const response = await axios.post('/api/send-sms', { 
+      await axios.post('/api/send-sms', { 
         message,
         token: globalSettings?.smsGatewayToken,
         adminPhone: globalSettings?.adminPhoneNumber
       });
-      if (!response.data.success) {
-        console.warn('SMS not sent:', response.data.error || response.data.message);
-      }
     } catch (error: any) {
       console.error('Failed to send admin SMS:', error.message || error);
+    }
+
+    // 2. Send Telegram Notification
+    if (globalSettings?.isTelegramNotifyActive && globalSettings?.telegramBotToken && globalSettings?.telegramChatId) {
+      try {
+        const telegramUrl = `https://api.telegram.org/bot${globalSettings.telegramBotToken}/sendMessage`;
+        await axios.post(telegramUrl, {
+          chat_id: globalSettings.telegramChatId,
+          text: `🔔 *New Order Notification*\n\n${message}`,
+          parse_mode: 'Markdown'
+        });
+      } catch (error: any) {
+        console.error('Failed to send Telegram notification:', error.message || error);
+      }
+    }
+
+    // 3. Send WhatsApp Notification (Generic API approach)
+    if (globalSettings?.isWhatsappNotifyActive && globalSettings?.whatsappNotifyNumber) {
+      try {
+        // This is a generic placeholder. Real implementation depends on the SMS/WA Gateway provider.
+        // Usually, the same SMS gateway supports WhatsApp via a specific parameter.
+        await axios.post('/api/send-sms', { 
+          message: `*New Order Notification*\n\n${message}`,
+          token: globalSettings?.smsGatewayToken,
+          adminPhone: globalSettings?.whatsappNotifyNumber,
+          isWhatsapp: true // Example flag for gateway
+        });
+      } catch (error: any) {
+        console.error('Failed to send WhatsApp notification:', error.message || error);
+      }
     }
   };
 
@@ -396,8 +424,8 @@ Mobile-
         }
       }
 
-      // Send SMS to admin
-      sendAdminSMS(`New Premium Order! User: ${userProfile.email}, Service: ${product.titleBn}`);
+      // Send Notifications to Admin
+      sendAdminNotifications(`New Premium Order! User: ${userProfile.email}, Service: ${product.titleBn}`);
 
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
@@ -440,7 +468,8 @@ Mobile-
 
       await addDoc(collection(db, 'orders'), newOrder);
       
-      // Handle Auto API Services
+      // Send Notifications to Admin
+      sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
       if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
         try {
           const response = await axios.post('/api/service/auto-sign', {
@@ -524,7 +553,8 @@ Mobile-
       }
 
       // Send SMS to admin
-      sendAdminSMS(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+      // Send Notifications to Admin
+      sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
 
       // Deduct balance
       const userRef = doc(db, 'users', userProfile.uid);
@@ -2238,7 +2268,7 @@ Mobile-
                     });
 
                     // Send SMS to admin
-                    sendAdminSMS(`New Recharge Request! User: ${userProfile.email}, Amount: ৳${amount}, TrxID: ${rechargeData.trxID}`);
+                    sendAdminNotifications(`New Recharge Request! User: ${userProfile.email}, Amount: ৳${amount}, TrxID: ${rechargeData.trxID}`);
 
                     setShowRechargeModal(false);
                     setRechargeData({ amount: '', senderNumber: '', trxID: '' });

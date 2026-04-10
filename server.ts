@@ -420,6 +420,10 @@ async function startServer() {
         return res.status(403).json({ success: false, error: "User is blocked" });
       }
 
+      if (userProfile.isApiEnabled === false) {
+        return res.status(403).json({ success: false, error: "API access is disabled for this user" });
+      }
+
       // Find service
       const productRef = doc(db, 'products', serviceId.toString());
       const productSnap = await getDoc(productRef);
@@ -484,6 +488,15 @@ async function startServer() {
       }
 
       const userProfile = querySnapshot.docs[0].data();
+
+      if (userProfile.isBlocked) {
+        return res.status(403).json({ success: false, error: "User is blocked" });
+      }
+
+      if (userProfile.isApiEnabled === false) {
+        return res.status(403).json({ success: false, error: "API access is disabled for this user" });
+      }
+
       res.json({ 
         success: true, 
         balance: userProfile.balance,

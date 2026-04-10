@@ -471,7 +471,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     isServerCopyTokenBased: globalSettings?.isServerCopyTokenBased ?? false,
     serverCopyTokenUrl: globalSettings?.serverCopyTokenUrl || '',
     isAutoNidTokenBased: globalSettings?.isAutoNidTokenBased ?? false,
-    autoNidTokenUrl: globalSettings?.autoNidTokenUrl || ''
+    autoNidTokenUrl: globalSettings?.autoNidTokenUrl || '',
+    telegramBotToken: globalSettings?.telegramBotToken || '',
+    telegramChatId: globalSettings?.telegramChatId || '',
+    whatsappNotifyNumber: globalSettings?.whatsappNotifyNumber || '',
+    isTelegramNotifyActive: globalSettings?.isTelegramNotifyActive ?? false,
+    isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false
   });
 
   useEffect(() => {
@@ -523,7 +528,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         isServerCopyTokenBased: globalSettings.isServerCopyTokenBased ?? false,
         serverCopyTokenUrl: globalSettings.serverCopyTokenUrl || '',
         isAutoNidTokenBased: globalSettings.isAutoNidTokenBased ?? false,
-        autoNidTokenUrl: globalSettings.autoNidTokenUrl || ''
+        autoNidTokenUrl: globalSettings.autoNidTokenUrl || '',
+        telegramBotToken: globalSettings.telegramBotToken || '',
+        telegramChatId: globalSettings.telegramChatId || '',
+        whatsappNotifyNumber: globalSettings.whatsappNotifyNumber || '',
+        isTelegramNotifyActive: globalSettings.isTelegramNotifyActive ?? false,
+        isWhatsappNotifyActive: globalSettings.isWhatsappNotifyActive ?? false
       });
     }
   }, [globalSettings]);
@@ -834,9 +844,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <Clock className="w-4 h-4" />
                                   </div>
                                   <div className="space-y-1">
-                                    <p className="text-sm font-bold text-slate-800">
-                                      {order.serviceTitle}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-sm font-bold text-slate-800">
+                                        {order.serviceTitle}
+                                      </p>
+                                      {(() => {
+                                        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+                                        const orderDate = order.createdAt?.toDate?.() || new Date();
+                                        if (orderDate > fortyEightHoursAgo) {
+                                          return <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter animate-pulse">New</span>;
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
                                     <p className="text-xs text-slate-500 line-clamp-1">
                                       User: {order.userEmail}
                                     </p>
@@ -907,6 +927,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
                 </div>
+
+                {/* Recent Orders Alert (Last 48 Hours) */}
+                {(() => {
+                  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+                  const recentOrders = orders.filter(o => {
+                    const orderDate = o.createdAt?.toDate?.() || new Date();
+                    return orderDate > fortyEightHoursAgo;
+                  });
+
+                  if (recentOrders.length > 0) {
+                    return (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+                            <Bell className="w-5 h-5 animate-bounce" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-amber-900 text-sm">সাম্প্রতিক অর্ডার অ্যালার্ট!</h4>
+                            <p className="text-xs text-amber-700">গত ২ দিনে মোট <span className="font-bold">{recentOrders.length}টি</span> নতুন অর্ডার এসেছে।</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            setActiveTab('orders');
+                            setAdminSearchQuery(''); // Clear search to see all
+                          }}
+                          className="px-4 py-2 bg-amber-600 text-white text-xs font-bold rounded-xl hover:bg-amber-700 transition-all shadow-sm active:scale-95"
+                        >
+                          অর্ডারগুলো দেখুন
+                        </button>
+                      </motion.div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1403,22 +1462,50 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <span className="text-sm text-slate-600 capitalize">{u.role}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-mono text-slate-500 truncate max-w-[80px]" title={u.apiKey || 'No API Key'}>
-                                  {u.apiKey || 'N/A'}
-                                </span>
-                                <button 
-                                  onClick={() => {
-                                    const newKey = 'ak_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                                    if (confirm(`Generate new API Key for ${u.displayName}?`)) {
-                                      updateUser(u.uid, { apiKey: newKey });
-                                    }
-                                  }}
-                                  className="p-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"
-                                  title="Generate API Key"
-                                >
-                                  <Zap className="w-3 h-3" />
-                                </button>
+                              <div className="flex items-center gap-3">
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono text-slate-500 truncate max-w-[80px]" title={u.apiKey || 'No API Key'}>
+                                      {u.apiKey || 'N/A'}
+                                    </span>
+                                    <button 
+                                      onClick={() => {
+                                        const newKey = 'ak_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                                        if (confirm(`Generate new API Key for ${u.displayName}?`)) {
+                                          updateUser(u.uid, { apiKey: newKey, isApiEnabled: true });
+                                        }
+                                      }}
+                                      className="p-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"
+                                      title="Generate API Key"
+                                    >
+                                      <Zap className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                  
+                                  {u.apiKey && (
+                                    <div className="flex items-center gap-2">
+                                      <div 
+                                        className={cn(
+                                          "w-8 h-4 rounded-full transition-all relative cursor-pointer",
+                                          u.isApiEnabled ? "bg-emerald-500" : "bg-slate-300"
+                                        )} 
+                                        onClick={() => updateUser(u.uid, { isApiEnabled: !u.isApiEnabled })}
+                                        title={u.isApiEnabled ? "API Enabled" : "API Disabled"}
+                                      >
+                                        <div className={cn(
+                                          "absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all shadow-sm",
+                                          u.isApiEnabled ? "left-4.5" : "left-0.5"
+                                        )} />
+                                      </div>
+                                      <span className={cn(
+                                        "text-[10px] font-bold",
+                                        u.isApiEnabled ? "text-emerald-600" : "text-slate-400"
+                                      )}>
+                                        {u.isApiEnabled ? 'ON' : 'OFF'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -2569,6 +2656,99 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
 
+                      {/* Notification Settings (Telegram & WhatsApp) */}
+                      <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-4">
+                        <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                          <Bell className="w-4 h-4" />
+                          অটোমেটিক নোটিফিকেশন সেটিংস (Telegram & WhatsApp)
+                        </h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                              <div>
+                                <p className="text-xs font-bold text-slate-700">Telegram Notification</p>
+                                <p className="text-[10px] text-slate-500">অর্ডার হলে টেলিগ্রামে মেসেজ যাবে</p>
+                              </div>
+                              <button 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isTelegramNotifyActive: !prev.isTelegramNotifyActive }))}
+                                className={cn(
+                                  "w-12 h-6 rounded-full transition-all relative",
+                                  premiumSettingsForm.isTelegramNotifyActive ? "bg-indigo-600" : "bg-slate-300"
+                                )}
+                              >
+                                <div className={cn(
+                                  "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                                  premiumSettingsForm.isTelegramNotifyActive ? "left-7" : "left-1"
+                                )} />
+                              </button>
+                            </div>
+                            
+                            {premiumSettingsForm.isTelegramNotifyActive && (
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase">Telegram Bot Token</label>
+                                  <input 
+                                    type="text"
+                                    value={premiumSettingsForm.telegramBotToken}
+                                    onChange={(e) => setPremiumSettingsForm(prev => ({ ...prev, telegramBotToken: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Enter Bot Token..."
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase">Telegram Chat ID</label>
+                                  <input 
+                                    type="text"
+                                    value={premiumSettingsForm.telegramChatId}
+                                    onChange={(e) => setPremiumSettingsForm(prev => ({ ...prev, telegramChatId: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                                    placeholder="Enter Chat ID..."
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+                              <div>
+                                <p className="text-xs font-bold text-slate-700">WhatsApp Notification</p>
+                                <p className="text-[10px] text-slate-500">অর্ডার হলে হোয়াটসঅ্যাপে মেসেজ যাবে</p>
+                              </div>
+                              <button 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isWhatsappNotifyActive: !prev.isWhatsappNotifyActive }))}
+                                className={cn(
+                                  "w-12 h-6 rounded-full transition-all relative",
+                                  premiumSettingsForm.isWhatsappNotifyActive ? "bg-emerald-600" : "bg-slate-300"
+                                )}
+                              >
+                                <div className={cn(
+                                  "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                                  premiumSettingsForm.isWhatsappNotifyActive ? "left-7" : "left-1"
+                                )} />
+                              </button>
+                            </div>
+                            
+                            {premiumSettingsForm.isWhatsappNotifyActive && (
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase">Admin WhatsApp Number</label>
+                                  <input 
+                                    type="text"
+                                    value={premiumSettingsForm.whatsappNotifyNumber}
+                                    onChange={(e) => setPremiumSettingsForm(prev => ({ ...prev, whatsappNotifyNumber: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                                    placeholder="e.g. 88017XXXXXXXX"
+                                  />
+                                </div>
+                                <p className="text-[9px] text-slate-500 italic">* হোয়াটসঅ্যাপ নোটিফিকেশনের জন্য আপনার এপিআই গেটওয়ে কনফিগার থাকতে হবে।</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                     {/* Developer API Documentation */}
                     <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-4 mt-6">
                       <h4 className="font-bold text-white flex items-center gap-2">
@@ -2669,7 +2849,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             isServerCopyTokenBased: premiumSettingsForm.isServerCopyTokenBased,
                             serverCopyTokenUrl: premiumSettingsForm.serverCopyTokenUrl,
                             isAutoNidTokenBased: premiumSettingsForm.isAutoNidTokenBased,
-                            autoNidTokenUrl: premiumSettingsForm.autoNidTokenUrl
+                            autoNidTokenUrl: premiumSettingsForm.autoNidTokenUrl,
+                            telegramBotToken: premiumSettingsForm.telegramBotToken,
+                            telegramChatId: premiumSettingsForm.telegramChatId,
+                            whatsappNotifyNumber: premiumSettingsForm.whatsappNotifyNumber,
+                            isTelegramNotifyActive: premiumSettingsForm.isTelegramNotifyActive,
+                            isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);

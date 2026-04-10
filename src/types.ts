@@ -14,6 +14,7 @@ export interface UserProfile {
   password?: string;
   apiKey?: string;
   isBlocked?: boolean;
+  isApiEnabled?: boolean;
 }
 
 export interface Order {
@@ -96,6 +97,13 @@ export interface GlobalSettings {
   isNicknameApiActive?: boolean;
   isVaccineCardApiActive?: boolean;
   isPscVectorApiActive?: boolean;
+
+  // Notification Settings
+  telegramBotToken?: string;
+  telegramChatId?: string;
+  whatsappNotifyNumber?: string; // For automated WhatsApp notifications via API
+  isTelegramNotifyActive?: boolean;
+  isWhatsappNotifyActive?: boolean;
 
   // Token Based API Settings
   isAutoSignTokenBased?: boolean;
