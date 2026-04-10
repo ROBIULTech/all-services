@@ -12,6 +12,8 @@ export interface UserProfile {
   isPremium?: boolean;
   whatsapp?: string;
   password?: string;
+  apiKey?: string;
+  isBlocked?: boolean;
 }
 
 export interface Order {
@@ -55,6 +57,8 @@ export interface Product {
     price: number;
   }[];
   defaultData?: string;
+  markupType?: 'flat' | 'percentage';
+  markupValue?: number;
 }
 
 export interface GlobalSettings {
@@ -81,6 +85,11 @@ export interface GlobalSettings {
   isInfoVerifyMaintenance?: boolean;
   isServerCopyMaintenance?: boolean;
   isAutoNidMaintenance?: boolean;
+  isApiResellingActive?: boolean;
+  providerApiUrl?: string;
+  providerApiKey?: string;
+  markupType?: 'flat' | 'percentage';
+  markupValue?: number;
 }
 
 export interface TrashItem {

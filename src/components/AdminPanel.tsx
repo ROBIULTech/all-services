@@ -454,7 +454,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     isAutoSignMaintenance: globalSettings?.isAutoSignMaintenance ?? false,
     isInfoVerifyMaintenance: globalSettings?.isInfoVerifyMaintenance ?? false,
     isServerCopyMaintenance: globalSettings?.isServerCopyMaintenance ?? false,
-    isAutoNidMaintenance: globalSettings?.isAutoNidMaintenance ?? false
+    isAutoNidMaintenance: globalSettings?.isAutoNidMaintenance ?? false,
+    isApiResellingActive: globalSettings?.isApiResellingActive ?? false,
+    providerApiUrl: globalSettings?.providerApiUrl || '',
+    providerApiKey: globalSettings?.providerApiKey || '',
+    markupType: globalSettings?.markupType || 'flat',
+    markupValue: globalSettings?.markupValue || 0
   });
 
   useEffect(() => {
@@ -489,7 +494,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         isAutoSignMaintenance: globalSettings.isAutoSignMaintenance ?? false,
         isInfoVerifyMaintenance: globalSettings.isInfoVerifyMaintenance ?? false,
         isServerCopyMaintenance: globalSettings.isServerCopyMaintenance ?? false,
-        isAutoNidMaintenance: globalSettings.isAutoNidMaintenance ?? false
+        isAutoNidMaintenance: globalSettings.isAutoNidMaintenance ?? false,
+        isApiResellingActive: globalSettings.isApiResellingActive ?? false,
+        providerApiUrl: globalSettings.providerApiUrl || '',
+        providerApiKey: globalSettings.providerApiKey || '',
+        markupType: globalSettings.markupType || 'flat',
+        markupValue: globalSettings.markupValue || 0
       });
     }
   }, [globalSettings]);
@@ -1325,6 +1335,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Password</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Role</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">API Key</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Balance</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
                         </tr>
@@ -1366,6 +1377,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm text-slate-600 capitalize">{u.role}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-slate-500 truncate max-w-[80px]" title={u.apiKey || 'No API Key'}>
+                                  {u.apiKey || 'N/A'}
+                                </span>
+                                <button 
+                                  onClick={() => {
+                                    const newKey = 'ak_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                                    if (confirm(`Generate new API Key for ${u.displayName}?`)) {
+                                      updateUser(u.uid, { apiKey: newKey });
+                                    }
+                                  }}
+                                  className="p-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"
+                                  title="Generate API Key"
+                                >
+                                  <Zap className="w-3 h-3" />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               {u.role.toLowerCase() !== 'admin' ? (
@@ -2236,6 +2266,144 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </p>
                     </div>
 
+                    {/* API Reselling Settings */}
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-4">
+                      <h4 className="font-bold text-blue-900 flex items-center gap-2">
+                        <Globe className="w-4 h-4" />
+                        API Reselling & Automation
+                      </h4>
+                      
+                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
+                        <div>
+                          <h4 className="font-bold text-slate-900">Enable API Reselling</h4>
+                          <p className="text-sm text-slate-500">Forward orders to another provider via API.</p>
+                        </div>
+                        <div 
+                          className={cn(
+                            "w-12 h-6 rounded-full transition-all relative cursor-pointer",
+                            premiumSettingsForm.isApiResellingActive ? "bg-blue-500" : "bg-slate-300"
+                          )} 
+                          onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isApiResellingActive: !prev.isApiResellingActive }))}
+                        >
+                          <div className={cn(
+                            "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                            premiumSettingsForm.isApiResellingActive ? "left-7" : "left-1"
+                          )} />
+                        </div>
+                      </div>
+
+                      {premiumSettingsForm.isApiResellingActive && (
+                        <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">Provider API URL</label>
+                              <input 
+                                type="text"
+                                value={premiumSettingsForm.providerApiUrl || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, providerApiUrl: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="https://provider.com/api/v2"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">Provider API Key</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.providerApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, providerApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Enter API Key"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">Profit Markup Type</label>
+                              <select 
+                                value={premiumSettingsForm.markupType || 'flat'}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, markupType: e.target.value as 'flat' | 'percentage' })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                              >
+                                <option value="flat">Flat Amount (৳)</option>
+                                <option value="percentage">Percentage (%)</option>
+                              </select>
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">Markup Value</label>
+                              <input 
+                                type="number"
+                                value={premiumSettingsForm.markupValue || 0}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, markupValue: Number(e.target.value) })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="e.g. 20"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-blue-600 font-medium italic">
+                            * This markup will be added to the provider's price automatically on your site.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Developer API Documentation */}
+                    <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-4 mt-6">
+                      <h4 className="font-bold text-white flex items-center gap-2">
+                        <Zap className="w-4 h-4 text-indigo-400" />
+                        Developer API Documentation (আপনার এপিআই তথ্য)
+                      </h4>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Base URL</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-xs text-slate-300 font-mono break-all">{window.location.origin}</code>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(window.location.origin);
+                                alert('Base URL copied!');
+                              }}
+                              className="p-1 hover:bg-slate-700 rounded text-slate-400 transition-colors"
+                            >
+                              <Download className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                            <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mb-1">Place Order</p>
+                            <code className="text-[10px] text-slate-300 font-mono">POST /api/v1/order</code>
+                          </div>
+                          <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider mb-1">Check Balance</p>
+                            <code className="text-[10px] text-slate-300 font-mono">GET /api/v1/balance</code>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Required Headers</p>
+                          <code className="text-[10px] text-slate-300 font-mono block">x-api-key: [USER_API_KEY]</code>
+                          <code className="text-[10px] text-slate-300 font-mono block">Content-Type: application/json</code>
+                        </div>
+
+                        <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Example Body (Order)</p>
+                          <pre className="text-[10px] text-slate-400 font-mono overflow-x-auto">
+{`{
+  "serviceId": 1,
+  "data": "NID: 1234567890\\nDOB: 1990-01-01"
+}`}
+                          </pre>
+                        </div>
+                      </div>
+                      
+                      <p className="text-[10px] text-slate-500 italic">
+                        * রিসেলারদের আপনার এপিআই দিতে চাইলে তাদের প্রোফাইল থেকে এপিআই কি জেনারেট করে দিন।
+                      </p>
+                    </div>
+
                     <div className="pt-4">
                       <button 
                         onClick={async () => {
@@ -3044,6 +3212,41 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     placeholder="Optional"
                   />
                 </div>
+              </div>
+
+              {/* Individual Markup Settings */}
+              <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-4">
+                <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                  <DollarSign className="w-3 h-3" />
+                  Individual Markup (Optional)
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-600">Markup Type</label>
+                    <select 
+                      value={formData.markupType || ''}
+                      onChange={(e) => setFormData({ ...formData, markupType: e.target.value as any || undefined })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                    >
+                      <option value="">Use Global Settings</option>
+                      <option value="flat">Flat Amount (৳)</option>
+                      <option value="percentage">Percentage (%)</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-600">Markup Value</label>
+                    <input 
+                      type="number"
+                      value={formData.markupValue ?? ''}
+                      onChange={(e) => setFormData({ ...formData, markupValue: e.target.value ? Number(e.target.value) : undefined })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  If set, this will override the Global Markup settings for this specific service.
+                </p>
               </div>
 
               <div className="space-y-2">

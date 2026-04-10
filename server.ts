@@ -6,6 +6,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import multer from "multer";
 import FormData from "form-data";
+import { db, collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, serverTimestamp } from "./src/firebase";
 
 dotenv.config();
 
@@ -296,6 +297,133 @@ async function startServer() {
         error: errorMessage,
         code: error.code
       });
+    }
+  });
+
+  // Generic API Reselling Proxy
+  app.post("/api/reseller/forward", async (req, res) => {
+    const { providerUrl, apiKey, orderData } = req.body;
+    
+    if (!providerUrl || !apiKey || !orderData) {
+      return res.status(400).json({ success: false, error: "Missing required parameters" });
+    }
+
+    try {
+      // Forward the order to the external provider
+      // This is a generic implementation, might need adjustment based on provider's API
+      const response = await axios.post(providerUrl, orderData, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      res.json({ success: true, data: response.data });
+    } catch (error: any) {
+      console.error("API Reselling Error:", error.response?.data || error.message);
+      res.status(200).json({ 
+        success: false, 
+        error: error.response?.data?.message || "Failed to forward order to provider" 
+      });
+    }
+  });
+
+  // Reseller API - Place Order
+  app.post("/api/v1/order", async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+    const { serviceId, data } = req.body;
+
+    if (!apiKey) return res.status(401).json({ success: false, error: "API Key is required" });
+    if (!serviceId || !data) return res.status(400).json({ success: false, error: "serviceId and data are required" });
+
+    try {
+      // Find user by API Key
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('apiKey', '==', apiKey));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return res.status(401).json({ success: false, error: "Invalid API Key" });
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userProfile = userDoc.data();
+
+      if (userProfile.isBlocked) {
+        return res.status(403).json({ success: false, error: "User is blocked" });
+      }
+
+      // Find service
+      const productRef = doc(db, 'products', serviceId.toString());
+      const productSnap = await getDoc(productRef);
+
+      if (!productSnap.exists()) {
+        return res.status(404).json({ success: false, error: "Service not found" });
+      }
+
+      const product = productSnap.data();
+      
+      // Calculate price
+      const price = product.price;
+
+      if (userProfile.balance < price) {
+        return res.status(400).json({ success: false, error: "Insufficient balance" });
+      }
+
+      // Place order
+      const newOrder = {
+        uid: userProfile.uid,
+        userEmail: userProfile.email,
+        serviceId: product.id,
+        serviceTitle: product.titleBn,
+        status: 'pending',
+        data: data,
+        price: price,
+        createdAt: serverTimestamp()
+      };
+
+      const orderRef = await addDoc(collection(db, 'orders'), newOrder);
+
+      // Deduct balance
+      await updateDoc(userDoc.ref, {
+        balance: userProfile.balance - price
+      });
+
+      res.json({ 
+        success: true, 
+        orderId: orderRef.id,
+        message: "Order placed successfully" 
+      });
+
+    } catch (error: any) {
+      console.error("Reseller API Error:", error.message);
+      res.status(500).json({ success: false, error: "Internal server error" });
+    }
+  });
+
+  // Reseller API - Check Balance
+  app.get("/api/v1/balance", async (req, res) => {
+    const apiKey = req.headers['x-api-key'];
+
+    if (!apiKey) return res.status(401).json({ success: false, error: "API Key is required" });
+
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('apiKey', '==', apiKey));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return res.status(401).json({ success: false, error: "Invalid API Key" });
+      }
+
+      const userProfile = querySnapshot.docs[0].data();
+      res.json({ 
+        success: true, 
+        balance: userProfile.balance,
+        currency: "BDT"
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: "Internal server error" });
     }
   });
 

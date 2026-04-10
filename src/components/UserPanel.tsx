@@ -307,7 +307,23 @@ Mobile-
     setOrderFile(null);
   }, [selectedProduct]);
 
-  const currentPrice = selectedOption ? selectedOption.price : (selectedProduct?.price || 0);
+  const calculatePrice = (basePrice: number, product?: Product) => {
+    // Check for individual product markup first
+    const mType = product?.markupType || globalSettings?.markupType;
+    const mValue = product?.markupValue ?? globalSettings?.markupValue;
+
+    if (!globalSettings?.isApiResellingActive || !mValue) {
+      return basePrice;
+    }
+    
+    if (mType === 'percentage') {
+      return Math.ceil(basePrice + (basePrice * (mValue / 100)));
+    } else {
+      return basePrice + mValue;
+    }
+  };
+
+  const currentPrice = calculatePrice(selectedOption ? selectedOption.price : (selectedProduct?.price || 0), selectedProduct || undefined);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -338,7 +354,9 @@ Mobile-
     const product = products.find(p => p.id === productId);
     if (!product || !userProfile) return;
 
-    if (userProfile.balance < product.price) {
+    const price = calculatePrice(product.price, product);
+
+    if (userProfile.balance < price) {
       alert('Insufficient balance. Please contact admin to recharge.');
       return;
     }
@@ -352,18 +370,36 @@ Mobile-
         serviceTitle: product.titleBn,
         status: 'pending',
         data: data,
-        price: product.price,
+        price: price,
         createdAt: serverTimestamp()
       };
 
       await addDoc(collection(db, 'orders'), newOrder);
       
+      // API Reselling Forwarding
+      if (globalSettings?.isApiResellingActive && globalSettings?.providerApiUrl && globalSettings?.providerApiKey) {
+        try {
+          await axios.post('/api/reseller/forward', {
+            providerUrl: globalSettings.providerApiUrl,
+            apiKey: globalSettings.providerApiKey,
+            orderData: {
+              service: product.id,
+              data: data,
+              external_id: userProfile.uid + '_' + Date.now()
+            }
+          });
+          console.log('Premium order forwarded to provider successfully');
+        } catch (apiError) {
+          console.error('Failed to forward premium order to provider:', apiError);
+        }
+      }
+
       // Send SMS to admin
       sendAdminSMS(`New Premium Order! User: ${userProfile.email}, Service: ${product.titleBn}`);
 
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
-        balance: userProfile.balance - product.price
+        balance: userProfile.balance - price
       }, { merge: true });
       
       setShowSuccess(true);
@@ -402,6 +438,24 @@ Mobile-
 
       await addDoc(collection(db, 'orders'), newOrder);
       
+      // API Reselling Forwarding
+      if (globalSettings?.isApiResellingActive && globalSettings?.providerApiUrl && globalSettings?.providerApiKey) {
+        try {
+          await axios.post('/api/reseller/forward', {
+            providerUrl: globalSettings.providerApiUrl,
+            apiKey: globalSettings.providerApiKey,
+            orderData: {
+              service: selectedProduct.id,
+              data: orderData,
+              external_id: userProfile.uid + '_' + Date.now()
+            }
+          });
+          console.log('Order forwarded to provider successfully');
+        } catch (apiError) {
+          console.error('Failed to forward order to provider:', apiError);
+        }
+      }
+
       // Send SMS to admin
       sendAdminSMS(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
 
@@ -1081,7 +1135,7 @@ Mobile-
                           <span className="text-xs font-bold">i</span>
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{products.find(p => p.id === 101)?.price.toFixed(2)} কাটা হবে।</p>
+                          <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)} কাটা হবে।</p>
                           <p className="text-xs text-slate-600">হিস্ট্রি থেকে পুনরায় দেখা সম্পূর্ণ ফ্রি!</p>
                         </div>
                       </div>
@@ -1103,7 +1157,8 @@ Mobile-
                             // API Mode
                             setIsPlacingOrder(true);
                             try {
-                              const price = products.find(p => p.id === 101)?.price || 0;
+                              const p101 = products.find(p => p.id === 101);
+                              const price = calculatePrice(p101?.price || 0, p101);
                               if (userProfile.balance < price) {
                                 alert('Insufficient balance!');
                                 setIsPlacingOrder(false);
@@ -1143,7 +1198,7 @@ Mobile-
                         className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <ShoppingCart className="w-5 h-5" />
-                        অর্ডার করুন (৳{products.find(p => p.id === 101)?.price.toFixed(2)})
+                        অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)})
                       </button>
                     </div>
                   </div>
@@ -1182,7 +1237,7 @@ Mobile-
                         </div>
                         <div>
                           <p className="text-sm font-bold text-slate-700">
-                            প্রতিটি যাচাইয়ের জন্য ৳{(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0).toFixed(2)} কাটা হবে।
+                            প্রতিটি যাচাইয়ের জন্য ৳{calculatePrice(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0, products.find(p => p.id === 102)).toFixed(2)} কাটা হবে।
                           </p>
                         </div>
                       </div>
@@ -1225,7 +1280,8 @@ Mobile-
                             // API Mode
                             setIsPlacingOrder(true);
                             try {
-                              const price = products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0;
+                              const p102 = products.find(p => p.id === 102);
+                              const price = calculatePrice(p102?.options?.find((opt: any) => opt.name === infoCategory)?.price || p102?.price || 0, p102);
                               if (userProfile.balance < price) {
                                 alert('Insufficient balance!');
                                 setIsPlacingOrder(false);
@@ -1325,7 +1381,8 @@ Mobile-
                             // API Mode
                             setIsPlacingOrder(true);
                             try {
-                              const price = products.find(p => p.id === 103)?.price || 0;
+                              const p103 = products.find(p => p.id === 103);
+                              const price = calculatePrice(p103?.price || 0, p103);
                               if (userProfile.balance < price) {
                                 alert('Insufficient balance!');
                                 setIsPlacingOrder(false);
@@ -1369,7 +1426,7 @@ Mobile-
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
                       >
                         <Edit3 className="w-5 h-5" />
-                        ছবি বের করুন (চার্জ ৳{products.find(p => p.id === 103)?.price || 85})
+                        ছবি বের করুন (চার্জ ৳{calculatePrice(products.find(p => p.id === 103)?.price || 85, products.find(p => p.id === 103))})
                       </button>
                     </div>
                   </div>
@@ -1427,7 +1484,8 @@ Mobile-
                           if (globalSettings?.isAutoNidApiActive) {
                             setIsPlacingOrder(true);
                             try {
-                              const price = products.find(p => p.id === 104)?.price || 0;
+                              const p104 = products.find(p => p.id === 104);
+                              const price = calculatePrice(p104?.price || 0, p104);
                               if (userProfile.balance < price) {
                                 alert('Insufficient balance!');
                                 setIsPlacingOrder(false);
@@ -1470,7 +1528,7 @@ Mobile-
                         className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <CreditCard className="w-5 h-5" />
-                        অর্ডার করুন (৳{products.find(p => p.id === 104)?.price || 100})
+                        অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 100, products.find(p => p.id === 104))})
                       </button>
                     </div>
                   </div>
@@ -1559,6 +1617,26 @@ Mobile-
                       <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm text-indigo-600 font-bold">
                         {userProfile.userId || 'N/A'}
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-500">API Key (for Resellers)</label>
+                      <div className="flex gap-2">
+                        <div className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono text-slate-600 truncate">
+                          {userProfile.apiKey || 'No API Key generated yet'}
+                        </div>
+                        {userProfile.apiKey && (
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(userProfile.apiKey!);
+                              alert('API Key copied to clipboard!');
+                            }}
+                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all"
+                          >
+                            Copy
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400">Contact admin if you need an API Key for reselling.</p>
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-500">WhatsApp Number</label>
@@ -1735,7 +1813,7 @@ Mobile-
                             >
                               <span>{option.name}</span>
                               <span className={cn("text-xs", selectedOption?.name === option.name ? "text-indigo-200" : "text-emerald-400")}>
-                                ৳{option.price}
+                                ৳{calculatePrice(option.price, selectedProduct || undefined)}
                               </span>
                             </button>
                           ))}
