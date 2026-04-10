@@ -59,6 +59,8 @@ export interface Product {
   defaultData?: string;
   markupType?: 'flat' | 'percentage';
   markupValue?: number;
+  isDriveLinkMode?: boolean;
+  autoDeliveryLink?: string;
 }
 
 export interface GlobalSettings {
@@ -90,6 +92,20 @@ export interface GlobalSettings {
   providerApiKey?: string;
   markupType?: 'flat' | 'percentage';
   markupValue?: number;
+  isSmartCardApiActive?: boolean;
+  isNicknameApiActive?: boolean;
+  isVaccineCardApiActive?: boolean;
+  isPscVectorApiActive?: boolean;
+
+  // Token Based API Settings
+  isAutoSignTokenBased?: boolean;
+  autoSignTokenUrl?: string;
+  isInfoVerifyTokenBased?: boolean;
+  infoVerifyTokenUrl?: string;
+  isServerCopyTokenBased?: boolean;
+  serverCopyTokenUrl?: string;
+  isAutoNidTokenBased?: boolean;
+  autoNidTokenUrl?: string;
 }
 
 export interface TrashItem {

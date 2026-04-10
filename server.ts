@@ -10,6 +10,47 @@ import { db, collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, 
 
 dotenv.config();
 
+// Token cache to avoid repeated requests
+const tokenCache: Record<string, { token: string, expiresAt: number }> = {};
+
+async function getAccessToken(serviceName: string, tokenUrl: string, apiKey: string) {
+  const cacheKey = `${serviceName}_${apiKey}`;
+  const cached = tokenCache[cacheKey];
+  
+  // If token exists and is not expired (with 5 min buffer)
+  if (cached && cached.expiresAt > Date.now() + 300000) {
+    return cached.token;
+  }
+
+  try {
+    console.log(`Fetching new token for ${serviceName} from ${tokenUrl}`);
+    const response = await axios.post(tokenUrl, {
+      api_key: apiKey,
+      // Some providers might use different fields, we can adjust if needed
+      username: apiKey.split(':')[0], 
+      password: apiKey.split(':')[1]
+    }, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    // Handle different response formats (common ones)
+    const token = response.data.token || response.data.access_token || response.data.data?.token;
+    const expiresIn = response.data.expires_in || 3600; // Default 1 hour
+
+    if (token) {
+      tokenCache[cacheKey] = {
+        token,
+        expiresAt: Date.now() + (expiresIn * 1000)
+      };
+      return token;
+    }
+    return null;
+  } catch (error: any) {
+    console.error(`Error fetching token for ${serviceName}:`, error.message);
+    return null;
+  }
+}
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 async function startServer() {
@@ -58,12 +99,20 @@ async function startServer() {
     }
   });
 
-  // Auto NID API (Mock)
+  // Auto NID API
   app.post("/api/service/auto-nid", async (req, res) => {
-    const { nid, dob, apiKey } = req.body;
+    const { nid, dob, apiKey, isTokenBased, tokenUrl } = req.body;
     if (!nid || !dob) return res.status(400).json({ success: false, error: "NID and DOB are required" });
     if (!apiKey) return res.status(401).json({ success: false, error: "API Key is missing" });
     
+    let finalToken = apiKey;
+    if (isTokenBased && tokenUrl) {
+      const token = await getAccessToken("auto-nid", tokenUrl, apiKey);
+      if (token) finalToken = token;
+    }
+
+    // In a real scenario, you would call the actual provider here
+    // For now, we simulate the logic
     await new Promise(resolve => setTimeout(resolve, 2000));
     res.json({
       success: true,
@@ -76,12 +125,18 @@ async function startServer() {
     });
   });
 
-  // Auto Sign Copy API (Mock)
+  // Auto Sign Copy API
   app.post("/api/service/auto-sign", async (req, res) => {
-    const { nid, apiKey } = req.body;
+    const { nid, apiKey, isTokenBased, tokenUrl } = req.body;
     if (!nid) return res.status(400).json({ success: false, error: "NID is required" });
     if (!apiKey) return res.status(401).json({ success: false, error: "API Key is missing" });
     
+    let finalToken = apiKey;
+    if (isTokenBased && tokenUrl) {
+      const token = await getAccessToken("auto-sign", tokenUrl, apiKey);
+      if (token) finalToken = token;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 2000));
     res.json({
       success: true,
@@ -93,12 +148,18 @@ async function startServer() {
     });
   });
 
-  // Info Verification API (Mock)
+  // Info Verification API
   app.post("/api/service/info-verify", async (req, res) => {
-    const { category, number, apiKey } = req.body;
+    const { category, number, apiKey, isTokenBased, tokenUrl } = req.body;
     if (!number) return res.status(400).json({ success: false, error: "Number is required" });
     if (!apiKey) return res.status(401).json({ success: false, error: "API Key is missing" });
     
+    let finalToken = apiKey;
+    if (isTokenBased && tokenUrl) {
+      const token = await getAccessToken("info-verify", tokenUrl, apiKey);
+      if (token) finalToken = token;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 2000));
     res.json({
       success: true,
@@ -115,12 +176,18 @@ async function startServer() {
     });
   });
 
-  // Server Copy API (Mock)
+  // Server Copy API
   app.post("/api/service/server-copy", async (req, res) => {
-    const { nid, dob, apiKey } = req.body;
+    const { nid, dob, apiKey, isTokenBased, tokenUrl } = req.body;
     if (!nid || !dob) return res.status(400).json({ success: false, error: "NID and DOB are required" });
     if (!apiKey) return res.status(401).json({ success: false, error: "API Key is missing" });
     
+    let finalToken = apiKey;
+    if (isTokenBased && tokenUrl) {
+      const token = await getAccessToken("server-copy", tokenUrl, apiKey);
+      if (token) finalToken = token;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 2000));
     res.json({
       success: true,

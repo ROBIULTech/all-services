@@ -459,7 +459,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     providerApiUrl: globalSettings?.providerApiUrl || '',
     providerApiKey: globalSettings?.providerApiKey || '',
     markupType: globalSettings?.markupType || 'flat',
-    markupValue: globalSettings?.markupValue || 0
+    markupValue: globalSettings?.markupValue || 0,
+    isSmartCardApiActive: globalSettings?.isSmartCardApiActive ?? false,
+    isNicknameApiActive: globalSettings?.isNicknameApiActive ?? false,
+    isVaccineCardApiActive: globalSettings?.isVaccineCardApiActive ?? false,
+    isPscVectorApiActive: globalSettings?.isPscVectorApiActive ?? false,
+    isAutoSignTokenBased: globalSettings?.isAutoSignTokenBased ?? false,
+    autoSignTokenUrl: globalSettings?.autoSignTokenUrl || '',
+    isInfoVerifyTokenBased: globalSettings?.isInfoVerifyTokenBased ?? false,
+    infoVerifyTokenUrl: globalSettings?.infoVerifyTokenUrl || '',
+    isServerCopyTokenBased: globalSettings?.isServerCopyTokenBased ?? false,
+    serverCopyTokenUrl: globalSettings?.serverCopyTokenUrl || '',
+    isAutoNidTokenBased: globalSettings?.isAutoNidTokenBased ?? false,
+    autoNidTokenUrl: globalSettings?.autoNidTokenUrl || ''
   });
 
   useEffect(() => {
@@ -499,7 +511,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         providerApiUrl: globalSettings.providerApiUrl || '',
         providerApiKey: globalSettings.providerApiKey || '',
         markupType: globalSettings.markupType || 'flat',
-        markupValue: globalSettings.markupValue || 0
+        markupValue: globalSettings.markupValue || 0,
+        isSmartCardApiActive: globalSettings.isSmartCardApiActive ?? false,
+        isNicknameApiActive: globalSettings.isNicknameApiActive ?? false,
+        isVaccineCardApiActive: globalSettings.isVaccineCardApiActive ?? false,
+        isPscVectorApiActive: globalSettings.isPscVectorApiActive ?? false,
+        isAutoSignTokenBased: globalSettings.isAutoSignTokenBased ?? false,
+        autoSignTokenUrl: globalSettings.autoSignTokenUrl || '',
+        isInfoVerifyTokenBased: globalSettings.isInfoVerifyTokenBased ?? false,
+        infoVerifyTokenUrl: globalSettings.infoVerifyTokenUrl || '',
+        isServerCopyTokenBased: globalSettings.isServerCopyTokenBased ?? false,
+        serverCopyTokenUrl: globalSettings.serverCopyTokenUrl || '',
+        isAutoNidTokenBased: globalSettings.isAutoNidTokenBased ?? false,
+        autoNidTokenUrl: globalSettings.autoNidTokenUrl || ''
       });
     }
   }, [globalSettings]);
@@ -2113,15 +2137,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </div>
                         {premiumSettingsForm.isAutoSignApiActive && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">API Key</label>
-                            <input 
-                              type="password"
-                              value={premiumSettingsForm.autoSignApiKey || ''}
-                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoSignApiKey: e.target.value })}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
-                              placeholder="Enter API Key for Auto Sign Copy"
-                            />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-2 bg-orange-50 rounded-lg border border-orange-100">
+                              <span className="text-xs font-bold text-orange-700">Token Based Auth</span>
+                              <div 
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-all relative cursor-pointer",
+                                  premiumSettingsForm.isAutoSignTokenBased ? "bg-orange-500" : "bg-slate-300"
+                                )} 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isAutoSignTokenBased: !prev.isAutoSignTokenBased }))}
+                              >
+                                <div className={cn(
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                  premiumSettingsForm.isAutoSignTokenBased ? "left-5.5" : "left-0.5"
+                                )} />
+                              </div>
+                            </div>
+                            
+                            {premiumSettingsForm.isAutoSignTokenBased && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Token URL</label>
+                                <input 
+                                  type="text"
+                                  value={premiumSettingsForm.autoSignTokenUrl || ''}
+                                  onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoSignTokenUrl: e.target.value })}
+                                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                  placeholder="https://api.provider.com/v1/login"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">API Key</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.autoSignApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoSignApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all"
+                                placeholder="Enter API Key for Auto Sign Copy"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2158,15 +2213,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </div>
                         {premiumSettingsForm.isInfoVerifyApiActive && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">API Key (e.g. Porichoy)</label>
-                            <input 
-                              type="password"
-                              value={premiumSettingsForm.infoVerifyApiKey || ''}
-                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, infoVerifyApiKey: e.target.value })}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
-                              placeholder="Enter API Key for Info Verification"
-                            />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                              <span className="text-xs font-bold text-emerald-700">Token Based Auth</span>
+                              <div 
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-all relative cursor-pointer",
+                                  premiumSettingsForm.isInfoVerifyTokenBased ? "bg-emerald-500" : "bg-slate-300"
+                                )} 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isInfoVerifyTokenBased: !prev.isInfoVerifyTokenBased }))}
+                              >
+                                <div className={cn(
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                  premiumSettingsForm.isInfoVerifyTokenBased ? "left-5.5" : "left-0.5"
+                                )} />
+                              </div>
+                            </div>
+
+                            {premiumSettingsForm.isInfoVerifyTokenBased && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Token URL</label>
+                                <input 
+                                  type="text"
+                                  value={premiumSettingsForm.infoVerifyTokenUrl || ''}
+                                  onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, infoVerifyTokenUrl: e.target.value })}
+                                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                                  placeholder="https://api.provider.com/v1/login"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">API Key (e.g. Porichoy)</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.infoVerifyApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, infoVerifyApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                                placeholder="Enter API Key for Info Verification"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2203,15 +2289,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </div>
                         {premiumSettingsForm.isServerCopyApiActive && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">API Key</label>
-                            <input 
-                              type="password"
-                              value={premiumSettingsForm.serverCopyApiKey || ''}
-                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, serverCopyApiKey: e.target.value })}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                              placeholder="Enter API Key for Server Copy"
-                            />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-100">
+                              <span className="text-xs font-bold text-blue-700">Token Based Auth</span>
+                              <div 
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-all relative cursor-pointer",
+                                  premiumSettingsForm.isServerCopyTokenBased ? "bg-blue-500" : "bg-slate-300"
+                                )} 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isServerCopyTokenBased: !prev.isServerCopyTokenBased }))}
+                              >
+                                <div className={cn(
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                  premiumSettingsForm.isServerCopyTokenBased ? "left-5.5" : "left-0.5"
+                                )} />
+                              </div>
+                            </div>
+
+                            {premiumSettingsForm.isServerCopyTokenBased && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Token URL</label>
+                                <input 
+                                  type="text"
+                                  value={premiumSettingsForm.serverCopyTokenUrl || ''}
+                                  onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, serverCopyTokenUrl: e.target.value })}
+                                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                  placeholder="https://api.provider.com/v1/login"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">API Key</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.serverCopyApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, serverCopyApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="Enter API Key for Server Copy"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2248,15 +2365,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         </div>
                         {premiumSettingsForm.isAutoNidApiActive && (
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-700">API Key</label>
-                            <input 
-                              type="password"
-                              value={premiumSettingsForm.autoNidApiKey || ''}
-                              onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoNidApiKey: e.target.value })}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all"
-                              placeholder="Enter API Key for Auto NID"
-                            />
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-100">
+                              <span className="text-xs font-bold text-purple-700">Token Based Auth</span>
+                              <div 
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-all relative cursor-pointer",
+                                  premiumSettingsForm.isAutoNidTokenBased ? "bg-purple-500" : "bg-slate-300"
+                                )} 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isAutoNidTokenBased: !prev.isAutoNidTokenBased }))}
+                              >
+                                <div className={cn(
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                  premiumSettingsForm.isAutoNidTokenBased ? "left-5.5" : "left-0.5"
+                                )} />
+                              </div>
+                            </div>
+
+                            {premiumSettingsForm.isAutoNidTokenBased && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Token URL</label>
+                                <input 
+                                  type="text"
+                                  value={premiumSettingsForm.autoNidTokenUrl || ''}
+                                  onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoNidTokenUrl: e.target.value })}
+                                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                                  placeholder="https://api.provider.com/v1/login"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">API Key</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.autoNidApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, autoNidApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+                                placeholder="Enter API Key for Auto NID"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2347,6 +2495,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       )}
                     </div>
 
+                    {/* Specific Service API Toggles */}
+                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-4">
+                      <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Special Service API Settings (ড্রাইভ লিংক মোড)
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">স্মার্ট কার্ড অর্ডার</p>
+                            <p className="text-[10px] text-slate-500">Enable Drive Link Mode</p>
+                          </div>
+                          <button 
+                            onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isSmartCardApiActive: !prev.isSmartCardApiActive }))}
+                            className={cn(
+                              "w-full py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                              premiumSettingsForm.isSmartCardApiActive ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-600"
+                            )}
+                          >
+                            {premiumSettingsForm.isSmartCardApiActive ? 'API Mode ON' : 'Manual Mode'}
+                          </button>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">নিকানাম ফর্ম</p>
+                            <p className="text-[10px] text-slate-500">Enable Drive Link Mode</p>
+                          </div>
+                          <button 
+                            onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isNicknameApiActive: !prev.isNicknameApiActive }))}
+                            className={cn(
+                              "w-full py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                              premiumSettingsForm.isNicknameApiActive ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-600"
+                            )}
+                          >
+                            {premiumSettingsForm.isNicknameApiActive ? 'API Mode ON' : 'Manual Mode'}
+                          </button>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">টিকা কার্ড ভেক্টর</p>
+                            <p className="text-[10px] text-slate-500">Enable Drive Link Mode</p>
+                          </div>
+                          <button 
+                            onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isVaccineCardApiActive: !prev.isVaccineCardApiActive }))}
+                            className={cn(
+                              "w-full py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                              premiumSettingsForm.isVaccineCardApiActive ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-600"
+                            )}
+                          >
+                            {premiumSettingsForm.isVaccineCardApiActive ? 'API Mode ON' : 'Manual Mode'}
+                          </button>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">পিএসসি সার্টিফিকেট</p>
+                            <p className="text-[10px] text-slate-500">Enable Drive Link Mode</p>
+                          </div>
+                          <button 
+                            onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isPscVectorApiActive: !prev.isPscVectorApiActive }))}
+                            className={cn(
+                              "w-full py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                              premiumSettingsForm.isPscVectorApiActive ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-600"
+                            )}
+                          >
+                            {premiumSettingsForm.isPscVectorApiActive ? 'API Mode ON' : 'Manual Mode'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Developer API Documentation */}
                     <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-4 mt-6">
                       <h4 className="font-bold text-white flex items-center gap-2">
@@ -2430,7 +2652,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             isAutoSignMaintenance: premiumSettingsForm.isAutoSignMaintenance,
                             isInfoVerifyMaintenance: premiumSettingsForm.isInfoVerifyMaintenance,
                             isServerCopyMaintenance: premiumSettingsForm.isServerCopyMaintenance,
-                            isAutoNidMaintenance: premiumSettingsForm.isAutoNidMaintenance
+                            isAutoNidMaintenance: premiumSettingsForm.isAutoNidMaintenance,
+                            isApiResellingActive: premiumSettingsForm.isApiResellingActive,
+                            providerApiUrl: premiumSettingsForm.providerApiUrl,
+                            providerApiKey: premiumSettingsForm.providerApiKey,
+                            markupType: premiumSettingsForm.markupType,
+                            markupValue: premiumSettingsForm.markupValue,
+                            isSmartCardApiActive: premiumSettingsForm.isSmartCardApiActive,
+                            isNicknameApiActive: premiumSettingsForm.isNicknameApiActive,
+                            isVaccineCardApiActive: premiumSettingsForm.isVaccineCardApiActive,
+                            isPscVectorApiActive: premiumSettingsForm.isPscVectorApiActive,
+                            isAutoSignTokenBased: premiumSettingsForm.isAutoSignTokenBased,
+                            autoSignTokenUrl: premiumSettingsForm.autoSignTokenUrl,
+                            isInfoVerifyTokenBased: premiumSettingsForm.isInfoVerifyTokenBased,
+                            infoVerifyTokenUrl: premiumSettingsForm.infoVerifyTokenUrl,
+                            isServerCopyTokenBased: premiumSettingsForm.isServerCopyTokenBased,
+                            serverCopyTokenUrl: premiumSettingsForm.serverCopyTokenUrl,
+                            isAutoNidTokenBased: premiumSettingsForm.isAutoNidTokenBased,
+                            autoNidTokenUrl: premiumSettingsForm.autoNidTokenUrl
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);
@@ -3046,6 +3285,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     displayOrder: 0,
     isActive: true,
     requiresFileUpload: false,
+    isDriveLinkMode: false,
+    autoDeliveryLink: '',
     color: 'bg-indigo-500',
     iconName: 'LayoutGrid',
     defaultData: '',
@@ -3075,6 +3316,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
         displayOrder: 0,
         isActive: true,
         requiresFileUpload: false,
+        isDriveLinkMode: false,
+        autoDeliveryLink: '',
         color: 'bg-indigo-500',
         iconName: 'LayoutGrid',
         defaultData: '',
@@ -3304,6 +3547,20 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     ))}
                   </div>
                 </div>
+
+                <div className="space-y-2 pt-4">
+                  <label className="text-sm font-bold text-slate-700">Auto Delivery Link (Optional)</label>
+                  <input 
+                    type="url"
+                    value={formData.autoDeliveryLink || ''}
+                    onChange={(e) => setFormData({ ...formData, autoDeliveryLink: e.target.value })}
+                    className="w-full px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-indigo-900"
+                    placeholder="https://drive.google.com/... (Instant Delivery)"
+                  />
+                  <p className="text-[10px] text-indigo-500 italic">
+                    * If provided, the user will receive this link immediately after ordering.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -3367,6 +3624,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                   <div className={cn(
                     "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
                     formData.requiresFileUpload ? "right-1" : "left-1"
+                  )} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+                <div>
+                  <p className="text-sm font-bold text-indigo-900">Google Drive Link Mode</p>
+                  <p className="text-xs text-indigo-600">On: User must provide Drive Link. Off: Manual Order.</p>
+                </div>
+                <button 
+                  onClick={() => setFormData({ ...formData, isDriveLinkMode: !formData.isDriveLinkMode })}
+                  className={cn(
+                    "w-12 h-6 rounded-full transition-all relative",
+                    formData.isDriveLinkMode ? "bg-indigo-600" : "bg-slate-300"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                    formData.isDriveLinkMode ? "right-1" : "left-1"
                   )} />
                 </button>
               </div>

@@ -17,6 +17,7 @@ import {
   Plus,
   X,
   CheckCircle,
+  Copy,
   Download,
   Settings,
   LogIn,
@@ -92,6 +93,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [orderData, setOrderData] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successLink, setSuccessLink] = useState<string | null>(null);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [rechargeStep, setRechargeStep] = useState<1 | 2 | 3>(1);
   const [rechargeMethod, setRechargeMethod] = useState<{id: string, name: string, color: string, logo: string, number?: string} | null>(null);
@@ -429,7 +431,7 @@ Mobile-
         userEmail: userProfile.email,
         serviceId: selectedProduct.id,
         serviceTitle: selectedProduct.titleBn + (selectedOption ? ` (${selectedOption.name})` : ''),
-        status: 'pending',
+        status: selectedProduct.autoDeliveryLink ? 'completed' : 'pending',
         data: orderData,
         fileURL: orderFile,
         price: currentPrice,
@@ -437,6 +439,71 @@ Mobile-
       };
 
       await addDoc(collection(db, 'orders'), newOrder);
+      
+      // Handle Auto API Services
+      if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
+        try {
+          const response = await axios.post('/api/service/auto-sign', {
+            nid: orderData,
+            apiKey: globalSettings.autoSignApiKey,
+            isTokenBased: globalSettings.isAutoSignTokenBased,
+            tokenUrl: globalSettings.autoSignTokenUrl
+          });
+          if (response.data.success) {
+            setSuccessLink(response.data.data.pdfUrl);
+          }
+        } catch (e) { console.error("Auto Sign API failed", e); }
+      } else if (selectedProduct.id === 102 && globalSettings?.isInfoVerifyApiActive) {
+        try {
+          const response = await axios.post('/api/service/info-verify', {
+            category: selectedOption?.name || 'NID',
+            number: orderData,
+            apiKey: globalSettings.infoVerifyApiKey,
+            isTokenBased: globalSettings.isInfoVerifyTokenBased,
+            tokenUrl: globalSettings.infoVerifyTokenUrl
+          });
+          if (response.data.success) {
+            // For info verify, we might want to show the details in a specific way
+            setSuccessLink("Verification Successful: " + JSON.stringify(response.data.data.details));
+          }
+        } catch (e) { console.error("Info Verify API failed", e); }
+      } else if (selectedProduct.id === 103 && globalSettings?.isServerCopyApiActive) {
+        try {
+          const lines = orderData.split('\n');
+          const nid = lines[0]?.split(':')[1]?.trim() || lines[0]?.trim();
+          const dob = lines[1]?.split(':')[1]?.trim() || lines[1]?.trim();
+          const response = await axios.post('/api/service/server-copy', {
+            nid,
+            dob,
+            apiKey: globalSettings.serverCopyApiKey,
+            isTokenBased: globalSettings.isServerCopyTokenBased,
+            tokenUrl: globalSettings.serverCopyTokenUrl
+          });
+          if (response.data.success) {
+            setSuccessLink(response.data.data.documentUrl);
+          }
+        } catch (e) { console.error("Server Copy API failed", e); }
+      } else if (selectedProduct.id === 104 && globalSettings?.isAutoNidApiActive) {
+        try {
+          const lines = orderData.split('\n');
+          const nid = lines[0]?.split(':')[1]?.trim() || lines[0]?.trim();
+          const dob = lines[1]?.split(':')[1]?.trim() || lines[1]?.trim();
+          const response = await axios.post('/api/service/auto-nid', {
+            nid,
+            dob,
+            apiKey: globalSettings.autoNidApiKey,
+            isTokenBased: globalSettings.isAutoNidTokenBased,
+            tokenUrl: globalSettings.autoNidTokenUrl
+          });
+          if (response.data.success) {
+            setSuccessLink(response.data.data.pdfUrl);
+          }
+        } catch (e) { console.error("Auto NID API failed", e); }
+      }
+
+      if (selectedProduct.autoDeliveryLink) {
+        setSuccessLink(selectedProduct.autoDeliveryLink);
+      }
       
       // API Reselling Forwarding
       if (globalSettings?.isApiResellingActive && globalSettings?.providerApiUrl && globalSettings?.providerApiKey) {
@@ -1682,41 +1749,48 @@ Mobile-
 
       {/* Order Modal */}
       <AnimatePresence>
-        {selectedProduct && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedProduct(null)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-4xl bg-[#1e293b] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", selectedProduct.color || 'bg-indigo-600')}>
-                    {(() => {
-                      const Icon = getIcon(selectedProduct);
-                      return <Icon className="w-6 h-6 text-white" />;
-                    })()}
+        {selectedProduct && (() => {
+          const isDriveLinkMode = selectedProduct.isDriveLinkMode || 
+            (selectedProduct.id === 13 && globalSettings?.isSmartCardApiActive) ||
+            (selectedProduct.id === 19 && globalSettings?.isNicknameApiActive) ||
+            (selectedProduct.id === 21 && globalSettings?.isVaccineCardApiActive) ||
+            (selectedProduct.id === 20 && globalSettings?.isPscVectorApiActive);
+
+          return (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedProduct(null)}
+                className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="relative w-full max-w-4xl bg-[#1e293b] rounded-3xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-800/50">
+                  <div className="flex items-center gap-3">
+                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", selectedProduct.color || 'bg-indigo-600')}>
+                      {(() => {
+                        const Icon = getIcon(selectedProduct);
+                        return <Icon className="w-6 h-6 text-white" />;
+                      })()}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">{selectedProduct.titleBn}</h2>
+                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{selectedProduct.titleEn}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">{selectedProduct.titleBn}</h2>
-                    <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{selectedProduct.titleEn}</p>
-                  </div>
+                  <button 
+                    onClick={() => setSelectedProduct(null)}
+                    className="p-2 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
+                  >
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setSelectedProduct(null)}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
-                >
-                  <X className="w-5 h-5 text-slate-400" />
-                </button>
-              </div>
 
               <div className="p-0 flex-1 overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-1 lg:grid-cols-2">
@@ -1824,14 +1898,29 @@ Mobile-
                     <div className="space-y-4">
                       <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
                         <Edit3 className="w-4 h-4" />
-                        Order Details / Data <span className="text-red-500">*</span>
+                        {isDriveLinkMode ? "Google Drive Link (গুগল ড্রাইভ লিংক)" : "Order Details / Data"} <span className="text-red-500">*</span>
                       </label>
-                      <textarea 
-                        value={orderData || ''}
-                        onChange={(e) => setOrderData(e.target.value)}
-                        placeholder={selectedProduct.defaultData ? "Fill in the template below..." : "Enter the required information for this service..."}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[200px] resize-none font-medium"
-                      />
+                      {isDriveLinkMode ? (
+                        <div className="space-y-2">
+                          <input 
+                            type="url"
+                            value={orderData || ''}
+                            onChange={(e) => setOrderData(e.target.value)}
+                            placeholder="https://drive.google.com/..."
+                            className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
+                          />
+                          <p className="text-[10px] text-indigo-400 italic">
+                            * এপিআই মোড চালু আছে। দয়া করে আপনার ফাইলের গুগল ড্রাইভ লিংকটি এখানে দিন।
+                          </p>
+                        </div>
+                      ) : (
+                        <textarea 
+                          value={orderData || ''}
+                          onChange={(e) => setOrderData(e.target.value)}
+                          placeholder={selectedProduct.defaultData ? "Fill in the template below..." : "Enter the required information for this service..."}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[200px] resize-none font-medium"
+                        />
+                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -1921,7 +2010,8 @@ Mobile-
               </div>
             </motion.div>
           </div>
-        )}
+        );
+      })()}
       </AnimatePresence>
 
       {/* Mobile Bottom Navigation */}
@@ -1992,26 +2082,56 @@ Mobile-
       {/* Success Notification */}
       <AnimatePresence>
         {showSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.9 }}
-            className="fixed bottom-8 right-8 z-[100] bg-white border border-slate-200 rounded-2xl shadow-2xl p-4 flex items-center gap-4 min-w-[320px]"
-          >
-            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
-              <CheckCircle className="w-6 h-6 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <p className="font-bold text-slate-900">Order Placed!</p>
-              <p className="text-sm text-slate-500">Your request is being processed.</p>
-            </div>
-            <button 
-              onClick={() => setShowSuccess(false)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors shrink-0"
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white border border-slate-200 rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center"
             >
-              <X className="w-4 h-4 text-slate-400" />
-            </button>
-          </motion.div>
+              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-10 h-10 text-emerald-600" />
+              </div>
+              <h2 className="text-2xl font-black text-slate-900 mb-2">Order Success!</h2>
+              <p className="text-slate-500 mb-8">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
+              
+              {successLink && (
+                <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                  <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Your Download Link</p>
+                  <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={successLink}
+                      className="bg-transparent text-xs text-slate-600 outline-none flex-1 truncate"
+                    />
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(successLink);
+                        alert('Link copied to clipboard!');
+                      }}
+                      className="p-2 hover:bg-slate-50 rounded-lg transition-all text-indigo-600"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button 
+                onClick={() => {
+                  setShowSuccess(false);
+                  setSuccessLink(null);
+                  setSelectedProduct(null);
+                  setOrderData('');
+                  setOrderFile(null);
+                }}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
+              >
+                Close
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
