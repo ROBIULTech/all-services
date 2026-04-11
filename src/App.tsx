@@ -584,7 +584,11 @@ export default function App() {
       const productRef = doc(db, 'products', id.toString());
       // Filter out non-serializable fields like 'icon' (React component)
       const { icon, ...serializableUpdates } = updates;
-      await setDoc(productRef, serializableUpdates, { merge: true });
+      
+      // Deeply remove undefined values which Firestore rejects
+      const cleanUpdates = JSON.parse(JSON.stringify(serializableUpdates));
+
+      await updateDoc(productRef, cleanUpdates);
       setShowSuccess(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
@@ -601,8 +605,10 @@ export default function App() {
       // Filter out non-serializable fields like 'icon'
       const { icon, ...serializableProduct } = productData as any;
       
+      const cleanProduct = JSON.parse(JSON.stringify(serializableProduct));
+      
       await setDoc(productRef, {
-        ...serializableProduct,
+        ...cleanProduct,
         id: newId,
         isActive: true,
         createdAt: serverTimestamp()
