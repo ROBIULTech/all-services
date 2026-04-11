@@ -56,6 +56,7 @@ export interface Product {
   options?: {
     name: string;
     price: number;
+    autoDeliveryLink?: string;
   }[];
   defaultData?: string;
   markupType?: 'flat' | 'percentage';

@@ -460,19 +460,21 @@ Mobile-
 
     setIsPlacingOrder(true);
     try {
+      const hasAutoDelivery = selectedOption?.autoDeliveryLink || selectedProduct.autoDeliveryLink;
       const newOrder = {
         uid: userProfile.uid,
         userEmail: userProfile.email,
         serviceId: selectedProduct.id,
         serviceTitle: selectedProduct.titleBn + (selectedOption ? ` (${selectedOption.name})` : ''),
-        status: selectedProduct.autoDeliveryLink ? 'completed' : 'pending',
+        status: hasAutoDelivery ? 'completed' : 'pending',
         data: orderData,
         fileURL: orderFile,
         price: currentPrice,
         createdAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'orders'), newOrder);
+      const docRef = await addDoc(collection(db, 'orders'), newOrder);
+      const orderId = docRef.id;
       
       // Send Notifications to Admin
       sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
@@ -485,7 +487,8 @@ Mobile-
             tokenUrl: globalSettings.autoSignTokenUrl
           });
           if (response.data.success) {
-            setSuccessLink(response.data.data.pdfUrl);
+            const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(response.data.data.pdfUrl)}`;
+            setSuccessLink(secureUrl);
           }
         } catch (e) { console.error("Auto Sign API failed", e); }
       } else if (selectedProduct.id === 102 && globalSettings?.isInfoVerifyApiActive) {
@@ -515,7 +518,8 @@ Mobile-
             tokenUrl: globalSettings.serverCopyTokenUrl
           });
           if (response.data.success) {
-            setSuccessLink(response.data.data.documentUrl);
+            const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(response.data.data.documentUrl)}`;
+            setSuccessLink(secureUrl);
           }
         } catch (e) { console.error("Server Copy API failed", e); }
       } else if (selectedProduct.id === 104 && globalSettings?.isAutoNidApiActive) {
@@ -531,13 +535,19 @@ Mobile-
             tokenUrl: globalSettings.autoNidTokenUrl
           });
           if (response.data.success) {
-            setSuccessLink(response.data.data.pdfUrl);
+            const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(response.data.data.pdfUrl)}`;
+            setSuccessLink(secureUrl);
           }
         } catch (e) { console.error("Auto NID API failed", e); }
       }
 
-      if (selectedProduct.autoDeliveryLink) {
-        setSuccessLink(selectedProduct.autoDeliveryLink);
+      if (selectedOption?.autoDeliveryLink) {
+        // Create secure link that expires in 5 minutes
+        const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedOption.autoDeliveryLink)}`;
+        setSuccessLink(secureUrl);
+      } else if (selectedProduct.autoDeliveryLink) {
+        const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedProduct.autoDeliveryLink)}`;
+        setSuccessLink(secureUrl);
       }
       
       // API Reselling Forwarding
@@ -2133,7 +2143,8 @@ Mobile-
               
               {successLink && (
                 <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                  <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-3">Your Download Link</p>
+                  <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">আপনার ড্রাইভ লিংক</p>
+                  <p className="text-[11px] text-indigo-500 mb-3">দয়া করে নিচের লিংকটি কপি করে নিন</p>
                   <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
                     <input 
                       type="text" 
@@ -2144,11 +2155,12 @@ Mobile-
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(successLink);
-                        alert('Link copied to clipboard!');
+                        alert('লিংক কপি করা হয়েছে! (Link copied!)');
                       }}
-                      className="p-2 hover:bg-slate-50 rounded-lg transition-all text-indigo-600"
+                      className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all text-indigo-600 flex items-center gap-1"
                     >
                       <Copy className="w-4 h-4" />
+                      <span className="text-xs font-bold">Copy</span>
                     </button>
                   </div>
                 </div>

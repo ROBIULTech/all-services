@@ -3527,7 +3527,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     });
   };
 
-  const updateOption = (index: number, field: 'name' | 'price', value: string | number) => {
+  const updateOption = (index: number, field: 'name' | 'price' | 'autoDeliveryLink', value: string | number) => {
     const currentOptions = formData.options || [];
     const newOptions = [...currentOptions];
     newOptions[index] = { ...newOptions[index], [field]: value };
@@ -3732,20 +3732,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     ))}
                   </div>
                 </div>
-
-                <div className="space-y-2 pt-4">
-                  <label className="text-sm font-bold text-slate-700">Auto Delivery Link (Optional)</label>
-                  <input 
-                    type="url"
-                    value={formData.autoDeliveryLink || ''}
-                    onChange={(e) => setFormData({ ...formData, autoDeliveryLink: e.target.value })}
-                    className="w-full px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-indigo-900"
-                    placeholder="https://drive.google.com/... (Instant Delivery)"
-                  />
-                  <p className="text-[10px] text-indigo-500 italic">
-                    * If provided, the user will receive this link immediately after ordering.
-                  </p>
-                </div>
               </div>
             </div>
 
@@ -3861,6 +3847,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                           placeholder="Price"
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                         />
+                        <input 
+                          type="url"
+                          value={option.autoDeliveryLink || ''}
+                          onChange={(e) => updateOption(index, 'autoDeliveryLink', e.target.value)}
+                          placeholder="Auto Delivery Link (Optional)"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        />
                       </div>
                       <button 
                         onClick={() => removeOption(index)}
@@ -3876,6 +3869,20 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="space-y-2 pt-4">
+                <label className="text-sm font-bold text-slate-700">Auto Delivery Link (Optional)</label>
+                <input 
+                  type="url"
+                  value={formData.autoDeliveryLink || ''}
+                  onChange={(e) => setFormData({ ...formData, autoDeliveryLink: e.target.value })}
+                  className="w-full px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium text-indigo-900"
+                  placeholder="https://drive.google.com/... (Instant Delivery)"
+                />
+                <p className="text-[10px] text-indigo-500 italic">
+                  * If provided, the user will receive this link immediately after ordering.
+                </p>
               </div>
             </div>
 

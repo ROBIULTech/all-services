@@ -99,6 +99,49 @@ async function startServer() {
     }
   });
 
+  // Secure Link Redirect API (5 minutes expiry)
+  app.get("/api/secure-link/:orderId", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+
+      if (!orderSnap.exists()) {
+        return res.status(404).send("Order not found");
+      }
+
+      const orderData = orderSnap.data();
+      const createdAt = orderData.createdAt?.toMillis() || 0;
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      // Check if 5 minutes have passed since order creation
+      if (now - createdAt > fiveMinutes) {
+        return res.status(403).send(`
+          <html>
+            <head><title>Link Expired</title></head>
+            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #f8fafc;">
+              <h1 style="color: #ef4444;">Link Expired</h1>
+              <p style="color: #64748b;">This download link has expired. It was only valid for 5 minutes after purchase.</p>
+            </body>
+          </html>
+        `);
+      }
+
+      // Find the link to redirect to
+      // It could be in the order data directly if we saved it there, or we can just redirect to the URL passed in query
+      const targetUrl = req.query.url as string;
+      if (!targetUrl) {
+        return res.status(400).send("Target URL missing");
+      }
+
+      res.redirect(targetUrl);
+    } catch (error) {
+      console.error("Secure link error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
   // Auto NID API
   app.post("/api/service/auto-nid", async (req, res) => {
     const { nid, dob, apiKey, isTokenBased, tokenUrl } = req.body;
