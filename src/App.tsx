@@ -260,6 +260,9 @@ Received নাম্বার:
   { id: 25, titleBn: 'টিন সাটিফিকেট সংশোধন', titleEn: 'TIN Certificate Correction', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 150, isActive: true, defaultData: `টিন নম্বর:
 সংশোধন এর বিবরণ:` },
   { id: 26, titleBn: 'ট্যাক্স রিটার্ন', titleEn: 'Tax Return', category: 'Tax', icon: Landmark, color: 'bg-emerald-600', price: 500, isActive: true, requiresFileUpload: true, instructions: 'দয়া করে আপনার ট্যাক্স ফাইলটি আপলোড করুন।' },
+  { id: 27, titleBn: 'টিন সার্টিফিকেট বাতিল', titleEn: 'TIN Certificate Cancellation', category: 'Tax', icon: XCircle, color: 'bg-red-500', price: 250, isActive: true, defaultData: `টিন নম্বর:
+এনআইডি নম্বর:
+বাতিল করার কারণ:` },
   { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'এনআইডি নম্বর:' },
   { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'নম্বর:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
