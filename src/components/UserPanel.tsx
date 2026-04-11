@@ -53,7 +53,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
-import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc } from '../firebase';
+import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc } from '../firebase';
 import axios from 'axios';
 
 import { Logo } from './Logo';
@@ -476,6 +476,12 @@ Mobile-
       const docRef = await addDoc(collection(db, 'orders'), newOrder);
       const orderId = docRef.id;
       
+      // Deduct balance from user
+      const userRef = doc(db, 'users', userProfile.uid);
+      await updateDoc(userRef, {
+        balance: userProfile.balance - currentPrice
+      });
+      
       // Send Notifications to Admin only if it's a manual order
       console.log("Checking for admin notification. hasAutoDelivery:", hasAutoDelivery);
       if (!hasAutoDelivery) {
@@ -555,6 +561,11 @@ Mobile-
       } else if (selectedProduct.autoDeliveryLink) {
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedProduct.autoDeliveryLink)}`;
         setSuccessLink(secureUrl);
+      } else if (selectedProduct.isDriveLinkMode && orderData) {
+        // If it's Drive Link Mode, show the user's provided link directly
+        setSuccessLink(orderData);
+      } else {
+        setSuccessLink(null);
       }
       
       // API Reselling Forwarding
@@ -574,12 +585,6 @@ Mobile-
           console.error('Failed to forward order to provider:', apiError);
         }
       }
-
-      // Deduct balance
-      const userRef = doc(db, 'users', userProfile.uid);
-      await setDoc(userRef, {
-        balance: Number(userProfile.balance) - Number(currentPrice)
-      }, { merge: true });
       
       setSelectedProduct(null);
       setOrderData('');
@@ -2158,13 +2163,15 @@ Mobile-
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(successLink);
+                        // Automatically open the link in a new tab for download
+                        window.open(successLink, '_blank');
                         setShowSuccess(false);
                         setSuccessLink('');
                       }}
                       className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all text-indigo-600 flex items-center gap-1"
                     >
                       <Copy className="w-4 h-4" />
-                      <span className="text-xs font-bold">Copy</span>
+                      <span className="text-xs font-bold">Copy & Open</span>
                     </button>
                   </div>
                 </div>
