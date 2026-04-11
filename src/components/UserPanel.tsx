@@ -184,7 +184,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
     try {
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, { 
-        balance: userProfile.balance - fee,
+        balance: Number(userProfile.balance) - Number(fee),
         isPremium: true
       }, { merge: true });
       
@@ -435,7 +435,7 @@ Mobile-
 
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
-        balance: userProfile.balance - price
+        balance: Number(userProfile.balance) - Number(price)
       }, { merge: true });
       
       setShowSuccess(true);
@@ -565,7 +565,7 @@ Mobile-
       // Deduct balance
       const userRef = doc(db, 'users', userProfile.uid);
       await setDoc(userRef, {
-        balance: userProfile.balance - currentPrice
+        balance: Number(userProfile.balance) - Number(currentPrice)
       }, { merge: true });
       
       setSelectedProduct(null);
