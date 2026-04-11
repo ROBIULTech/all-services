@@ -241,18 +241,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               >
                 {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
               </button>
-              
-              <button
-                onClick={() => {
-                  window.history.pushState({}, '', '/secure-node-portal-v1x9k');
-                  setIsAdminRoute(true);
-                  setIsLogin(true);
-                  setError('');
-                }}
-                className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors uppercase tracking-widest font-bold"
-              >
-                Admin Access
-              </button>
             </div>
           )}
         </div>

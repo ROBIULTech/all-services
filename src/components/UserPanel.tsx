@@ -477,8 +477,12 @@ Mobile-
       const orderId = docRef.id;
       
       // Send Notifications to Admin only if it's a manual order
+      console.log("Checking for admin notification. hasAutoDelivery:", hasAutoDelivery);
       if (!hasAutoDelivery) {
+        console.log("Sending admin notification for manual order.");
         sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+      } else {
+        console.log("Skipping admin notification for auto-delivered order.");
       }
 
       if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
@@ -2154,7 +2158,8 @@ Mobile-
                     <button 
                       onClick={() => {
                         navigator.clipboard.writeText(successLink);
-                        alert('লিংক কপি করা হয়েছে! (Link copied!)');
+                        setShowSuccess(false);
+                        setSuccessLink('');
                       }}
                       className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all text-indigo-600 flex items-center gap-1"
                     >
