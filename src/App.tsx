@@ -660,13 +660,17 @@ export default function App() {
       
       // Handle balance refund/deduction based on status change
       if (status === 'rejected' && orderData.status !== 'rejected') {
-        // Refund the user
+        // Refund the user (minus 5 Taka penalty for service orders)
         const userRef = doc(db, 'users', orderData.uid);
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const userData = userSnap.data() as UserProfile;
+          let refundAmount = 0;
+          if (orderData.price && orderData.price > 0) {
+            refundAmount = Math.max(0, orderData.price - 5);
+          }
           await updateDoc(userRef, {
-            balance: (userData.balance || 0) + (orderData.price || 0)
+            balance: (userData.balance || 0) + refundAmount
           });
         }
       } else if (status !== 'rejected' && orderData.status === 'rejected') {
@@ -675,8 +679,12 @@ export default function App() {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists()) {
           const userData = userSnap.data() as UserProfile;
+          let deductedAmount = 0;
+          if (orderData.price && orderData.price > 0) {
+            deductedAmount = Math.max(0, orderData.price - 5);
+          }
           await updateDoc(userRef, {
-            balance: (userData.balance || 0) - (orderData.price || 0)
+            balance: (userData.balance || 0) - deductedAmount
           });
         }
       }
