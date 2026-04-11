@@ -698,7 +698,13 @@ Mobile-
             {isSidebarOpen && <span>Services</span>}
           </button>
           <button 
-            onClick={() => setActiveTab('history')}
+            onClick={() => {
+              if (userProfile?.role !== 'admin') {
+                alert('এডমিন লক আনলক করতে হলে আবার অর্ডার করুন');
+                return;
+              }
+              setActiveTab('history');
+            }}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
               activeTab === 'history' ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
