@@ -68,8 +68,8 @@ async function startServer() {
     const API_TOKEN = token || process.env.SMS_GATEWAY_TOKEN;
     const ADMIN_PHONE = adminPhone || process.env.ADMIN_PHONE_NUMBER || "01811152997";
 
-    if (!API_TOKEN) {
-      console.warn("SMS Gateway Token not provided. SMS notification skipped.");
+    if (!API_TOKEN || API_TOKEN === 'YOUR_SMS_GATEWAY_TOKEN' || API_TOKEN === '5000') {
+      console.log("SMS Gateway Token not provided or is default. SMS notification skipped.");
       return res.status(200).json({ success: false, message: "SMS Gateway not configured" });
     }
 
@@ -84,17 +84,17 @@ async function startServer() {
         }
       });
 
-      console.log("SMS Gateway Response:", response.data);
-      
       // GreenWeb returns plain text starting with "Error:" on failure
       if (typeof response.data === 'string' && response.data.startsWith('Error')) {
-        console.warn("SMS Gateway Warning:", response.data);
+        // Just log it as a debug message rather than an error to avoid cluttering logs
+        console.log(`[SMS Gateway] Could not send SMS: ${response.data.trim()}`);
         return res.status(200).json({ success: false, error: response.data });
       }
 
+      console.log("[SMS Gateway] SMS sent successfully");
       res.json({ success: true, data: response.data });
     } catch (error: any) {
-      console.error("Error sending SMS:", error.message || error);
+      console.log(`[SMS Gateway] Failed to send SMS: ${error.message || 'Unknown error'}`);
       res.status(200).json({ success: false, error: "Failed to send SMS" });
     }
   });

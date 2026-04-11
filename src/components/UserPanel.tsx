@@ -89,7 +89,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [selectedOption, setSelectedOption] = useState<{name: string, price: number} | null>(null);
+  const [selectedOption, setSelectedOption] = useState<{name: string, price: number, autoDeliveryLink?: string} | null>(null);
   const [orderData, setOrderData] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -198,11 +198,11 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   };
 
   useEffect(() => {
-    if (showSuccess) {
+    if (showSuccess && !successLink) {
       const timer = setTimeout(() => setShowSuccess(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [showSuccess]);
+  }, [showSuccess, successLink]);
 
   useEffect(() => {
     if (selectedProduct && selectedProduct.options && selectedProduct.options.length > 0) {
@@ -476,8 +476,11 @@ Mobile-
       const docRef = await addDoc(collection(db, 'orders'), newOrder);
       const orderId = docRef.id;
       
-      // Send Notifications to Admin
-      sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+      // Send Notifications to Admin only if it's a manual order
+      if (!hasAutoDelivery) {
+        sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+      }
+
       if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
         try {
           const response = await axios.post('/api/service/auto-sign', {
@@ -567,10 +570,6 @@ Mobile-
           console.error('Failed to forward order to provider:', apiError);
         }
       }
-
-      // Send SMS to admin
-      // Send Notifications to Admin
-      sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
 
       // Deduct balance
       const userRef = doc(db, 'users', userProfile.uid);
