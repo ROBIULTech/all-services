@@ -283,7 +283,9 @@ export default function App() {
     bkashNumber: '01811152997',
     nagadNumber: '',
     rocketNumber: '',
-    whatsappGroupLink: ''
+    whatsappGroupLink: '',
+    isTelegramNotifyActive: false,
+    isWhatsappNotifyActive: false
   });
 
   const updateGlobalSettings = async (updates: Partial<GlobalSettings>) => {
@@ -314,6 +316,7 @@ export default function App() {
       if (docSnap.exists()) {
         const data = docSnap.data() as GlobalSettings;
         setGlobalSettings({
+          ...data,
           premiumUnlockFee: data.premiumUnlockFee || 500,
           isPremiumFeatureActive: data.isPremiumFeatureActive ?? true,
           isServiceManagementActive: data.isServiceManagementActive ?? true,
@@ -331,7 +334,9 @@ export default function App() {
           bkashNumber: '01811152997',
           nagadNumber: '',
           rocketNumber: '',
-          whatsappGroupLink: ''
+          whatsappGroupLink: '',
+          isTelegramNotifyActive: false,
+          isWhatsappNotifyActive: false
         };
         await setDoc(settingsRef, initialSettings);
         setGlobalSettings(initialSettings);
