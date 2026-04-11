@@ -450,17 +450,6 @@ export default function App() {
               needsUpdate = true;
             }
 
-            // If options changed (new options added), we should sync them
-            const hasNewOptions = p.options && (!found.options || p.options.some(opt => !found.options.some((fo: any) => fo.name === opt.name)));
-            if (hasNewOptions) {
-              const mergedOptions = p.options!.map(opt => {
-                const existing = found.options?.find((fo: any) => fo.name === opt.name);
-                return existing ? existing : opt;
-              });
-              updatedProduct.options = mergedOptions;
-              needsUpdate = true;
-            }
-
           // Sync defaultData if it's in initialProducts but missing or different in Firestore
           if (p.defaultData && found.defaultData !== p.defaultData) {
             updatedProduct.defaultData = p.defaultData;
@@ -501,21 +490,8 @@ export default function App() {
         const mergedProducts: Product[] = firestoreProducts.map(fp => {
           const ip = initialProductsMap.get(fp.id);
           if (ip) {
-            let finalOptions = fp.options || [];
-            if (ip.options) {
-              // Start with Firestore options
-              const mergedOpts = [...(fp.options || [])];
-              
-              // Add any initial options that are missing in Firestore
-              ip.options.forEach(ipOpt => {
-                const exists = mergedOpts.find((o: any) => o.name === ipOpt.name);
-                if (!exists) {
-                  mergedOpts.push(ipOpt);
-                }
-              });
-              finalOptions = mergedOpts;
-            }
-            return { ...fp, icon: ip.icon, color: ip.color, options: finalOptions };
+            // Use Firestore options directly, do not merge back deleted initial options
+            return { ...fp, icon: ip.icon, color: ip.color };
           }
           // For new products added via Admin Panel, provide default icon/color if missing
           return { 
@@ -581,16 +557,19 @@ export default function App() {
 
   const updateProduct = async (id: number, updates: Partial<Product>) => {
     try {
+      console.log("updateProduct called with id:", id, "updates:", updates);
       const productRef = doc(db, 'products', id.toString());
       // Filter out non-serializable fields like 'icon' (React component)
       const { icon, ...serializableUpdates } = updates;
       
       // Deeply remove undefined values which Firestore rejects
       const cleanUpdates = JSON.parse(JSON.stringify(serializableUpdates));
+      console.log("cleanUpdates to save:", cleanUpdates);
 
       await updateDoc(productRef, cleanUpdates);
       setShowSuccess(true);
     } catch (error) {
+      console.error("updateProduct error:", error);
       handleFirestoreError(error, OperationType.UPDATE, `products/${id}`);
     }
   };
