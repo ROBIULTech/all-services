@@ -71,6 +71,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           photoURL: profileData.photoURL
         };
         
+        localStorage.setItem('demo_session', JSON.stringify({ user: mockUser, profile: profileData }));
         onLogin(mockUser, profileData);
       } else {
         // Simulated Sign Up: Create a new user profile in Firestore
