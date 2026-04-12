@@ -556,7 +556,9 @@ Mobile-
 
       // Check if it's Drive Link Mode first to bypass secure link generation
       if (selectedProduct.isDriveLinkMode) {
-        setSuccessLink(orderData);
+        // Extract the link if orderData contains it
+        const driveLink = orderData.split(' ').find(part => part.startsWith('http')) || orderData.trim();
+        setSuccessLink(driveLink);
       } else if (selectedOption?.autoDeliveryLink) {
         // Create secure link that expires in 5 minutes
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedOption.autoDeliveryLink)}`;
@@ -585,6 +587,12 @@ Mobile-
           console.error('Failed to forward order to provider:', apiError);
         }
       }
+
+      // Deduct balance
+      const userRefDeduction = doc(db, 'users', userProfile.uid);
+      await updateDoc(userRefDeduction, {
+        balance: Number(userProfile.balance) - Number(currentPrice)
+      });
       
       setSelectedProduct(null);
       setOrderData('');
