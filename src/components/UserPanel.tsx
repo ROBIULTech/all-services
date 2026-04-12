@@ -482,14 +482,9 @@ Mobile-
         balance: userProfile.balance - currentPrice
       });
       
-      // Send Notifications to Admin only if it's a manual order
-      console.log("Checking for admin notification. hasAutoDelivery:", hasAutoDelivery);
-      if (!hasAutoDelivery) {
-        console.log("Sending admin notification for manual order.");
-        sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
-      } else {
-        console.log("Skipping admin notification for auto-delivered order.");
-      }
+      // Send Notifications to Admin for all orders
+      console.log("Sending admin notification for order.");
+      sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
 
       if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
         try {
@@ -555,11 +550,7 @@ Mobile-
       }
 
       // Check if it's Drive Link Mode first to bypass secure link generation
-      if (selectedProduct.isDriveLinkMode) {
-        // Extract the link if orderData contains it
-        const driveLink = orderData.split(' ').find(part => part.startsWith('http')) || orderData.trim();
-        setSuccessLink(driveLink);
-      } else if (selectedOption?.autoDeliveryLink) {
+      if (selectedOption?.autoDeliveryLink) {
         // Create secure link that expires in 5 minutes
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedOption.autoDeliveryLink)}`;
         setSuccessLink(secureUrl);
