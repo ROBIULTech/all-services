@@ -1133,6 +1133,9 @@ Mobile-
                                     if (order.resultFile?.startsWith('data:image/jpeg')) ext = 'jpg';
                                     else if (order.resultFile?.startsWith('data:image/png')) ext = 'png';
                                     else if (order.resultFile?.startsWith('data:image/webp')) ext = 'webp';
+                                    else if (order.resultFile?.startsWith('data:application/msword')) ext = 'doc';
+                                    else if (order.resultFile?.startsWith('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document')) ext = 'docx';
+                                    else if (order.resultFile?.startsWith('data:application/zip') || order.resultFile?.startsWith('data:application/x-zip-compressed')) ext = 'zip';
                                     
                                     link.download = `result-${order.id?.slice(-6)}.${ext}`;
                                     document.body.appendChild(link);
