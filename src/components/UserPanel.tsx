@@ -2002,6 +2002,16 @@ Mobile-
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                // Check file size (e.g., limit to 5MB)
+                                if (file.size > 5 * 1024 * 1024) {
+                                  alert('File is too large. Please upload a file smaller than 5MB.');
+                                  return;
+                                }
+                                // Check file type (e.g., allow images, PDFs, and ZIP files)
+                                if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
+                                  alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
+                                  return;
+                                }
                                 const reader = new FileReader();
                                 reader.onloadend = () => {
                                   setOrderFile(reader.result as string);
