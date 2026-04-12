@@ -473,6 +473,7 @@ Mobile-
       };
 
       const docRef = await addDoc(collection(db, 'orders'), newOrder);
+      const orderId = docRef.id;
       
       // Deduct balance from user
       const userRef = doc(db, 'users', userProfile.uid);
