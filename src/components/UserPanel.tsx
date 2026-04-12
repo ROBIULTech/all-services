@@ -460,13 +460,12 @@ Mobile-
 
     setIsPlacingOrder(true);
     try {
-      const hasAutoDelivery = selectedOption?.autoDeliveryLink || selectedProduct.autoDeliveryLink;
       const newOrder = {
         uid: userProfile.uid,
         userEmail: userProfile.email,
         serviceId: selectedProduct.id,
         serviceTitle: selectedProduct.titleBn + (selectedOption ? ` (${selectedOption.name})` : ''),
-        status: hasAutoDelivery ? 'completed' : 'pending',
+        status: 'pending',
         data: orderData,
         fileURL: orderFile,
         price: currentPrice,
@@ -474,7 +473,6 @@ Mobile-
       };
 
       const docRef = await addDoc(collection(db, 'orders'), newOrder);
-      const orderId = docRef.id;
       
       // Deduct balance from user
       const userRef = doc(db, 'users', userProfile.uid);
