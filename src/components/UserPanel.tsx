@@ -60,6 +60,7 @@ import { Logo } from './Logo';
 
 interface UserPanelProps {
   userProfile: UserProfile;
+  setUserProfile?: React.Dispatch<React.SetStateAction<UserProfile | null>>;
   products: Product[];
   globalSettings?: GlobalSettings;
   onOrderPlaced: (order: any) => void;
@@ -71,6 +72,7 @@ interface UserPanelProps {
 
 const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: () => void }> = ({ 
   userProfile, 
+  setUserProfile,
   products, 
   globalSettings,
   onOrderPlaced, 
@@ -187,6 +189,11 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
         balance: Number(userProfile.balance) - Number(fee),
         isPremium: true
       }, { merge: true });
+      
+      // Optimistic update
+      if (setUserProfile) {
+        setUserProfile(prev => prev ? { ...prev, balance: Number(prev.balance) - Number(fee), isPremium: true } : prev);
+      }
       
       alert('Premium Services Unlocked Successfully!');
     } catch (error) {
@@ -438,6 +445,11 @@ Mobile-
         balance: Number(userProfile.balance) - Number(price)
       }, { merge: true });
       
+      // Optimistic update
+      if (setUserProfile) {
+        setUserProfile(prev => prev ? { ...prev, balance: Number(prev.balance) - Number(price) } : prev);
+      }
+      
       setShowSuccess(true);
       onOrderPlaced(newOrder);
       return true;
@@ -478,8 +490,13 @@ Mobile-
       // Deduct balance from user
       const userRef = doc(db, 'users', userProfile.uid);
       await updateDoc(userRef, {
-        balance: userProfile.balance - currentPrice
+        balance: Number(userProfile.balance) - Number(currentPrice)
       });
+      
+      // Optimistic update
+      if (setUserProfile) {
+        setUserProfile(prev => prev ? { ...prev, balance: Number(prev.balance) - Number(currentPrice) } : prev);
+      }
       
       // Send Notifications to Admin for all orders
       console.log("Sending admin notification for order.");
@@ -577,12 +594,6 @@ Mobile-
           console.error('Failed to forward order to provider:', apiError);
         }
       }
-
-      // Deduct balance
-      const userRefDeduction = doc(db, 'users', userProfile.uid);
-      await updateDoc(userRefDeduction, {
-        balance: Number(userProfile.balance) - Number(currentPrice)
-      });
       
       setSelectedProduct(null);
       setOrderData('');
@@ -1135,6 +1146,8 @@ Mobile-
                                     else if (order.resultFile?.startsWith('data:image/webp')) ext = 'webp';
                                     else if (order.resultFile?.startsWith('data:application/msword')) ext = 'doc';
                                     else if (order.resultFile?.startsWith('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document')) ext = 'docx';
+                                    else if (order.resultFile?.startsWith('data:application/vnd.ms-excel')) ext = 'xls';
+                                    else if (order.resultFile?.startsWith('data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) ext = 'xlsx';
                                     else if (order.resultFile?.startsWith('data:application/zip') || order.resultFile?.startsWith('data:application/x-zip-compressed')) ext = 'zip';
                                     
                                     link.download = `result-${order.id?.slice(-6)}.${ext}`;

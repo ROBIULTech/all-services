@@ -879,6 +879,7 @@ export default function App() {
         )}
         <UserPanel 
           userProfile={userProfile!} 
+          setUserProfile={setUserProfile}
           products={products} 
           globalSettings={globalSettings}
           onOrderPlaced={(order) => {
