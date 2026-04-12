@@ -554,16 +554,16 @@ Mobile-
         } catch (e) { console.error("Auto NID API failed", e); }
       }
 
-      if (selectedOption?.autoDeliveryLink) {
+      // Check if it's Drive Link Mode first to bypass secure link generation
+      if (selectedProduct.isDriveLinkMode) {
+        setSuccessLink(orderData);
+      } else if (selectedOption?.autoDeliveryLink) {
         // Create secure link that expires in 5 minutes
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedOption.autoDeliveryLink)}`;
         setSuccessLink(secureUrl);
       } else if (selectedProduct.autoDeliveryLink) {
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedProduct.autoDeliveryLink)}`;
         setSuccessLink(secureUrl);
-      } else if (selectedProduct.isDriveLinkMode && orderData) {
-        // If it's Drive Link Mode, show the user's provided link directly
-        setSuccessLink(orderData);
       } else {
         setSuccessLink(null);
       }
