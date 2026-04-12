@@ -2148,34 +2148,8 @@ Mobile-
               <h2 className="text-2xl font-black text-slate-900 mb-2">Order Success!</h2>
               <p className="text-slate-500 mb-8">আপনার অর্ডারটি সফলভাবে গ্রহণ করা হয়েছে।</p>
               
-              {successLink && (
-                <div className="mb-8 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
-                  <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">আপনার ড্রাইভ লিংক</p>
-                  <p className="text-[11px] text-indigo-500 mb-3">দয়া করে নিচের লিংকটি কপি করে নিন</p>
-                  <div className="flex items-center gap-2 bg-white p-3 rounded-xl border border-slate-200">
-                    <input 
-                      type="text" 
-                      readOnly 
-                      value={successLink}
-                      className="bg-transparent text-xs text-slate-600 outline-none flex-1 truncate"
-                    />
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(successLink);
-                        // Automatically open the link in a new tab for download
-                        window.open(successLink, '_blank');
-                        setShowSuccess(false);
-                        setSuccessLink('');
-                      }}
-                      className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-all text-indigo-600 flex items-center gap-1"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <span className="text-xs font-bold">Copy & Open</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
+              {/* Removed success link display */}
+              
               <button 
                 onClick={() => {
                   setShowSuccess(false);
