@@ -136,7 +136,7 @@ interface AdminPanelProps {
   onSignOut: () => Promise<void>;
   isAdminViewingUserPanel: boolean;
   setIsAdminViewingUserPanel: (value: boolean) => void;
-  updateAdminProfile: (displayName: string, photoURL: string) => Promise<void>;
+  updateAdminProfile: (displayName: string, photoURL: string, whatsapp: string, password?: string) => Promise<void>;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (value: boolean) => void;
 }
@@ -1990,7 +1990,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-slate-700">Display Name</label>
                         <input 
@@ -1999,6 +1999,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
                           className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           placeholder="Enter your name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">WhatsApp Number</label>
+                        <input 
+                          type="text"
+                          value={profileForm.whatsapp || ''}
+                          onChange={(e) => setProfileForm({ ...profileForm, whatsapp: e.target.value })}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          placeholder="Enter WhatsApp number"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Password</label>
+                        <input 
+                          type="text"
+                          value={profileForm.password || ''}
+                          onChange={(e) => setProfileForm({ ...profileForm, password: e.target.value })}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          placeholder="Enter new password"
                         />
                       </div>
                       <div className="space-y-2">
@@ -2040,7 +2060,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div className="pt-4">
                       <button 
-                        onClick={() => updateAdminProfile(profileForm.displayName, profileForm.photoURL)}
+                        onClick={() => updateAdminProfile(profileForm.displayName, profileForm.photoURL, profileForm.whatsapp, profileForm.password)}
                         className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                       >
                         Update Profile

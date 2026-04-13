@@ -420,10 +420,10 @@ async function startServer() {
 
     try {
       // Forward the order to the external provider
-      // This is a generic implementation, might need adjustment based on provider's API
+      // Using X-API-KEY header as per Cyber 71 BD documentation
       const response = await axios.post(providerUrl, orderData, {
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'X-API-KEY': apiKey,
           'Content-Type': 'application/json'
         }
       });

@@ -276,6 +276,11 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const initializationRef = useRef({
+    products: false,
+    admin: false,
+    settings: false
+  });
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ 
     premiumUnlockFee: 500, 
     isPremiumFeatureActive: true, 
@@ -325,8 +330,10 @@ export default function App() {
           rocketNumber: data.rocketNumber || '',
           whatsappGroupLink: data.whatsappGroupLink || ''
         });
-      } else {
-        // Initialize settings if they don't exist
+        initializationRef.current.settings = true;
+      } else if (!initializationRef.current.settings) {
+        // Initialize settings if they don't exist and we haven't tried yet
+        initializationRef.current.settings = true;
         const initialSettings: GlobalSettings = { 
           premiumUnlockFee: 500, 
           isPremiumFeatureActive: true, 
@@ -338,8 +345,12 @@ export default function App() {
           isTelegramNotifyActive: false,
           isWhatsappNotifyActive: false
         };
-        await setDoc(settingsRef, initialSettings);
-        setGlobalSettings(initialSettings);
+        try {
+          await setDoc(settingsRef, initialSettings);
+          setGlobalSettings(initialSettings);
+        } catch (error) {
+          console.error('Error initializing settings:', error);
+        }
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, 'settings/general');
@@ -397,6 +408,9 @@ export default function App() {
 
   useEffect(() => {
     const bootstrapAdmin = async () => {
+      if (initializationRef.current.admin) return;
+      initializationRef.current.admin = true;
+
       try {
         const adminEmail = 'secure.node.admin@gmail.com';
         const q = query(collection(db, 'users'), where('email', '==', adminEmail));
@@ -429,6 +443,9 @@ export default function App() {
 
   useEffect(() => {
     const initializeProducts = async () => {
+      if (initializationRef.current.products) return;
+      initializationRef.current.products = true;
+
       try {
         const q = collection(db, 'products');
         const snapshot = await getDocs(q);
@@ -460,10 +477,15 @@ export default function App() {
         }).filter(p => p !== null) as Product[];
         
         if (productsToSync.length > 0) {
+          const { writeBatch } = await import('firebase/firestore');
+          const batch = writeBatch(db);
           for (const p of productsToSync) {
             const { icon, color, ...serializableProduct } = p;
-            await setDoc(doc(db, 'products', p.id.toString()), serializableProduct, { merge: true });
+            const productRef = doc(db, 'products', p.id.toString());
+            batch.set(productRef, serializableProduct, { merge: true });
           }
+          await batch.commit();
+          console.log('Products synced successfully.');
         }
       } catch (err) {
         console.error('Error initializing products:', err);
