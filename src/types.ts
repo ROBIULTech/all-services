@@ -116,6 +116,10 @@ export interface GlobalSettings {
   serverCopyTokenUrl?: string;
   isAutoNidTokenBased?: boolean;
   autoNidTokenUrl?: string;
+  isSmartVoterApiActive?: boolean;
+  smartVoterApiKey?: string;
+  isSmartVoterTokenBased?: boolean;
+  smartVoterTokenUrl?: string;
 }
 
 export interface TrashItem {

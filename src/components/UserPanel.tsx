@@ -131,6 +131,11 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [photoDob, setPhotoDob] = useState('');
   const [autoNidNumber, setAutoNidNumber] = useState('');
   const [autoNidDob, setAutoNidDob] = useState('');
+  const [smartVoterModalOpen, setSmartVoterModalOpen] = useState(false);
+  const [smartVoterData, setSmartVoterData] = useState({
+    division: '', district: '', seat: '', upazila: '', union: '', center: '',
+    name: '', fatherName: '', motherName: '', dob: ''
+  });
 
   const sendAdminNotifications = async (message: string) => {
     // 1. Send SMS (Existing)
@@ -579,6 +584,24 @@ Mobile-
             setSuccessLink(secureUrl);
           }
         } catch (e) { console.error("Auto NID API failed", e); }
+      } else if (selectedProduct.id === 105 && globalSettings?.isSmartVoterApiActive) {
+        try {
+          // Assuming orderData stores search fields somehow, or we need to update UI to collect these
+          // For now, assume orderData contains them as string/JSON
+          let searchFields;
+          try { searchFields = JSON.parse(orderData); } catch(e) { searchFields = { query: orderData }; }
+          
+          const response = await axios.post('/api/service/smart-voter-search', {
+            ...searchFields,
+            apiKey: globalSettings.smartVoterApiKey,
+            isTokenBased: globalSettings.isSmartVoterTokenBased,
+            tokenUrl: globalSettings.smartVoterTokenUrl
+          });
+          
+          if (response.data.success) {
+            setSuccessLink("Search Result: " + JSON.stringify(response.data.data));
+          }
+        } catch (e) { console.error("Smart Voter Search API failed", e); }
       }
 
       // Check if it's Drive Link Mode first to bypass secure link generation
@@ -1354,7 +1377,25 @@ Mobile-
                     </div>
                   </div>
 
-                  {/* Info Verification Card */}
+                  {/* Smart Voter Search Card */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    <div className="p-6 border-b border-slate-200">
+                      <h3 className="text-xl font-bold text-teal-600 flex items-center gap-2">
+                        <UserCheck className="w-6 h-6" />
+                        স্মার্ট ভোটার অনুসন্ধান
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">ভোটার তথ্য অনুসন্ধান করুন</p>
+                    </div>
+                    <div className="p-6">
+                      <button 
+                        onClick={() => setSmartVoterModalOpen(true)}
+                        className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Search className="w-5 h-5" />
+                        সার্চ করুন (৳{calculatePrice(products.find(p => p.id === 105)?.price || 0, products.find(p => p.id === 105)).toFixed(2)})
+                      </button>
+                    </div>
+                  </div>
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
                     {globalSettings?.isInfoVerifyMaintenance && (
                       <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
@@ -2326,6 +2367,39 @@ Mobile-
           </div>
         )}
       </AnimatePresence>
+
+        {smartVoterModalOpen && (
+          <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl p-8 max-w-lg w-full space-y-6"
+            >
+              <h2 className="text-2xl font-bold text-slate-800">স্মার্ট ভোটার অনুসন্ধান</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <input type="text" placeholder="বিভাগ" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, division: e.target.value})} />
+                <input type="text" placeholder="জেলা" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, district: e.target.value})} />
+                <input type="text" placeholder="আসন" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, seat: e.target.value})} />
+                <input type="text" placeholder="উপজেলা" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, upazila: e.target.value})} />
+                <input type="text" placeholder="ইউনিয়ন" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, union: e.target.value})} />
+                <input type="text" placeholder="কেন্দ্র" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, center: e.target.value})} />
+              </div>
+              <input type="text" placeholder="নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, name: e.target.value})} />
+              <input type="text" placeholder="পিতার নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, fatherName: e.target.value})} />
+              <input type="text" placeholder="মাতার নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, motherName: e.target.value})} />
+              <input type="date" placeholder="জন্ম তারিখ" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, dob: e.target.value})} />
+              <div className="flex gap-4">
+                <button onClick={() => setSmartVoterModalOpen(false)} className="flex-1 py-3 bg-slate-200 rounded-xl font-bold">বাতিল</button>
+                <button onClick={() => {
+                  console.log("Searching with data:", smartVoterData);
+                  alert('অনুসন্ধান করা হচ্ছে...');
+                  setSmartVoterModalOpen(false);
+                }} className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold">অনুসন্ধান করুন</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
       {isAdmin && onBackToAdmin && (
         <button 

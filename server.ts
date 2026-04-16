@@ -219,29 +219,50 @@ async function startServer() {
     });
   });
 
-  // Server Copy API
-  app.post("/api/service/server-copy", async (req, res) => {
-    const { nid, dob, apiKey, isTokenBased, tokenUrl } = req.body;
-    if (!nid || !dob) return res.status(400).json({ success: false, error: "NID and DOB are required" });
+  // Smart Voter Search API
+  app.post("/api/service/smart-voter-search", async (req, res) => {
+    const { districtCode, upazilaCode, unionCode, centerCode, searchFields, apiKey, isTokenBased, tokenUrl } = req.body;
+    
     if (!apiKey) return res.status(401).json({ success: false, error: "API Key is missing" });
     
     let finalToken = apiKey;
     if (isTokenBased && tokenUrl) {
-      const token = await getAccessToken("server-copy", tokenUrl, apiKey);
+      console.log("Using token-based auth for Smart Voter Search");
+      const token = await getAccessToken("smart-voter-search", tokenUrl, apiKey);
       if (token) finalToken = token;
+      else return res.status(401).json({ success: false, error: "Failed to obtain access token" });
     }
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    res.json({
-      success: true,
-      data: {
-        message: "Server copy extracted successfully via API",
-        nid: nid,
-        dob: dob,
-        photoUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=" + nid,
-        documentUrl: "https://example.com/mock-server-copy.pdf"
-      }
-    });
+    try {
+      console.log(`Calling Smart Voter Search API with district: ${districtCode}, upazila: ${upazilaCode}`);
+      
+      // Replace this URL with the actual provider endpoint
+      const providerUrl = process.env.SMART_VOTER_API_URL || 'https://api.provider.com/v1/voter-search';
+      
+      const response = await axios.post(providerUrl, {
+        districtCode,
+        upazilaCode,
+        unionCode,
+        centerCode,
+        searchFields
+      }, {
+        headers: {
+          'Authorization': isTokenBased ? `Bearer ${finalToken}` : undefined,
+          'X-API-KEY': !isTokenBased ? apiKey : undefined,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('API Provider Response:', response.data);
+
+      res.json({ success: true, data: response.data });
+    } catch (error: any) {
+      console.error("Smart Voter Search API Error:", error.response?.data || error.message);
+      res.status(500).json({ 
+        success: false, 
+        error: error.response?.data?.message || "Failed to search voter via API" 
+      });
+    }
   });
 
   // NID Verification API
