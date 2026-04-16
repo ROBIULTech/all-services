@@ -2092,12 +2092,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         onClick={async () => {
                           try {
                             const userRef = doc(db, 'users', userProfile!.uid);
-                            await updateDoc(userRef, {
-                              displayName: profileForm.displayName,
-                              photoURL: profileForm.photoURL,
-                              whatsapp: profileForm.whatsapp,
-                              password: profileForm.password || userProfile?.password
-                            });
+                            // Filter out undefined fields to prevent Firebase error
+                            const updateFields: any = {};
+                            if (profileForm.displayName !== undefined) updateFields.displayName = profileForm.displayName;
+                            if (profileForm.photoURL !== undefined) updateFields.photoURL = profileForm.photoURL;
+                            if (profileForm.whatsapp !== undefined) updateFields.whatsapp = profileForm.whatsapp;
+                            if (profileForm.password !== undefined && profileForm.password !== '') updateFields.password = profileForm.password;
+                            
+                            await updateDoc(userRef, updateFields);
                             alert('Profile updated successfully!');
                             window.location.reload();
                           } catch (error) {
