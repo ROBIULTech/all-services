@@ -426,9 +426,8 @@ Mobile-
             providerUrl: globalSettings.providerApiUrl,
             apiKey: globalSettings.providerApiKey,
             orderData: {
-              service: product.id,
-              data: data,
-              external_id: userProfile.uid + '_' + Date.now()
+              ...newOrder,
+              providerServiceId: product.providerServiceId
             }
           });
           console.log('Premium order forwarded to provider successfully');
@@ -501,6 +500,23 @@ Mobile-
       // Send Notifications to Admin for all orders
       console.log("Sending admin notification for order.");
       sendAdminNotifications(`New Order! User: ${userProfile.email}, Service: ${selectedProduct.titleBn}`);
+
+      // API Reselling Forwarding
+      if (globalSettings?.isApiResellingActive && globalSettings?.providerApiUrl && globalSettings?.providerApiKey) {
+        try {
+          await axios.post('/api/reseller/forward', {
+            providerUrl: globalSettings.providerApiUrl,
+            apiKey: globalSettings.providerApiKey,
+            orderData: {
+              ...newOrder,
+              providerServiceId: selectedProduct.providerServiceId
+            }
+          });
+          console.log('Order forwarded to provider successfully');
+        } catch (apiError) {
+          console.error('Failed to forward order to provider:', apiError);
+        }
+      }
 
       if (selectedProduct.id === 101 && globalSettings?.isAutoSignApiActive) {
         try {

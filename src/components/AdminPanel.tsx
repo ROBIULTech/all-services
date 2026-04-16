@@ -1312,7 +1312,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <button 
-                                  onClick={() => updateOrderStatus(order.id!, 'processing', 'Processing your request')}
+                                  onClick={async () => {
+                                    alert('Clicked! Forwarding order...');
+                                    try {
+                                      const response = await fetch('/api/reseller/forward', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                          providerUrl: globalSettings.providerApiUrl || 'https://cyber71bd.xyz/api/v2/',
+                                          apiKey: globalSettings.providerApiKey || 'sk_2da8c6f13265200f415e473b194f4e52',
+                                          orderData: {
+                                            ...order,
+                                            providerServiceId: products.find(p => p.id === order.serviceId)?.providerServiceId
+                                          }
+                                        })
+                                      });
+                                      const result = await response.json();
+                                      console.log('API Response:', result);
+                                      if (result.success) {
+                                        await updateOrderStatus(order.id!, 'processing', 'Processing your request');
+                                        alert('Order forwarded successfully!');
+                                      } else {
+                                        alert('API Error: ' + result.error);
+                                      }
+                                    } catch (error) {
+                                      console.error('API Forwarding Error:', error);
+                                      alert('Failed to forward order to API: ' + error);
+                                    }
+                                  }}
                                   className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                                   title="Mark Processing"
                                 >
@@ -3492,6 +3521,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     requiresFileUpload: false,
     isDriveLinkMode: false,
     autoDeliveryLink: '',
+    providerServiceId: '',
     color: 'bg-indigo-500',
     iconName: 'LayoutGrid',
     defaultData: '',
@@ -3523,6 +3553,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
         requiresFileUpload: false,
         isDriveLinkMode: false,
         autoDeliveryLink: '',
+        providerServiceId: '',
         color: 'bg-indigo-500',
         iconName: 'LayoutGrid',
         defaultData: '',
@@ -3659,6 +3690,25 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                     placeholder="Optional"
                   />
+                </div>
+              </div>
+
+              {/* Individual Markup Settings */}
+              <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-4">
+                <h4 className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                  <Zap className="w-3 h-3" />
+                  API Reselling Settings
+                </h4>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-600">Provider Service ID</label>
+                  <input 
+                    type="text"
+                    value={formData.providerServiceId || ''}
+                    onChange={(e) => setFormData({ ...formData, providerServiceId: e.target.value })}
+                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                    placeholder="e.g. 123"
+                  />
+                  <p className="text-[10px] text-slate-400">The ID of this service on the provider's panel.</p>
                 </div>
               </div>
 

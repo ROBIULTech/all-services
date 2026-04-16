@@ -63,6 +63,7 @@ export interface Product {
   markupValue?: number;
   isDriveLinkMode?: boolean;
   autoDeliveryLink?: string;
+  providerServiceId?: string;
 }
 
 export interface GlobalSettings {

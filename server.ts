@@ -410,7 +410,7 @@ async function startServer() {
     }
   });
 
-  // Generic API Reselling Proxy
+  // API Reselling Forwarding
   app.post("/api/reseller/forward", async (req, res) => {
     const { providerUrl, apiKey, orderData } = req.body;
     
@@ -419,21 +419,33 @@ async function startServer() {
     }
 
     try {
-      // Forward the order to the external provider
-      // Using X-API-KEY header as per Cyber 71 BD documentation
-      const response = await axios.post(providerUrl, orderData, {
+      console.log(`Forwarding order to ${providerUrl} with serviceId: ${orderData.providerServiceId}`);
+      
+      const params = new URLSearchParams();
+      params.append('key', apiKey);
+      params.append('action', 'add');
+      params.append('service', orderData.providerServiceId || '');
+      params.append('link', orderData.data || '');
+      params.append('quantity', '1');
+
+      const response = await axios.post(providerUrl, params, {
         headers: {
-          'X-API-KEY': apiKey,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
 
+      console.log('API Provider Response:', response.data);
+
+      if (response.data.error) {
+        return res.json({ success: false, error: response.data.error });
+      }
+
       res.json({ success: true, data: response.data });
     } catch (error: any) {
-      console.error("API Reselling Error:", error.response?.data || error.message);
+      console.error("API Reselling Error Details:", error.response?.data || error.message);
       res.status(200).json({ 
         success: false, 
-        error: error.response?.data?.message || "Failed to forward order to provider" 
+        error: error.response?.data?.message || error.message || "Failed to forward order to provider" 
       });
     }
   });
