@@ -2089,7 +2089,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div className="pt-4">
                       <button 
-                        onClick={() => updateAdminProfile(profileForm.displayName, profileForm.photoURL, profileForm.whatsapp, profileForm.password)}
+                        onClick={async () => {
+                          try {
+                            const userRef = doc(db, 'users', userProfile!.uid);
+                            await updateDoc(userRef, {
+                              displayName: profileForm.displayName,
+                              photoURL: profileForm.photoURL,
+                              whatsapp: profileForm.whatsapp,
+                              password: profileForm.password || userProfile?.password
+                            });
+                            alert('Profile updated successfully!');
+                            window.location.reload();
+                          } catch (error) {
+                            console.error("Error updating profile:", error);
+                            alert('Failed to update profile. Please try again.');
+                          }
+                        }}
                         className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                       >
                         Update Profile
