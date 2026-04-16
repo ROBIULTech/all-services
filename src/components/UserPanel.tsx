@@ -726,10 +726,7 @@ Mobile-
             )}
           </div>
           <button 
-            onClick={() => {
-              setIsSidebarOpen(!isSidebarOpen);
-              window.location.reload();
-            }}
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
           >
             {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
