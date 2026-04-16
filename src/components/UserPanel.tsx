@@ -854,11 +854,6 @@ Mobile-
         {/* Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-6 flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1 max-w-xl">
-             <div onClick={() => window.location.reload()} className="cursor-pointer flex items-center gap-2">
-               {/* Using a text-based logo or icon if image is missing to prevent broken display */}
-               <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">S</div>
-               <span className="font-bold text-lg hidden sm:block whitespace-nowrap">All Services</span>
-             </div>
             <div className="relative w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
