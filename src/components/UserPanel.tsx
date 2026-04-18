@@ -788,6 +788,45 @@ Mobile-
               {isSidebarOpen && <span>Premium Services</span>}
             </button>
           )}
+          
+          <button 
+            onClick={() => setSmartVoterModalOpen(true)}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium text-teal-600 hover:bg-teal-50"
+            title={!isSidebarOpen ? "স্মার্ট ভোটার অনুসন্ধান" : ""}
+          >
+            <UserCheck className="w-5 h-5 flex-shrink-0" />
+            {isSidebarOpen && (
+              <div className="flex flex-col items-start leading-tight">
+                <span>স্মার্ট ভোটার অনুসন্ধান</span>
+                <span className="text-[10px] font-bold text-teal-500">৳{calculatePrice(products.find(p => p.id === 105)?.price || 0, products.find(p => p.id === 105)).toFixed(2)}</span>
+              </div>
+            )}
+          </button>
+
+          <div className="pt-4 pb-2">
+            {isSidebarOpen && <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Categories</p>}
+            <div className="space-y-1">
+              {categories.map(cat => (
+                <button 
+                  key={cat}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setActiveTab('services');
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium text-sm",
+                    selectedCategory === cat && activeTab === 'services' 
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" 
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  )}
+                  title={!isSidebarOpen ? cat : ""}
+                >
+                  <Tag className={cn("w-4 h-4 flex-shrink-0", selectedCategory === cat && activeTab === 'services' ? "text-white" : "text-indigo-400")} />
+                  {isSidebarOpen && <span className="truncate">{cat}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-slate-200">
@@ -994,34 +1033,6 @@ Mobile-
                   </h1>
                   <p className="text-slate-500 mt-1 font-medium">Select a service to place an order</p>
                 </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Search services..." 
-                      value={searchQuery || ''}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-11 pr-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-600"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-2xl border border-slate-700 overflow-x-auto max-w-full custom-scrollbar">
-                    {categories.map(cat => (
-                      <button 
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={cn(
-                          "px-4 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap",
-                          selectedCategory === cat 
-                            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20" 
-                            : "text-slate-400 hover:text-white hover:bg-slate-700"
-                        )}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {!(globalSettings?.isServiceManagementActive ?? true) ? (
@@ -1049,7 +1060,9 @@ Mobile-
                       )}
                       onClick={() => {
                         if (!product.isActive) return;
-                        if (product.category === 'PREMIUM') {
+                        if (product.id === 105) {
+                          setSmartVoterModalOpen(true);
+                        } else if (product.category === 'PREMIUM') {
                           setActiveTab('premium');
                         } else {
                           setSelectedProduct(product);
@@ -1376,8 +1389,6 @@ Mobile-
                       </button>
                     </div>
                   </div>
-
-                  {/* Premium Services - Removed from here, only in sidebar */}
 
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
                     {globalSettings?.isInfoVerifyMaintenance && (

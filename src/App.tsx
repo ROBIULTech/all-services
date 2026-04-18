@@ -267,7 +267,7 @@ Received নাম্বার:
   { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'নম্বর:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
   { id: 104, titleBn: 'অটো এনআইডি', titleEn: 'Auto NID', category: 'PREMIUM', icon: CreditCard, color: 'bg-purple-600', price: 100, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
-  { id: 105, titleBn: 'স্মার্ট ভোটার অনুসন্ধান', titleEn: 'Smart Voter Search', category: 'PREMIUM', icon: UserCheck, color: 'bg-teal-600', price: 50, isActive: true }
+  { id: 105, titleBn: 'স্মার্ট ভোটার অনুসন্ধান', titleEn: 'Smart Voter Search', category: 'NID', icon: UserCheck, color: 'bg-teal-600', price: 50, isActive: true }
 ];
 
 export default function App() {
