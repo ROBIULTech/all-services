@@ -1377,25 +1377,8 @@ Mobile-
                     </div>
                   </div>
 
-                  {/* Smart Voter Search Card */}
-                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
-                    <div className="p-6 border-b border-slate-200">
-                      <h3 className="text-xl font-bold text-teal-600 flex items-center gap-2">
-                        <UserCheck className="w-6 h-6" />
-                        স্মার্ট ভোটার অনুসন্ধান
-                      </h3>
-                      <p className="text-sm text-slate-500 mt-1">ভোটার তথ্য অনুসন্ধান করুন</p>
-                    </div>
-                    <div className="p-6">
-                      <button 
-                        onClick={() => setSmartVoterModalOpen(true)}
-                        className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Search className="w-5 h-5" />
-                        সার্চ করুন (৳{calculatePrice(products.find(p => p.id === 105)?.price || 0, products.find(p => p.id === 105)).toFixed(2)})
-                      </button>
-                    </div>
-                  </div>
+                  {/* Premium Services - Removed from here, only in sidebar */}
+
                   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
                     {globalSettings?.isInfoVerifyMaintenance && (
                       <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] z-20 flex flex-col items-center justify-center p-6 text-center">
