@@ -86,7 +86,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [localIsSidebarOpen, setLocalIsSidebarOpen] = useState(true);
   const isSidebarOpen = propIsSidebarOpen !== undefined ? propIsSidebarOpen : localIsSidebarOpen;
   const setIsSidebarOpen = propSetIsSidebarOpen !== undefined ? propSetIsSidebarOpen : setLocalIsSidebarOpen;
-  const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium' | 'rejected'>('services');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -143,7 +143,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
       await axios.post('/api/send-sms', { 
         message,
         token: globalSettings?.smsGatewayToken,
-        adminPhone: globalSettings?.adminPhoneNumber
+        adminPhone: globalSettings?.adminPhoneNumber,
+        isSmsNotifyActive: globalSettings?.isSmsNotifyActive
       });
     } catch (error: any) {
       console.error('Failed to send admin SMS:', error.message || error);
@@ -661,6 +662,24 @@ Mobile-
     return product.icon || LayoutGrid;
   };
 
+  const [dismissedCompletedServices, setDismissedCompletedServices] = useState<number[]>([]);
+
+  const getServiceStatus = (serviceId: number) => {
+    // Find the latest non-rejected order for this user for this service
+    const relevantOrder = orders.find(o => o.serviceId === serviceId && o.status !== 'rejected');
+    if (!relevantOrder) return { status: 'idle' };
+    
+    if (relevantOrder.status === 'pending' || relevantOrder.status === 'processing') {
+      return { status: 'processing', order: relevantOrder };
+    }
+    
+    if (relevantOrder.status === 'completed' && !dismissedCompletedServices.includes(serviceId)) {
+      return { status: 'completed', order: relevantOrder };
+    }
+    
+    return { status: 'idle' };
+  };
+
   const filteredProducts = products
     .filter(p => p.category !== 'PREMIUM' || userProfile.isPremium)
     .filter(p => {
@@ -755,6 +774,17 @@ Mobile-
           >
             <History className="w-5 h-5 flex-shrink-0" />
             {isSidebarOpen && <span>Order History</span>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('rejected')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
+              activeTab === 'rejected' ? "bg-red-50 text-red-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+            title={!isSidebarOpen ? "Rejected Orders" : ""}
+          >
+            <XCircle className="w-5 h-5 flex-shrink-0" />
+            {isSidebarOpen && <span>Rejected Orders</span>}
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
@@ -1159,7 +1189,7 @@ Mobile-
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {orders.length > 0 ? orders.map((order, i) => {
+                      {orders.filter(o => o.status !== 'rejected').length > 0 ? orders.filter(o => o.status !== 'rejected').map((order, i) => {
                         const StatusIcon = getStatusIcon(order.status);
                         return (
                           <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
@@ -1230,6 +1260,73 @@ Mobile-
                               <Package className="w-12 h-12 text-slate-700" />
                               <p className="text-slate-500 font-medium">No orders found</p>
                             </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'rejected' && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-red-600">Rejected Orders</h1>
+                <p className="text-slate-500 mt-1">Review your rejected requests and admin reasons</p>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm border-t-4 border-t-red-500">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Rejection Reason</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {orders.filter(o => o.status === 'rejected').length > 0 ? orders.filter(o => o.status === 'rejected').map((order, i) => {
+                        return (
+                          <tr key={order.id || i} className="hover:bg-red-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900">{order.serviceTitle}</p>
+                              <p className="text-[10px] text-slate-500">ID: {order.id?.slice(-6).toUpperCase()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">
+                                {order.createdAt?.toDate?.()?.toLocaleDateString()}
+                              </p>
+                              <p className="text-[10px] text-slate-500">
+                                {order.createdAt?.toDate?.()?.toLocaleTimeString()}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-bold text-emerald-600">৳{order.price}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="bg-red-50 p-3 rounded-xl border border-red-100 min-w-[200px]">
+                                <p className="text-xs font-bold text-red-600 leading-relaxed">
+                                  {order.adminNote || 'No specific reason provided by admin'}
+                                </p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider", getStatusColor('rejected'))}>
+                                <XCircle className="w-3 h-3" />
+                                REJECTED
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-20 text-center text-slate-400 italic">
+                            No rejected orders found.
                           </td>
                         </tr>
                       )}
@@ -1317,76 +1414,130 @@ Mobile-
                       <p className="text-sm text-slate-500 mt-1">অরিজিনাল সাইন কপি পিডিএফ বের করুন</p>
                     </div>
                     <div className="p-6 space-y-6">
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
-                        <div className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-xs font-bold">i</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)} কাটা হবে।</p>
-                          <p className="text-xs text-slate-600">হিস্ট্রি থেকে পুনরায় দেখা সম্পূর্ণ ফ্রি!</p>
-                        </div>
-                      </div>
+                      {(() => {
+                        const { status, order } = getServiceStatus(101);
+                        if (status === 'processing') {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[300px]">
+                              <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-100 border-t-orange-500 rounded-full animate-spin" />
+                                <Zap className="w-6 h-6 text-orange-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">যাচাই করা হচ্ছে...</h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                  আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
+                                  দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (status === 'completed' && order) {
+                          return (
+                             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[250px] animate-in fade-in zoom-in duration-300">
+                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="text-lg font-bold text-slate-900 uppercase">সম্পন্ন হয়েছে!</h4>
+                                  <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
+                                </div>
+                                {order.resultFile && (
+                                  <a 
+                                    href={order.resultFile} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                    ফাইল ডাউনলোড করুন
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => setDismissedCompletedServices(prev => [...prev, 101])}
+                                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                                >
+                                  নতুন অর্ডার করুন
+                                </button>
+                              </div>
+                          );
+                        }
+                        return (
+                          <>
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex gap-3">
+                              <div className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-xs font-bold">i</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)} কাটা হবে।</p>
+                                <p className="text-xs text-slate-600">হিস্ট্রি থেকে পুনরায় দেখা সম্পূর্ণ ফ্রি!</p>
+                              </div>
+                            </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (১০, ১২ বা ১৭ ডিজিট)</label>
-                        <input 
-                          type="text" 
-                          value={autoSignNid || ''}
-                          onChange={(e) => setAutoSignNid(e.target.value)}
-                          placeholder="1234567890"
-                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
-                        />
-                      </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (১০, ১২ বা ১৭ ডিজিট)</label>
+                              <input 
+                                type="text" 
+                                value={autoSignNid || ''}
+                                onChange={(e) => setAutoSignNid(e.target.value)}
+                                placeholder="1234567890"
+                                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                              />
+                            </div>
 
-                      <button 
-                        onClick={async () => {
-                          if (globalSettings?.isAutoSignApiActive) {
-                            // API Mode
-                            setIsPlacingOrder(true);
-                            try {
-                              const p101 = products.find(p => p.id === 101);
-                              const price = calculatePrice(p101?.price || 0, p101);
-                              if (userProfile.balance < price) {
-                                alert('Insufficient balance!');
-                                setIsPlacingOrder(false);
-                                return;
-                              }
-                              
-                              const response = await fetch('/api/service/auto-sign', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                  nid: autoSignNid,
-                                  apiKey: globalSettings.autoSignApiKey || 'mock-key' 
-                                })
-                              });
-                              
-                              const result = await response.json();
-                              if (result.success) {
-                                // Deduct balance and create completed order
-                                await handlePlacePremiumOrder(101, `NID: ${autoSignNid}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
-                                setAutoSignNid('');
-                                alert('Auto Sign Copy generated successfully via API!');
-                              } else {
-                                alert(`API Error: ${result.error}`);
-                              }
-                            } catch (error) {
-                              alert('Failed to connect to API');
-                            } finally {
-                              setIsPlacingOrder(false);
-                            }
-                          } else {
-                            // Manual Mode
-                            const success = await handlePlacePremiumOrder(101, `NID: ${autoSignNid}`);
-                            if (success) setAutoSignNid('');
-                          }
-                        }}
-                        disabled={!autoSignNid || isPlacingOrder || !(products.find(p => p.id === 101)?.isActive ?? true) || globalSettings?.isAutoSignMaintenance}
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <ShoppingCart className="w-5 h-5" />
-                        অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)})
-                      </button>
+                            <button 
+                              onClick={async () => {
+                                if (globalSettings?.isAutoSignApiActive) {
+                                  // API Mode
+                                  setIsPlacingOrder(true);
+                                  try {
+                                    const p101 = products.find(p => p.id === 101);
+                                    const price = calculatePrice(p101?.price || 0, p101);
+                                    if (userProfile.balance < price) {
+                                      alert('Insufficient balance!');
+                                      setIsPlacingOrder(false);
+                                      return;
+                                    }
+                                    
+                                    const response = await fetch('/api/service/auto-sign', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ 
+                                        nid: autoSignNid,
+                                        apiKey: globalSettings.autoSignApiKey || 'mock-key' 
+                                      })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      // Deduct balance and create completed order
+                                      await handlePlacePremiumOrder(101, `NID: ${autoSignNid}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                      setAutoSignNid('');
+                                      alert('Auto Sign Copy generated successfully via API!');
+                                    } else {
+                                      alert(`API Error: ${result.error}`);
+                                    }
+                                  } catch (error) {
+                                    alert('Failed to connect to API');
+                                  } finally {
+                                    setIsPlacingOrder(false);
+                                  }
+                                } else {
+                                  // Manual Mode
+                                  const success = await handlePlacePremiumOrder(101, `NID: ${autoSignNid}`);
+                                  if (success) setAutoSignNid('');
+                                }
+                              }}
+                              disabled={!autoSignNid || isPlacingOrder || !(products.find(p => p.id === 101)?.isActive ?? true) || globalSettings?.isAutoSignMaintenance}
+                              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              <ShoppingCart className="w-5 h-5" />
+                              অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)})
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1417,98 +1568,158 @@ Mobile-
                       <p className="text-sm text-slate-500 mt-3">এনআইডি, জন্ম নিবন্ধন বা মোবাইল নম্বরের তথ্য যাচাই</p>
                     </div>
                     <div className="p-6 space-y-6">
-                      <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-4 flex gap-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                          <span className="text-xs font-bold italic">i</span>
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-700">
-                            প্রতিটি যাচাইয়ের জন্য ৳{calculatePrice(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0, products.find(p => p.id === 102)).toFixed(2)} কাটা হবে।
-                          </p>
-                        </div>
-                      </div>
+                      {(() => {
+                        const { status, order } = getServiceStatus(102);
+                        if (status === 'processing') {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[350px]">
+                              <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-100 border-t-emerald-600 rounded-full animate-spin" />
+                                <Search className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">যাচাই করা হচ্ছে...</h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                  আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
+                                  দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (status === 'completed' && order) {
+                           return (
+                             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[300px] animate-in fade-in zoom-in duration-300">
+                                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="text-lg font-bold text-slate-900 uppercase">যাচাই সম্পন্ন!</h4>
+                                  <p className="text-xs text-slate-500 font-medium">আপনার ফলাফলটি এখন দেখার জন্য প্রস্তুত।</p>
+                                </div>
+                                {order.note && (
+                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 w-full text-left">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Result Summary</p>
+                                    <p className="text-xs font-bold text-slate-700">{order.note}</p>
+                                  </div>
+                                )}
+                                {order.resultFile && (
+                                  <a 
+                                    href={order.resultFile} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                    ফাইল দেখুন
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => setDismissedCompletedServices(prev => [...prev, 102])}
+                                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                                >
+                                  নতুন যাচাই করুন
+                                </button>
+                              </div>
+                          );
+                        }
+                        return (
+                          <>
+                            <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-4 flex gap-3">
+                              <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-xs font-bold italic">i</span>
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-slate-700">
+                                  প্রতিটি যাচাইয়ের জন্য ৳{calculatePrice(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0, products.find(p => p.id === 102)).toFixed(2)} কাটা হবে।
+                                </p>
+                              </div>
+                            </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="block text-sm font-bold text-slate-700">ক্যাটাগরি</label>
-                          <select 
-                            value={infoCategory || ''}
-                            onChange={(e) => setInfoCategory(e.target.value)}
-                            className="w-full border border-emerald-500 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
-                          >
-                            {products.find(p => p.id === 102)?.options?.map((opt: any) => (
-                              <option key={opt.name} value={opt.name}>{opt.name}</option>
-                            )) || (
-                              <>
-                                <option>NID/PIN</option>
-                                <option>Birth (BRN)</option>
-                                <option>Mobile Number</option>
-                                <option>Form Number</option>
-                              </>
-                            )}
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="block text-sm font-bold text-slate-700">নম্বর ইনপুট দিন</label>
-                          <input 
-                            type="text" 
-                            value={infoNumber || ''}
-                            onChange={(e) => setInfoNumber(e.target.value)}
-                            placeholder="নম্বর লিখুন..."
-                            className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
-                          />
-                        </div>
-                      </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="block text-sm font-bold text-slate-700">ক্যাটাগরি</label>
+                                <select 
+                                  value={infoCategory || ''}
+                                  onChange={(e) => setInfoCategory(e.target.value)}
+                                  className="w-full border border-emerald-500 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+                                >
+                                  {products.find(p => p.id === 102)?.options?.map((opt: any) => (
+                                    <option key={opt.name} value={opt.name}>{opt.name}</option>
+                                  )) || (
+                                    <>
+                                      <option>NID/PIN</option>
+                                      <option>Birth (BRN)</option>
+                                      <option>Mobile Number</option>
+                                      <option>Form Number</option>
+                                    </>
+                                  )}
+                                </select>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="block text-sm font-bold text-slate-700">নম্বর ইনপুট দিন</label>
+                                <input 
+                                  type="text" 
+                                  value={infoNumber || ''}
+                                  onChange={(e) => setInfoNumber(e.target.value)}
+                                  placeholder="নম্বর লিখুন..."
+                                  className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                                />
+                              </div>
+                            </div>
 
-                      <button 
-                        onClick={async () => {
-                          if (globalSettings?.isInfoVerifyApiActive) {
-                            // API Mode
-                            setIsPlacingOrder(true);
-                            try {
-                              const p102 = products.find(p => p.id === 102);
-                              const price = calculatePrice(p102?.options?.find((opt: any) => opt.name === infoCategory)?.price || p102?.price || 0, p102);
-                              if (userProfile.balance < price) {
-                                alert('Insufficient balance!');
-                                setIsPlacingOrder(false);
-                                return;
-                              }
-                              
-                              const response = await fetch('/api/service/info-verify', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                  category: infoCategory,
-                                  number: infoNumber,
-                                  apiKey: globalSettings.infoVerifyApiKey || 'mock-key' 
-                                })
-                              });
-                              
-                              const result = await response.json();
-                              if (result.success) {
-                                await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
-                                setInfoNumber('');
-                                alert('Information verified successfully via API!');
-                              } else {
-                                alert(`API Error: ${result.error}`);
-                              }
-                            } catch (error) {
-                              alert('Failed to connect to API');
-                            } finally {
-                              setIsPlacingOrder(false);
-                            }
-                          } else {
-                            // Manual Mode
-                            const success = await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}`);
-                            if (success) setInfoNumber('');
-                          }
-                        }}
-                        disabled={!infoNumber || isPlacingOrder || !(products.find(p => p.id === 102)?.isActive ?? true) || globalSettings?.isInfoVerifyMaintenance}
-                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
-                      >
-                        <Search className="w-5 h-5" />
-                        তথ্য যাচাই করুন (৳{(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0).toFixed(2)})
-                      </button>
+                            <button 
+                              onClick={async () => {
+                                if (globalSettings?.isInfoVerifyApiActive) {
+                                  // API Mode
+                                  setIsPlacingOrder(true);
+                                  try {
+                                    const p102 = products.find(p => p.id === 102);
+                                    const price = calculatePrice(p102?.options?.find((opt: any) => opt.name === infoCategory)?.price || p102?.price || 0, p102);
+                                    if (userProfile.balance < price) {
+                                      alert('Insufficient balance!');
+                                      setIsPlacingOrder(false);
+                                      return;
+                                    }
+                                    
+                                    const response = await fetch('/api/service/info-verify', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ 
+                                        category: infoCategory,
+                                        number: infoNumber,
+                                        apiKey: globalSettings.infoVerifyApiKey || 'mock-key' 
+                                      })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                      setInfoNumber('');
+                                      alert('Information verified successfully via API!');
+                                    } else {
+                                      alert(`API Error: ${result.error}`);
+                                    }
+                                  } catch (error) {
+                                    alert('Failed to connect to API');
+                                  } finally {
+                                    setIsPlacingOrder(false);
+                                  }
+                                } else {
+                                  // Manual Mode
+                                  const success = await handlePlacePremiumOrder(102, `Category: ${infoCategory}\nNumber: ${infoNumber}`);
+                                  if (success) setInfoNumber('');
+                                }
+                              }}
+                              disabled={!infoNumber || isPlacingOrder || !(products.find(p => p.id === 102)?.isActive ?? true) || globalSettings?.isInfoVerifyMaintenance}
+                              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                            >
+                              <Search className="w-5 h-5" />
+                              তথ্য যাচাই করুন (৳{(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0).toFixed(2)})
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1539,81 +1750,135 @@ Mobile-
                       </h3>
                     </div>
                     <div className="p-6 space-y-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (NID)</label>
-                        <input 
-                          type="text" 
-                          value={photoNid || ''}
-                          onChange={(e) => setPhotoNid(e.target.value)}
-                          placeholder="যেমন: 1981493909"
-                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        />
-                      </div>
+                      {(() => {
+                        const { status, order } = getServiceStatus(103);
+                        if (status === 'processing') {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[300px]">
+                              <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin" />
+                                <Search className="w-6 h-6 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">তথ্য খোঁজা হচ্ছে...</h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                  আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
+                                  দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (status === 'completed' && order) {
+                           return (
+                             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[280px] animate-in fade-in zoom-in duration-300">
+                                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="text-lg font-bold text-slate-900 uppercase">তথ্য পাওয়া গেছে!</h4>
+                                  <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
+                                </div>
+                                {order.resultFile && (
+                                  <a 
+                                    href={order.resultFile} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                    ফাইল ডাউনলোড করুন
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => setDismissedCompletedServices(prev => [...prev, 103])}
+                                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                                >
+                                  নতুন অর্ডার করুন
+                                </button>
+                              </div>
+                          );
+                        }
+                        return (
+                          <>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর (NID)</label>
+                              <input 
+                                type="text" 
+                                value={photoNid || ''}
+                                onChange={(e) => setPhotoNid(e.target.value)}
+                                placeholder="যেমন: 1981493909"
+                                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                              />
+                            </div>
 
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
-                        <input 
-                          type="text" 
-                          value={photoDob || ''}
-                          onChange={(e) => setPhotoDob(e.target.value)}
-                          placeholder="যেমন: 2007-05-26"
-                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                        />
-                      </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
+                              <input 
+                                type="text" 
+                                value={photoDob || ''}
+                                onChange={(e) => setPhotoDob(e.target.value)}
+                                placeholder="যেমন: 2007-05-26"
+                                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                              />
+                            </div>
 
-                      <button 
-                        onClick={async () => {
-                          if (globalSettings?.isServerCopyApiActive) {
-                            // API Mode
-                            setIsPlacingOrder(true);
-                            try {
-                              const p103 = products.find(p => p.id === 103);
-                              const price = calculatePrice(p103?.price || 0, p103);
-                              if (userProfile.balance < price) {
-                                alert('Insufficient balance!');
-                                setIsPlacingOrder(false);
-                                return;
-                              }
-                              
-                              const response = await fetch('/api/service/server-copy', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                  nid: photoNid,
-                                  dob: photoDob,
-                                  apiKey: globalSettings.serverCopyApiKey || 'mock-key' 
-                                })
-                              });
-                              
-                              const result = await response.json();
-                              if (result.success) {
-                                await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
-                                setPhotoNid('');
-                                setPhotoDob('');
-                                alert('Server copy extracted successfully via API!');
-                              } else {
-                                alert(`API Error: ${result.error}`);
-                              }
-                            } catch (error) {
-                              alert('Failed to connect to API');
-                            } finally {
-                              setIsPlacingOrder(false);
-                            }
-                          } else {
-                            // Manual Mode
-                            const success = await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}`);
-                            if (success) {
-                              setPhotoNid('');
-                              setPhotoDob('');
-                            }
-                          }
-                        }}
-                        disabled={!photoNid || !photoDob || isPlacingOrder || !(products.find(p => p.id === 103)?.isActive ?? true) || globalSettings?.isServerCopyMaintenance}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
-                      >
-                        <Edit3 className="w-5 h-5" />
-                        ছবি বের করুন (চার্জ ৳{calculatePrice(products.find(p => p.id === 103)?.price || 85, products.find(p => p.id === 103))})
-                      </button>
+                            <button 
+                              onClick={async () => {
+                                if (globalSettings?.isServerCopyApiActive) {
+                                  // API Mode
+                                  setIsPlacingOrder(true);
+                                  try {
+                                    const p103 = products.find(p => p.id === 103);
+                                    const price = calculatePrice(p103?.price || 0, p103);
+                                    if (userProfile.balance < price) {
+                                      alert('Insufficient balance!');
+                                      setIsPlacingOrder(false);
+                                      return;
+                                    }
+                                    
+                                    const response = await fetch('/api/service/server-copy', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ 
+                                        nid: photoNid,
+                                        dob: photoDob,
+                                        apiKey: globalSettings.serverCopyApiKey || 'mock-key' 
+                                      })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                      setPhotoNid('');
+                                      setPhotoDob('');
+                                      alert('Server copy extracted successfully via API!');
+                                    } else {
+                                      alert(`API Error: ${result.error}`);
+                                    }
+                                  } catch (error) {
+                                    alert('Failed to connect to API');
+                                  } finally {
+                                    setIsPlacingOrder(false);
+                                  }
+                                } else {
+                                  // Manual Mode
+                                  const success = await handlePlacePremiumOrder(103, `NID: ${photoNid}\nDOB: ${photoDob}`);
+                                  if (success) {
+                                    setPhotoNid('');
+                                    setPhotoDob('');
+                                  }
+                                }
+                              }}
+                              disabled={!photoNid || !photoDob || isPlacingOrder || !(products.find(p => p.id === 103)?.isActive ?? true) || globalSettings?.isServerCopyMaintenance}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
+                            >
+                              <Edit3 className="w-5 h-5" />
+                              ছবি বের করুন (চার্জ ৳{calculatePrice(products.find(p => p.id === 103)?.price || 85, products.find(p => p.id === 103))})
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -1645,77 +1910,131 @@ Mobile-
                       <p className="text-sm text-slate-500 mt-1">অটোমেটিক এনআইডি কার্ড মেকার</p>
                     </div>
                     <div className="p-6 space-y-6">
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর</label>
-                        <input 
-                          type="text" 
-                          value={autoNidNumber || ''}
-                          onChange={(e) => setAutoNidNumber(e.target.value)}
-                          placeholder="1234567890"
-                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
-                        <input 
-                          type="text" 
-                          value={autoNidDob || ''}
-                          onChange={(e) => setAutoNidDob(e.target.value)}
-                          placeholder="2000-01-01"
-                          className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
-                        />
-                      </div>
-                      <button 
-                        onClick={async () => {
-                          if (globalSettings?.isAutoNidApiActive) {
-                            setIsPlacingOrder(true);
-                            try {
-                              const p104 = products.find(p => p.id === 104);
-                              const price = calculatePrice(p104?.price || 0, p104);
-                              if (userProfile.balance < price) {
-                                alert('Insufficient balance!');
-                                setIsPlacingOrder(false);
-                                return;
-                              }
-                              
-                              const response = await fetch('/api/service/auto-nid', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ 
-                                  nid: autoNidNumber,
-                                  dob: autoNidDob,
-                                  apiKey: globalSettings.autoNidApiKey || 'mock-key' 
-                                })
-                              });
-                              
-                              const result = await response.json();
-                              if (result.success) {
-                                await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
-                                setAutoNidNumber('');
-                                setAutoNidDob('');
-                                alert('Auto NID generated successfully via API!');
-                              } else {
-                                alert(`API Error: ${result.error}`);
-                              }
-                            } catch (error) {
-                              alert('Failed to connect to API');
-                            } finally {
-                              setIsPlacingOrder(false);
-                            }
-                          } else {
-                            const success = await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}`);
-                            if (success) {
-                              setAutoNidNumber('');
-                              setAutoNidDob('');
-                            }
-                          }
-                        }}
-                        disabled={!autoNidNumber || !autoNidDob || isPlacingOrder || !(products.find(p => p.id === 104)?.isActive ?? true) || globalSettings?.isAutoNidMaintenance}
-                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        <CreditCard className="w-5 h-5" />
-                        অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 100, products.find(p => p.id === 104))})
-                      </button>
+                      {(() => {
+                        const { status, order } = getServiceStatus(104);
+                        if (status === 'processing') {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[300px]">
+                              <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-100 border-t-purple-600 rounded-full animate-spin" />
+                                <CreditCard className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">তৈরি করা হচ্ছে...</h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                  আপনার এনআইডি কার্ডটি তৈরি করা হচ্ছে। <br />
+                                  দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (status === 'completed' && order) {
+                           return (
+                             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[280px] animate-in fade-in zoom-in duration-300">
+                                <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-8 h-8 text-purple-600" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="text-lg font-bold text-slate-900 uppercase">কার্ড প্রস্তুত!</h4>
+                                  <p className="text-xs text-slate-500 font-medium">আপনার এনআইডি ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
+                                </div>
+                                {order.resultFile && (
+                                  <a 
+                                    href={order.resultFile} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-purple-500/20"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                    ডাউনলোড করুন
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => setDismissedCompletedServices(prev => [...prev, 104])}
+                                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                                >
+                                  নতুন অর্ডার করুন
+                                </button>
+                              </div>
+                          );
+                        }
+                        return (
+                          <>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-bold text-slate-700">এনআইডি নম্বর</label>
+                              <input 
+                                type="text" 
+                                value={autoNidNumber || ''}
+                                onChange={(e) => setAutoNidNumber(e.target.value)}
+                                placeholder="1234567890"
+                                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="block text-sm font-bold text-slate-700">জন্ম তারিখ (YYYY-MM-DD)</label>
+                              <input 
+                                type="text" 
+                                value={autoNidDob || ''}
+                                onChange={(e) => setAutoNidDob(e.target.value)}
+                                placeholder="2000-01-01"
+                                className="w-full border border-slate-300 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+                              />
+                            </div>
+                            <button 
+                              onClick={async () => {
+                                if (globalSettings?.isAutoNidApiActive) {
+                                  setIsPlacingOrder(true);
+                                  try {
+                                    const p104 = products.find(p => p.id === 104);
+                                    const price = calculatePrice(p104?.price || 0, p104);
+                                    if (userProfile.balance < price) {
+                                      alert('Insufficient balance!');
+                                      setIsPlacingOrder(false);
+                                      return;
+                                    }
+                                    
+                                    const response = await fetch('/api/service/auto-nid', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ 
+                                        nid: autoNidNumber,
+                                        dob: autoNidDob,
+                                        apiKey: globalSettings.autoNidApiKey || 'mock-key' 
+                                      })
+                                    });
+                                    
+                                    const result = await response.json();
+                                    if (result.success) {
+                                      await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}\n\nAPI Result:\n${JSON.stringify(result.data, null, 2)}`);
+                                      setAutoNidNumber('');
+                                      setAutoNidDob('');
+                                      alert('Auto NID generated successfully via API!');
+                                    } else {
+                                      alert(`API Error: ${result.error}`);
+                                    }
+                                  } catch (error) {
+                                    alert('Failed to connect to API');
+                                  } finally {
+                                    setIsPlacingOrder(false);
+                                  }
+                                } else {
+                                  const success = await handlePlacePremiumOrder(104, `NID: ${autoNidNumber}\nDOB: ${autoNidDob}`);
+                                  if (success) {
+                                    setAutoNidNumber('');
+                                    setAutoNidDob('');
+                                  }
+                                }
+                              }}
+                              disabled={!autoNidNumber || !autoNidDob || isPlacingOrder || !(products.find(p => p.id === 104)?.isActive ?? true) || globalSettings?.isAutoNidMaintenance}
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                              <CreditCard className="w-5 h-5" />
+                              অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 100, products.find(p => p.id === 104))})
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2172,6 +2491,19 @@ Mobile-
           )}
         </button>
         <button 
+          onClick={() => setActiveTab('rejected')} 
+          className={cn(
+            "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
+            activeTab === 'rejected' ? "text-red-600" : "text-slate-400 hover:text-slate-600"
+          )}
+        >
+          <XCircle className={cn("w-6 h-6 transition-transform", activeTab === 'rejected' && "scale-110")} />
+          <span className="text-[10px] font-bold">Rejected</span>
+          {activeTab === 'rejected' && (
+            <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-red-600 rounded-full" />
+          )}
+        </button>
+        <button 
           onClick={() => setShowRechargeModal(true)} 
           className="flex flex-col items-center gap-1 -mt-10 group"
         >
@@ -2368,29 +2700,103 @@ Mobile-
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl p-8 max-w-lg w-full space-y-6"
+              className="bg-white rounded-3xl p-8 max-w-lg w-full space-y-6 relative overflow-hidden"
             >
-              <h2 className="text-2xl font-bold text-slate-800">স্মার্ট ভোটার অনুসন্ধান</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="বিভাগ" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, division: e.target.value})} />
-                <input type="text" placeholder="জেলা" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, district: e.target.value})} />
-                <input type="text" placeholder="আসন" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, seat: e.target.value})} />
-                <input type="text" placeholder="উপজেলা" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, upazila: e.target.value})} />
-                <input type="text" placeholder="ইউনিয়ন" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, union: e.target.value})} />
-                <input type="text" placeholder="কেন্দ্র" className="border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, center: e.target.value})} />
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-2xl font-bold text-slate-800">স্মার্ট ভোটার অনুসন্ধান</h2>
+                <button onClick={() => setSmartVoterModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 group transition-all">
+                  <X className="w-6 h-6 group-hover:rotate-90 transition-transform" />
+                </button>
               </div>
-              <input type="text" placeholder="নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, name: e.target.value})} />
-              <input type="text" placeholder="পিতার নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, fatherName: e.target.value})} />
-              <input type="text" placeholder="মাতার নাম" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, motherName: e.target.value})} />
-              <input type="date" placeholder="জন্ম তারিখ" className="w-full border p-3 rounded-lg" onChange={(e) => setSmartVoterData({...smartVoterData, dob: e.target.value})} />
-              <div className="flex gap-4">
-                <button onClick={() => setSmartVoterModalOpen(false)} className="flex-1 py-3 bg-slate-200 rounded-xl font-bold">বাতিল</button>
-                <button onClick={() => {
-                  console.log("Searching with data:", smartVoterData);
-                  alert('অনুসন্ধান করা হচ্ছে...');
-                  setSmartVoterModalOpen(false);
-                }} className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold">অনুসন্ধান করুন</button>
-              </div>
+
+              {(() => {
+                const { status, order } = getServiceStatus(105);
+                if (status === 'processing') {
+                  return (
+                    <div className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+                      <div className="relative">
+                        <div className="w-16 h-16 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin" />
+                        <Search className="w-6 h-6 text-teal-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                      </div>
+                      <div className="space-y-2">
+                        <h4 className="text-lg font-bold text-slate-800 animate-pulse tracking-tight">অনুসন্ধান করা হচ্ছে...</h4>
+                        <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                          আপনার ভোটার তথ্যটি অনুসন্ধান করা হচ্ছে। <br />
+                          দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                if (status === 'completed' && order) {
+                   return (
+                     <div className="flex flex-col items-center justify-center p-4 text-center space-y-4 animate-in fade-in zoom-in duration-300">
+                        <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-2">
+                          <CheckCircle2 className="w-8 h-8 text-teal-600" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-lg font-bold text-slate-900 uppercase">তথ্য পাওয়া গেছে!</h4>
+                          <p className="text-xs text-slate-500 font-medium">আপনার ভোটার তথ্যটি এখন দেখার জন্য প্রস্তুত।</p>
+                        </div>
+                        {order.resultFile && (
+                          <a 
+                            href={order.resultFile} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20"
+                          >
+                            <Download className="w-5 h-5" />
+                            ফাইল ডাউনলোড করুন
+                          </a>
+                        )}
+                        <button 
+                          onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
+                          className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                        >
+                          নতুন করে অনুসন্ধান করুন
+                        </button>
+                      </div>
+                  );
+                }
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <input type="text" placeholder="বিভাগ" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.division || ''} onChange={(e) => setSmartVoterData({...smartVoterData, division: e.target.value})} />
+                      <input type="text" placeholder="জেলা" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.district || ''} onChange={(e) => setSmartVoterData({...smartVoterData, district: e.target.value})} />
+                      <input type="text" placeholder="আসন" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.seat || ''} onChange={(e) => setSmartVoterData({...smartVoterData, seat: e.target.value})} />
+                      <input type="text" placeholder="উপজেলা" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.upazila || ''} onChange={(e) => setSmartVoterData({...smartVoterData, upazila: e.target.value})} />
+                      <input type="text" placeholder="ইউনিয়ন" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.union || ''} onChange={(e) => setSmartVoterData({...smartVoterData, union: e.target.value})} />
+                      <input type="text" placeholder="কেন্দ্র" className="border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.center || ''} onChange={(e) => setSmartVoterData({...smartVoterData, center: e.target.value})} />
+                    </div>
+                    <input type="text" placeholder="নাম" className="w-full border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.name || ''} onChange={(e) => setSmartVoterData({...smartVoterData, name: e.target.value})} />
+                    <input type="text" placeholder="পিতার নাম" className="w-full border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.fatherName || ''} onChange={(e) => setSmartVoterData({...smartVoterData, fatherName: e.target.value})} />
+                    <input type="text" placeholder="মাতার নাম" className="w-full border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.motherName || ''} onChange={(e) => setSmartVoterData({...smartVoterData, motherName: e.target.value})} />
+                    <input type="date" placeholder="জন্ম তারিখ" className="w-full border border-slate-200 p-3 rounded-xl text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-teal-500 outline-none hover:border-teal-200 transition-all" value={smartVoterData.dob || ''} onChange={(e) => setSmartVoterData({...smartVoterData, dob: e.target.value})} />
+                    <div className="flex gap-4 pt-2">
+                      <button onClick={() => setSmartVoterModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all active:scale-95">বাতিল</button>
+                      <button 
+                        onClick={async () => {
+                          const p105 = products.find(p => p.id === 105);
+                          const price = calculatePrice(p105?.price || 50, p105);
+                          if (userProfile.balance < price) {
+                            alert('ইনসাফিসিয়েন্ট ব্যালেন্স!');
+                            return;
+                          }
+                          const details = `Division: ${smartVoterData.division}\nDistrict: ${smartVoterData.district}\nSeat: ${smartVoterData.seat}\nUpazila: ${smartVoterData.upazila}\nUnion: ${smartVoterData.union}\nCenter: ${smartVoterData.center}\nName: ${smartVoterData.name}\nFather: ${smartVoterData.fatherName}\nMother: ${smartVoterData.motherName}\nDOB: ${smartVoterData.dob}`;
+                          const success = await handlePlacePremiumOrder(105, details);
+                          if (success) {
+                            setSmartVoterData({});
+                          }
+                        }} 
+                        disabled={isPlacingOrder || !smartVoterData.name || !smartVoterData.dob}
+                        className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 shadow-lg shadow-teal-500/20 transition-all disabled:opacity-50 active:scale-95"
+                      >
+                        {isPlacingOrder ? 'অর্ডার হচ্ছে...' : `অনুসন্ধান করুন (৳${calculatePrice(products.find(p => p.id === 105)?.price || 50, products.find(p => p.id === 105))})`}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </motion.div>
           </div>
         )}

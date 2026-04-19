@@ -391,6 +391,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const filteredOrders = orders.filter(o => 
+    o.status !== 'rejected' &&
+    o.serviceTitle !== 'Recharge Request' && (
+      o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+      o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    )
+  );
+
+  const filteredRejectedOrders = orders.filter(o => 
+    o.status === 'rejected' &&
     o.serviceTitle !== 'Recharge Request' && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
@@ -440,6 +449,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     rocketNumber: globalSettings?.rocketNumber || '',
     whatsappGroupLink: globalSettings?.whatsappGroupLink || '',
     smsGatewayToken: globalSettings?.smsGatewayToken || '',
+    isSmsNotifyActive: globalSettings?.isSmsNotifyActive ?? true,
     adminPhoneNumber: globalSettings?.adminPhoneNumber || '01811152997',
     porichoyApiKey: globalSettings?.porichoyApiKey || '',
     enkimaaApiKey: globalSettings?.enkimaaApiKey || '',
@@ -497,6 +507,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         rocketNumber: globalSettings.rocketNumber || '',
         whatsappGroupLink: globalSettings.whatsappGroupLink || '',
         smsGatewayToken: globalSettings.smsGatewayToken || '',
+        isSmsNotifyActive: globalSettings.isSmsNotifyActive ?? true,
         adminPhoneNumber: globalSettings.adminPhoneNumber || '01811152997',
         porichoyApiKey: globalSettings.porichoyApiKey || '',
         enkimaaApiKey: globalSettings.enkimaaApiKey || '',
@@ -543,6 +554,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'orders', label: 'Orders', icon: ShoppingBag, isSpecial: false },
+    { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
     { id: 'recharge-requests', label: 'Recharge Requests', icon: CreditCard, isSpecial: false },
     { id: 'notifications', label: 'Notifications', icon: Megaphone, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
@@ -1394,6 +1406,116 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
 
+            {activeTab === 'rejected-orders' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-red-600">Rejected Order Management</h1>
+                    <p className="text-slate-500">Review and manage rejected service requests.</p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search rejected orders..." 
+                      value={orderSearchQuery || ''}
+                      onChange={(e) => setOrderSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-red-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-red-500">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Rejection Note</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredRejectedOrders.length > 0 ? filteredRejectedOrders.map((order, i) => (
+                          <tr key={order.id || i} className="hover:bg-red-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900 border-l-4 border-red-500 pl-3">
+                                {order.serviceTitle}
+                              </p>
+                              <p className="text-[10px] text-slate-400 pl-4">৳{order.price || 0} • {order.createdAt?.toDate?.()?.toLocaleString()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">{order.userEmail}</p>
+                              <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-500 font-mono">
+                                {order.data || '-'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 max-w-[200px]">
+                                {order.adminNote || 'No reason provided'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={async () => {
+                                    if(confirm('Restore this order to Processing status?')) {
+                                      await updateOrderStatus(order.id!, 'processing', 'Restored from rejected orders');
+                                    }
+                                  }}
+                                  className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                                  title="Restore to Processing"
+                                >
+                                  <Zap className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setCompletingOrder(order)}
+                                  className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                                  title="Complete Order"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    const newData = prompt("Edit order data:", order.data);
+                                    if (newData !== null) {
+                                      updateOrderStatus(order.id!, order.status, order.adminNote || '', newData);
+                                    }
+                                  }}
+                                  className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors"
+                                  title="Edit Data"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                </button>
+                                <button 
+                                  onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
+                                  className="p-1.5 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                                  title="Delete Permanent"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">
+                              No rejected orders found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'users' && (
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -2220,10 +2342,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
 
                     <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-4">
-                      <h4 className="font-bold text-indigo-900 flex items-center gap-2">
-                        <Smartphone className="w-4 h-4" />
-                        SMS Notification Settings
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-bold text-indigo-900 flex items-center gap-2">
+                          <Smartphone className="w-4 h-4" />
+                          SMS Notification Settings
+                        </h4>
+                        <button
+                          onClick={() => setPremiumSettingsForm({ ...premiumSettingsForm, isSmsNotifyActive: !premiumSettingsForm.isSmsNotifyActive })}
+                          className={cn(
+                            "w-10 h-5 rounded-full transition-all relative",
+                            premiumSettingsForm.isSmsNotifyActive ? "bg-indigo-600" : "bg-slate-300"
+                          )}
+                        >
+                          <div className={cn(
+                            "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all",
+                            premiumSettingsForm.isSmsNotifyActive ? "right-0.5" : "left-0.5"
+                          )} />
+                        </button>
+                      </div>
+                      
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-slate-700">Admin Phone Number</label>
@@ -2884,6 +3021,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             rocketNumber: premiumSettingsForm.rocketNumber,
                             whatsappGroupLink: premiumSettingsForm.whatsappGroupLink,
                             smsGatewayToken: premiumSettingsForm.smsGatewayToken,
+                            isSmsNotifyActive: premiumSettingsForm.isSmsNotifyActive,
                             adminPhoneNumber: premiumSettingsForm.adminPhoneNumber,
                             porichoyApiKey: premiumSettingsForm.porichoyApiKey,
                             enkimaaApiKey: premiumSettingsForm.enkimaaApiKey,
