@@ -781,10 +781,10 @@ Mobile-
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
               activeTab === 'rejected' ? "bg-red-50 text-red-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
-            title={!isSidebarOpen ? "Rejected Orders" : ""}
+            title={!isSidebarOpen ? "Rejected Order Management" : ""}
           >
             <XCircle className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span>Rejected Orders</span>}
+            {isSidebarOpen && <span>Rejected Order Management</span>}
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
@@ -1424,7 +1424,7 @@ Mobile-
                                 <Zap className="w-6 h-6 text-orange-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                               </div>
                               <div className="space-y-2">
-                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">যাচাই করা হচ্ছে...</h4>
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">অর্ডার যাচাই চলছে...</h4>
                                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
                                   আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
                                   দয়া করে কিছুক্ষণ অপেক্ষা করুন।
@@ -1578,7 +1578,7 @@ Mobile-
                                 <Search className="w-6 h-6 text-emerald-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                               </div>
                               <div className="space-y-2">
-                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">যাচাই করা হচ্ছে...</h4>
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">অর্ডার যাচাই চলছে...</h4>
                                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
                                   আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
                                   দয়া করে কিছুক্ষণ অপেক্ষা করুন।
@@ -1760,7 +1760,7 @@ Mobile-
                                 <Search className="w-6 h-6 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                               </div>
                               <div className="space-y-2">
-                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">তথ্য খোঁজা হচ্ছে...</h4>
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">অর্ডার যাচাই চলছে...</h4>
                                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
                                   আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
                                   দয়া করে কিছুক্ষণ অপেক্ষা করুন।
@@ -1920,9 +1920,9 @@ Mobile-
                                 <CreditCard className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                               </div>
                               <div className="space-y-2">
-                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">তৈরি করা হচ্ছে...</h4>
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">অর্ডার যাচাই চলছে...</h4>
                                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                                  আপনার এনআইডি কার্ডটি তৈরি করা হচ্ছে। <br />
+                                  আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
                                   দয়া করে কিছুক্ষণ অপেক্ষা করুন।
                                 </p>
                               </div>
@@ -2033,6 +2033,91 @@ Mobile-
                               অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 100, products.find(p => p.id === 104))})
                             </button>
                           </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Smart Voter Search Card */}
+                  <div className="bg-white rounded-xl border border-slate-200 overflow-hidden text-slate-800 shadow-sm relative">
+                    {!(products.find(p => p.id === 105)?.isActive ?? true) && (
+                      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
+                        <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
+                          <AlertTriangle className="w-6 h-6 text-amber-500" />
+                        </div>
+                        <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
+                        <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
+                      </div>
+                    )}
+                    <div className="p-6 border-b border-slate-200">
+                      <h3 className="text-xl font-bold text-teal-600 flex items-center gap-2">
+                        <UserCheck className="w-6 h-6" />
+                        স্মার্ট ভোটার অনুসন্ধান
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">ভোটার তথ্য ও ফাইল অনুসন্ধান করুন</p>
+                    </div>
+                    <div className="p-6 space-y-6">
+                      {(() => {
+                        const { status, order } = getServiceStatus(105);
+                        if (status === 'processing') {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[300px]">
+                              <div className="relative">
+                                <div className="w-16 h-16 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin" />
+                                <Search className="w-6 h-6 text-teal-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
+                              </div>
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-bold text-slate-800 animate-pulse uppercase tracking-tight">অর্ডার যাচাই চলছে...</h4>
+                                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                                  আপনার অর্ডারটি যাচাই করা হচ্ছে। <br />
+                                  দয়া করে কিছুক্ষণ অপেক্ষা করুন।
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                        if (status === 'completed' && order) {
+                           return (
+                             <div className="flex flex-col items-center justify-center p-8 text-center space-y-4 min-h-[250px] animate-in fade-in zoom-in duration-300">
+                                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-2">
+                                  <CheckCircle2 className="w-8 h-8 text-teal-600" />
+                                </div>
+                                <div className="space-y-1">
+                                  <h4 className="text-lg font-bold text-slate-900 uppercase">সম্পন্ন হয়েছে!</h4>
+                                  <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
+                                </div>
+                                {order.resultFile && (
+                                  <a 
+                                    href={order.resultFile} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                    ফাইল ডাউনলোড করুন
+                                  </a>
+                                )}
+                                <button 
+                                  onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
+                                  className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
+                                >
+                                  নতুন করে অনুসন্ধান করুন
+                                </button>
+                              </div>
+                           );
+                        }
+                        return (
+                          <div className="flex flex-col items-center justify-center py-8 space-y-4">
+                            <UserCheck className="w-12 h-12 text-teal-500 mb-2" />
+                            <p className="text-center text-sm text-slate-600">ভোটার তথ্য অনুসন্ধানের জন্য ফরমটি পূরণ করুন।</p>
+                            <button 
+                              onClick={() => setSmartVoterModalOpen(true)}
+                              className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                              <Search className="w-5 h-5" />
+                              অনুসন্ধান করুন (৳{calculatePrice(products.find(p => p.id === 105)?.price || 50, products.find(p => p.id === 105))})
+                            </button>
+                          </div>
                         );
                       })()}
                     </div>

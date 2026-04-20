@@ -82,7 +82,8 @@ import {
   serverTimestamp,
   getDocs,
   FirebaseUser,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from './firebase';
 
 enum OperationType {
@@ -267,7 +268,7 @@ Received নাম্বার:
   { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'নম্বর:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
   { id: 104, titleBn: 'অটো এনআইডি', titleEn: 'Auto NID', category: 'PREMIUM', icon: CreditCard, color: 'bg-purple-600', price: 100, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
-  { id: 105, titleBn: 'স্মার্ট ভোটার অনুসন্ধান', titleEn: 'Smart Voter Search', category: 'NID', icon: UserCheck, color: 'bg-teal-600', price: 50, isActive: true }
+  { id: 105, titleBn: 'স্মার্ট ভোটার অনুসন্ধান', titleEn: 'Smart Voter Search', category: 'PREMIUM', icon: UserCheck, color: 'bg-teal-600', price: 50, isActive: true }
 ];
 
 export default function App() {
@@ -277,6 +278,8 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
   const initializationRef = useRef({
     products: false,
     admin: false,
@@ -582,13 +585,22 @@ export default function App() {
     try {
       console.log("updateProduct called with id:", id, "updates:", updates);
       const productRef = doc(db, 'products', id.toString());
-      // Filter out non-serializable fields like 'icon' (React component)
+      
+      // Filter out non-serializable fields and convert undefined to null
       const { icon, ...serializableUpdates } = updates;
       
-      // Deeply remove undefined values which Firestore rejects
-      const cleanUpdates = JSON.parse(JSON.stringify(serializableUpdates));
-      console.log("cleanUpdates to save:", cleanUpdates);
+      // Create a clean object for Firestore
+      const cleanUpdates: any = {};
+      Object.entries(serializableUpdates).forEach(([key, value]) => {
+        if (value === undefined) {
+          cleanUpdates[key] = null;
+        } else {
+          // Deep clean if it's an object/array (optional but good practice)
+          cleanUpdates[key] = value !== null ? JSON.parse(JSON.stringify(value)) : null;
+        }
+      });
 
+      console.log("cleanUpdates to save:", cleanUpdates);
       await updateDoc(productRef, cleanUpdates);
       setShowSuccess(true);
     } catch (error) {
@@ -607,7 +619,14 @@ export default function App() {
       // Filter out non-serializable fields like 'icon'
       const { icon, ...serializableProduct } = productData as any;
       
-      const cleanProduct = JSON.parse(JSON.stringify(serializableProduct));
+      const cleanProduct: any = {};
+      Object.entries(serializableProduct).forEach(([key, value]) => {
+        if (value === undefined) {
+          cleanProduct[key] = null;
+        } else {
+          cleanProduct[key] = value !== null ? JSON.parse(JSON.stringify(value)) : null;
+        }
+      });
       
       await setDoc(productRef, {
         ...cleanProduct,
@@ -618,6 +637,33 @@ export default function App() {
       setShowSuccess(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'products');
+    }
+  };
+
+  const bulkUpdateToGlobalMarkup = async () => {
+    try {
+      setLoading(true);
+      const batch = writeBatch(db);
+      
+      products.forEach((product) => {
+        const productRef = doc(db, 'products', product.id.toString());
+        batch.update(productRef, {
+          markupType: null,
+          markupValue: null
+        });
+      });
+      
+      await batch.commit();
+      setShowSuccess(true);
+      setSuccessMessage({ 
+        title: 'Bulk Update Successful', 
+        message: `All ${products.length} services have been set to use Global Markup.` 
+      });
+    } catch (error) {
+      console.error('Error in bulk update:', error);
+      alert('Failed to update services.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -865,7 +911,6 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAdminViewingUserPanel, setIsAdminViewingUserPanel] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   
   // Check for the new secure admin route
   const isAdminRoute = window.location.pathname === '/secure-node-portal-v1x9k' || window.location.pathname.startsWith('/secure-node-portal-v1x9k');
@@ -941,6 +986,7 @@ export default function App() {
       updateProduct={updateProduct}
       addProduct={addProduct}
       deleteProduct={deleteProduct}
+      bulkUpdateToGlobalMarkup={bulkUpdateToGlobalMarkup}
       onSignOut={handleSignOut}
       isAdminViewingUserPanel={isAdminViewingUserPanel}
       setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}

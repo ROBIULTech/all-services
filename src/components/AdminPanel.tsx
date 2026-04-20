@@ -133,6 +133,7 @@ interface AdminPanelProps {
   updateProduct: (productId: number, updates: Partial<Product>) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   deleteProduct: (productId: number) => Promise<void>;
+  bulkUpdateToGlobalMarkup: () => Promise<void>;
   onSignOut: () => Promise<void>;
   isAdminViewingUserPanel: boolean;
   setIsAdminViewingUserPanel: (value: boolean) => void;
@@ -166,6 +167,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   updateProduct,
   addProduct,
   deleteProduct,
+  bulkUpdateToGlobalMarkup,
   onSignOut,
   isAdminViewingUserPanel,
   setIsAdminViewingUserPanel,
@@ -482,6 +484,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     serverCopyTokenUrl: globalSettings?.serverCopyTokenUrl || '',
     isAutoNidTokenBased: globalSettings?.isAutoNidTokenBased ?? false,
     autoNidTokenUrl: globalSettings?.autoNidTokenUrl || '',
+    isSmartVoterApiActive: globalSettings?.isSmartVoterApiActive ?? false,
+    smartVoterApiKey: globalSettings?.smartVoterApiKey || '',
+    isSmartVoterTokenBased: globalSettings?.isSmartVoterTokenBased ?? false,
+    smartVoterTokenUrl: globalSettings?.smartVoterTokenUrl || '',
     telegramBotToken: globalSettings?.telegramBotToken || '',
     telegramChatId: globalSettings?.telegramChatId || '',
     whatsappNotifyNumber: globalSettings?.whatsappNotifyNumber || '',
@@ -540,6 +546,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         serverCopyTokenUrl: globalSettings.serverCopyTokenUrl || '',
         isAutoNidTokenBased: globalSettings.isAutoNidTokenBased ?? false,
         autoNidTokenUrl: globalSettings.autoNidTokenUrl || '',
+        isSmartVoterApiActive: globalSettings.isSmartVoterApiActive ?? false,
+        smartVoterApiKey: globalSettings.smartVoterApiKey || '',
+        isSmartVoterTokenBased: globalSettings.isSmartVoterTokenBased ?? false,
+        smartVoterTokenUrl: globalSettings.smartVoterTokenUrl || '',
         telegramBotToken: globalSettings.telegramBotToken || '',
         telegramChatId: globalSettings.telegramChatId || '',
         whatsappNotifyNumber: globalSettings.whatsappNotifyNumber || '',
@@ -553,8 +563,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
-    { id: 'orders', label: 'Orders', icon: ShoppingBag, isSpecial: false },
-    { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
+    { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
+    { id: 'rejected-orders', label: 'Rejected Order Management', icon: XCircle, isSpecial: false },
     { id: 'recharge-requests', label: 'Recharge Requests', icon: CreditCard, isSpecial: false },
     { id: 'notifications', label: 'Notifications', icon: Megaphone, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
@@ -2699,6 +2709,70 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         )}
                       </div>
 
+                      {/* Smart Voter Search API Settings */}
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="font-bold text-slate-800">স্মার্ট ভোটার সার্চ (Smart Voter Search)</h5>
+                          <div className="flex items-center gap-4">
+                            <label className="relative inline-flex items-center cursor-pointer" title="API Mode">
+                              <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={premiumSettingsForm.isSmartVoterApiActive}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, isSmartVoterApiActive: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-teal-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                              <span className="ml-3 text-xs font-medium text-slate-700">
+                                {premiumSettingsForm.isSmartVoterApiActive ? 'API Mode' : 'Manual Mode'}
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                        {premiumSettingsForm.isSmartVoterApiActive && (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-2 bg-teal-50 rounded-lg border border-teal-100">
+                              <span className="text-xs font-bold text-teal-700">Token Based Auth</span>
+                              <div 
+                                className={cn(
+                                  "w-10 h-5 rounded-full transition-all relative cursor-pointer",
+                                  premiumSettingsForm.isSmartVoterTokenBased ? "bg-teal-500" : "bg-slate-300"
+                                )} 
+                                onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isSmartVoterTokenBased: !prev.isSmartVoterTokenBased }))}
+                              >
+                                <div className={cn(
+                                  "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
+                                  premiumSettingsForm.isSmartVoterTokenBased ? "left-5.5" : "left-0.5"
+                                )} />
+                              </div>
+                            </div>
+                            
+                            {premiumSettingsForm.isSmartVoterTokenBased && (
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Token URL</label>
+                                <input 
+                                  type="text"
+                                  value={premiumSettingsForm.smartVoterTokenUrl || ''}
+                                  onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, smartVoterTokenUrl: e.target.value })}
+                                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                                  placeholder="https://api.provider.com/v1/login"
+                                />
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-slate-700">API Key</label>
+                              <input 
+                                type="password"
+                                value={premiumSettingsForm.smartVoterApiKey || ''}
+                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, smartVoterApiKey: e.target.value })}
+                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                                placeholder="Enter API Key for Smart Voter Search"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <p className="text-[10px] text-orange-600 font-medium">
                         * When API Mode is ON, the system will automatically fetch results using the provided API Key. When OFF, orders will be placed manually for admins to process.
                       </p>
@@ -2781,6 +2855,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <p className="text-[10px] text-blue-600 font-medium italic">
                             * This markup will be added to the provider's price automatically on your site.
                           </p>
+                          <div className="pt-4 border-t border-slate-100">
+                            <button
+                              onClick={bulkUpdateToGlobalMarkup}
+                              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 transition-all border border-indigo-200 group"
+                            >
+                              <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                              Apply Global Markup to All {products.length} Services
+                            </button>
+                            <p className="text-[10px] text-slate-500 mt-2 text-center">
+                              * এটি ক্লিক করলে সব ড্রাইভ সার্ভিস থেকে মাউকাপ মুছে যাবে এবং গ্লোবাল মাউকাপ কার্যকর হবে।
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -3054,6 +3140,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             serverCopyTokenUrl: premiumSettingsForm.serverCopyTokenUrl,
                             isAutoNidTokenBased: premiumSettingsForm.isAutoNidTokenBased,
                             autoNidTokenUrl: premiumSettingsForm.autoNidTokenUrl,
+                            isSmartVoterApiActive: premiumSettingsForm.isSmartVoterApiActive,
+                            smartVoterApiKey: premiumSettingsForm.smartVoterApiKey,
+                            isSmartVoterTokenBased: premiumSettingsForm.isSmartVoterTokenBased,
+                            smartVoterTokenUrl: premiumSettingsForm.smartVoterTokenUrl,
                             telegramBotToken: premiumSettingsForm.telegramBotToken,
                             telegramChatId: premiumSettingsForm.telegramChatId,
                             whatsappNotifyNumber: premiumSettingsForm.whatsappNotifyNumber,
@@ -3666,7 +3756,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     shortDescription: '',
     fullDescription: '',
     price: 0,
-    discountPrice: undefined,
+    discountPrice: null,
     deliveryTime: '',
     requiredDocuments: '',
     instructions: '',
@@ -3698,7 +3788,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
         shortDescription: '',
         fullDescription: '',
         price: 0,
-        discountPrice: undefined,
+        discountPrice: null,
         deliveryTime: '',
         requiredDocuments: '',
         instructions: '',
@@ -3841,7 +3931,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                   <input 
                     type="number"
                     value={formData.discountPrice || ''}
-                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value ? Number(e.target.value) : undefined })}
+                    onChange={(e) => setFormData({ ...formData, discountPrice: e.target.value ? Number(e.target.value) : null })}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-medium"
                     placeholder="Optional"
                   />
@@ -3878,7 +3968,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     <label className="text-xs font-bold text-slate-600">Markup Type</label>
                     <select 
                       value={formData.markupType || ''}
-                      onChange={(e) => setFormData({ ...formData, markupType: e.target.value as any || undefined })}
+                      onChange={(e) => setFormData({ ...formData, markupType: e.target.value as any || null })}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                     >
                       <option value="">Use Global Settings</option>
@@ -3891,7 +3981,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                     <input 
                       type="number"
                       value={formData.markupValue ?? ''}
-                      onChange={(e) => setFormData({ ...formData, markupValue: e.target.value ? Number(e.target.value) : undefined })}
+                      onChange={(e) => setFormData({ ...formData, markupValue: e.target.value ? Number(e.target.value) : null })}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                       placeholder="0"
                     />

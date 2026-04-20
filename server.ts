@@ -79,11 +79,7 @@ async function startServer() {
     }
 
     // Support for test/mock token to avoid invalid token errors during development
-    if (API_TOKEN === 'X9k@Secure2004') {
-      console.log("[SMS Gateway] Test mode active for token X9k@Secure2004. Simulation successful.");
-      return res.json({ success: true, message: "Simulation successful", isMock: true });
-    }
-
+    
     try {
       // Example implementation for a common Bangladeshi SMS Gateway (e.g., GreenWeb)
       const response = await axios.get("http://api.greenweb.com.bd/api.php", {

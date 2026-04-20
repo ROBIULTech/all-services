@@ -40,14 +40,14 @@ export interface Product {
   titleEn: string;
   category: string;
   price: number;
-  discountPrice?: number;
-  shortDescription?: string;
-  fullDescription?: string;
-  deliveryTime?: string;
-  requiredDocuments?: string;
-  instructions?: string;
+  discountPrice?: number | null;
+  shortDescription?: string | null;
+  fullDescription?: string | null;
+  deliveryTime?: string | null;
+  requiredDocuments?: string | null;
+  instructions?: string | null;
   isActive: boolean;
-  requiresFileUpload?: boolean;
+  requiresFileUpload?: boolean | null;
   icon?: any;
   iconName?: string;
   color?: string;
@@ -59,11 +59,11 @@ export interface Product {
     autoDeliveryLink?: string;
   }[];
   defaultData?: string;
-  markupType?: 'flat' | 'percentage';
-  markupValue?: number;
-  isDriveLinkMode?: boolean;
-  autoDeliveryLink?: string;
-  providerServiceId?: string;
+  markupType?: 'flat' | 'percentage' | null;
+  markupValue?: number | null;
+  isDriveLinkMode?: boolean | null;
+  autoDeliveryLink?: string | null;
+  providerServiceId?: string | null;
 }
 
 export interface GlobalSettings {
@@ -93,8 +93,8 @@ export interface GlobalSettings {
   isApiResellingActive?: boolean;
   providerApiUrl?: string;
   providerApiKey?: string;
-  markupType?: 'flat' | 'percentage';
-  markupValue?: number;
+  markupType?: 'flat' | 'percentage' | null;
+  markupValue?: number | null;
   isSmartCardApiActive?: boolean;
   isNicknameApiActive?: boolean;
   isVaccineCardApiActive?: boolean;
