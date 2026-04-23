@@ -357,19 +357,9 @@ Mobile-
   }, [selectedProduct]);
 
   const calculatePrice = (basePrice: number, product?: Product) => {
-    // Check for individual product markup first
-    const mType = product?.markupType || globalSettings?.markupType;
-    const mValue = product?.markupValue ?? globalSettings?.markupValue;
-
-    if (!globalSettings?.isApiResellingActive || !mValue) {
-      return basePrice;
-    }
-    
-    if (mType === 'percentage') {
-      return Math.ceil(basePrice + (basePrice * (mValue / 100)));
-    } else {
-      return basePrice + mValue;
-    }
+    // Return basePrice directly as requested by user to prevent automatic price changes
+    // without admin's explicit action on the product itself.
+    return basePrice;
   };
 
   const currentPrice = calculatePrice(selectedOption ? selectedOption.price : (selectedProduct?.price || 0), selectedProduct || undefined);

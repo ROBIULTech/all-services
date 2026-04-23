@@ -645,10 +645,39 @@ export default function App() {
       setLoading(true);
       const batch = writeBatch(db);
       
+      const mType = globalSettings?.markupType;
+      const mValue = globalSettings?.markupValue;
+      const isApiActive = globalSettings?.isApiResellingActive;
+
       products.forEach((product) => {
         const productRef = doc(db, 'products', product.id.toString());
+        
+        let newPrice = product.price;
+        if (isApiActive && mValue) {
+          if (mType === 'percentage') {
+            newPrice = Math.ceil(product.price + (product.price * (mValue / 100)));
+          } else {
+            newPrice = product.price + mValue;
+          }
+        }
+
+        // Also update options if any
+        const newOptions = (product.options || []).map(opt => {
+          let optPrice = opt.price;
+          if (isApiActive && mValue) {
+            if (mType === 'percentage') {
+              optPrice = Math.ceil(opt.price + (opt.price * (mValue / 100)));
+            } else {
+              optPrice = opt.price + mValue;
+            }
+          }
+          return { ...opt, price: optPrice };
+        });
+
         batch.update(productRef, {
-          markupType: null,
+          price: newPrice,
+          options: newOptions,
+          markupType: null, // Clear individual markup to signify it's using global logic (now baked in)
           markupValue: null
         });
       });
@@ -657,7 +686,7 @@ export default function App() {
       setShowSuccess(true);
       setSuccessMessage({ 
         title: 'Bulk Update Successful', 
-        message: `All ${products.length} services have been set to use Global Markup.` 
+        message: `All ${products.length} services have been updated to fixed prices including markup.` 
       });
     } catch (error) {
       console.error('Error in bulk update:', error);
@@ -721,7 +750,7 @@ export default function App() {
           const userData = userSnap.data() as UserProfile;
           let refundAmount = 0;
           if (orderData.price && orderData.price > 0) {
-            refundAmount = Math.max(0, orderData.price - 5);
+            refundAmount = orderData.price;
           }
           await updateDoc(userRef, {
             balance: (userData.balance || 0) + refundAmount
@@ -735,7 +764,7 @@ export default function App() {
           const userData = userSnap.data() as UserProfile;
           let deductedAmount = 0;
           if (orderData.price && orderData.price > 0) {
-            deductedAmount = Math.max(0, orderData.price - 5);
+            deductedAmount = orderData.price;
           }
           await updateDoc(userRef, {
             balance: (userData.balance || 0) - deductedAmount
