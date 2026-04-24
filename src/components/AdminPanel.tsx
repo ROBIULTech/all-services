@@ -216,7 +216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleSendNotification = (type: 'whatsapp' | 'email', target: UserProfile | 'all' | 'selected') => {
+  const handleSendNotification = (type: 'whatsapp' | 'email' | 'gmail', target: UserProfile | 'all' | 'selected') => {
     if (!notificationMessage) {
       alert('Please enter a message.');
       return;
@@ -264,9 +264,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
         window.open(whatsappUrl, '_blank');
       }
+    } else if (type === 'gmail') {
+      if (targetUsers.length > 1) {
+        const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${emails}&su=${subject}&body=${message}`;
+        window.open(gmailUrl, '_blank');
+      } else {
+        const user = targetUsers[0];
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${user.email}&su=${subject}&body=${message}`;
+        window.open(gmailUrl, '_blank');
+      }
     } else {
       if (targetUsers.length > 1) {
-        const emails = targetUsers.map(u => u.email).join(',');
+        const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
         const mailtoUrl = `mailto:?bcc=${emails}&subject=${subject}&body=${message}`;
         window.open(mailtoUrl, '_blank');
       } else {
@@ -328,6 +338,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
   
   const [rechargeSearchQuery, setRechargeSearchQuery] = useState('');
+  const [premiumSearchQuery, setPremiumSearchQuery] = useState('');
   
   // Confirmation states
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'user' | 'order', id: string } | null>(null);
@@ -351,6 +362,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Product | null>(null);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+  
+  const filteredPremiumUsers = allUsers.filter(u => u.isPremium && (
+    u.displayName?.toLowerCase().includes(premiumSearchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(premiumSearchQuery.toLowerCase()) ||
+    u.userId?.toLowerCase().includes(premiumSearchQuery.toLowerCase())
+  ));
+
+  const filteredRegularUsers = allUsers.filter(u => !u.isPremium && (
+    u.displayName?.toLowerCase().includes(premiumSearchQuery.toLowerCase()) ||
+    u.email?.toLowerCase().includes(premiumSearchQuery.toLowerCase()) ||
+    u.userId?.toLowerCase().includes(premiumSearchQuery.toLowerCase())
+  ));
+
   const [serviceCategoryFilter, setServiceCategoryFilter] = useState('All');
 
   const filteredUsers = allUsers.filter(u => 
@@ -562,6 +586,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
+    { id: 'premium-stats', label: 'Premium Stats', icon: Crown, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
     { id: 'rejected-orders', label: 'Rejected Order Management', icon: XCircle, isSpecial: false },
@@ -859,8 +884,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </div>
                         ) : (
                           <div className="divide-y divide-slate-50">
-                            {orders.filter(o => o.status === 'pending').slice(0, 5).map((order) => (
-                              <div key={order.id} className="p-4 hover:bg-slate-50 transition-colors">
+                            {orders.filter(o => o.status === 'pending').slice(0, 5).map((order, i) => (
+                              <div key={order.id || `pending-${i}`} className="p-4 hover:bg-slate-50 transition-colors">
                                 <div className="flex gap-3">
                                   <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
                                     <Clock className="w-4 h-4" />
@@ -991,17 +1016,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Total Revenue', value: `৳${orders.reduce((acc, o) => acc + (o.status === 'completed' ? o.price : 0), 0).toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-                    { label: 'Total Users', value: allUsers.length.toString(), change: '+5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-                    { label: 'Total Orders', value: orders.length.toString(), change: '+15%', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-100' },
-                    { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100' },
-                  ].map((stat, i) => (
-                    <motion.div
-                      key={stat.label}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.1 }}
+                      {[
+                        { label: 'Total Revenue', value: `৳${orders.reduce((acc, o) => acc + (o.status === 'completed' ? o.price : 0), 0).toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
+                        { label: 'Total Users', value: allUsers.length.toString(), change: '+5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+                        { label: 'Total Orders', value: orders.length.toString(), change: '+15%', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-100' },
+                        { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100' },
+                      ].map((stat, i) => (
+                        <motion.div
+                          key={stat.label}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.1 }}
                       className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-center justify-between mb-4">
@@ -1056,7 +1081,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <h3 className="font-bold text-lg mb-6">Recent Activity</h3>
                     <div className="space-y-6">
                       {orders.slice(0, 4).map((order, i) => (
-                        <div key={order.id || i} className="flex gap-4">
+                        <div key={order.id || `activity-${i}`} className="flex gap-4">
                           <div className="relative">
                             <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
                               <ShoppingBag className="w-5 h-5 text-indigo-600" />
@@ -1103,7 +1128,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {allUsers.slice(0, 5).map((u, i) => (
-                          <tr key={u.uid || i} className="hover:bg-slate-50 transition-colors group">
+                          <tr key={u.uid || `recent-user-${i}`} className="hover:bg-slate-50 transition-colors group">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
@@ -1200,7 +1225,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     
                     return (
                     <motion.div
-                      key={product.id || i}
+                      key={product.id || `product-${i}`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
@@ -1305,7 +1330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredOrders.map((order, i) => (
-                          <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
+                          <tr key={order.id || `order-${i}`} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
                               <p className="text-sm font-bold">
                                 {order.serviceTitle}
@@ -1449,7 +1474,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredRejectedOrders.length > 0 ? filteredRejectedOrders.map((order, i) => (
-                          <tr key={order.id || i} className="hover:bg-red-50/30 transition-colors">
+                          <tr key={order.id || `rejected-${i}`} className="hover:bg-red-50/30 transition-colors">
                             <td className="px-6 py-4">
                               <p className="text-sm font-bold text-slate-900 border-l-4 border-red-500 pl-3">
                                 {order.serviceTitle}
@@ -1526,6 +1551,167 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
 
+            {activeTab === 'premium-stats' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-indigo-600">Premium Stats</h1>
+                    <p className="text-slate-500">Track and manage premium membership status.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Premium Search */}
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Search by ID or Email..." 
+                        value={premiumSearchQuery}
+                        onChange={(e) => setPremiumSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all shadow-sm"
+                      />
+                    </div>
+                    
+                    <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                        <Crown className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400 leading-none">Total Premium</p>
+                        <p className="text-lg font-black text-slate-900">{allUsers.filter(u => u.isPremium).length}</p>
+                      </div>
+                    </div>
+                    <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center">
+                        <Users className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400 leading-none">Regular Users</p>
+                        <p className="text-lg font-black text-slate-900">{allUsers.filter(u => !u.isPremium).length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Premium Users Table */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-indigo-500">
+                    <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                      <h3 className="font-bold text-sm text-indigo-600 flex items-center gap-2">
+                        <Crown className="w-4 h-4" />
+                        Premium Users ({filteredPremiumUsers.length})
+                      </h3>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 text-[10px] font-bold uppercase text-slate-400">User Details</th>
+                            <th className="px-4 py-3 text-[10px] font-bold uppercase text-slate-400 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredPremiumUsers.length > 0 ? (
+                            filteredPremiumUsers.map((u, i) => (
+                              <tr key={u.uid || `premium-${i}`} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full border border-slate-200" referrerPolicy="no-referrer" />
+                                    <div>
+                                      <p className="text-xs font-bold text-slate-800">{u.displayName}</p>
+                                      <p className="text-[10px] text-slate-400">{u.email}</p>
+                                      {u.userId && (
+                                        <p className="text-[9px] font-mono font-bold text-indigo-600 mt-0.5">ID: {u.userId}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button 
+                                    onClick={() => {
+                                      if(confirm(`Remove premium status from ${u.displayName}?`)) {
+                                        updateUser(u.uid, { isPremium: false });
+                                      }
+                                    }}
+                                    className="text-[10px] font-bold text-rose-500 hover:text-rose-600 bg-rose-50 px-2 py-1 rounded-lg"
+                                  >
+                                    Downgrade
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={2} className="px-4 py-8 text-center text-xs text-slate-400 italic">
+                                {premiumSearchQuery ? 'No matching premium users.' : 'No premium users found.'}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Regular Users Table (Candidates) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-slate-300">
+                    <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                      <h3 className="font-bold text-sm text-slate-600 flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Regular Users ({filteredRegularUsers.length})
+                      </h3>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 text-[10px] font-bold uppercase text-slate-400">User Details</th>
+                            <th className="px-4 py-3 text-[10px] font-bold uppercase text-slate-400 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredRegularUsers.length > 0 ? (
+                            filteredRegularUsers.map((u, i) => (
+                              <tr key={u.uid || `user-candidate-${i}`} className="hover:bg-slate-50 transition-colors">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full border border-slate-200" referrerPolicy="no-referrer" />
+                                    <div>
+                                      <p className="text-xs font-bold text-slate-800">{u.displayName}</p>
+                                      <p className="text-[10px] text-slate-400">{u.email}</p>
+                                      {u.userId && (
+                                        <p className="text-[9px] font-mono font-bold text-indigo-600 mt-0.5">ID: {u.userId}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button 
+                                    onClick={() => {
+                                      if(confirm(`Upgrade ${u.displayName} to Premium for free?`)) {
+                                        updateUser(u.uid, { isPremium: true });
+                                      }
+                                    }}
+                                    className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg"
+                                  >
+                                    Upgrade
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={2} className="px-4 py-8 text-center text-xs text-slate-400 italic">
+                                {premiumSearchQuery ? 'No matching regular users.' : 'No users to display.'}
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'users' && (
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1585,8 +1771,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredUsers.map((u) => (
-                          <tr key={u.uid} className="hover:bg-slate-50 transition-colors">
+                        {filteredUsers.map((u, i) => (
+                          <tr key={u.uid || `full-user-${i}`} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
@@ -1758,8 +1944,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                           </tr>
                         ) : (
-                          trashItems.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                          trashItems.map((item, i) => (
+                            <tr key={item.id || `trash-${i}`} className="hover:bg-slate-50 transition-colors group">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={cn(
                                   "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
@@ -1784,8 +1970,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                       {item.data.orders && item.data.orders.length > 0 && (
                                         <div className="mt-2 p-2 bg-slate-100 rounded-lg max-h-20 overflow-y-auto">
                                           <p className="font-bold text-slate-700 text-[10px]">Orders ({item.data.orders.length}):</p>
-                                          {item.data.orders.map((o: any) => (
-                                            <p key={o.id} className="text-[10px] text-slate-600">{o.serviceTitle} - {o.status}</p>
+                                          {item.data.orders.map((o: any, j: number) => (
+                                            <p key={o.id || `trash-order-${j}`} className="text-[10px] text-slate-600">{o.serviceTitle} - {o.status}</p>
                                           ))}
                                         </div>
                                       )}
@@ -1875,7 +2061,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </tr>
                         ) : (
                           filteredRechargeRequests.map((order, i) => (
-                            <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
+                            <tr key={order.id || `recharge-${i}`} className="hover:bg-slate-50 transition-colors">
                               <td className="px-6 py-4">
                                 <p className="text-sm font-bold text-slate-900">{order.userEmail}</p>
                                 <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
@@ -2079,9 +2265,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             u.email?.toLowerCase().includes(notificationUserSearch.toLowerCase()) ||
                             u.userId?.toLowerCase().includes(notificationUserSearch.toLowerCase())
                           )
-                          .map(u => (
+                          .map((u, i) => (
                             <div 
-                              key={u.uid} 
+                              key={u.uid || `notify-user-${i}`} 
                               className={cn(
                                 "flex items-center justify-between p-3 rounded-xl border transition-all group",
                                 selectedUserIds.includes(u.uid) 
@@ -3224,29 +3410,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-4">
                     <button 
                       onClick={() => handleSendNotification('whatsapp', notificationModalOpen)}
-                      className="flex flex-col items-center gap-3 p-6 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-all group"
+                      className="flex flex-col items-center gap-2 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-all group"
                     >
-                      <div className="w-12 h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                        <MessageSquare className="w-6 h-6" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                        <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-emerald-900">WhatsApp</p>
-                        <p className="text-[10px] text-emerald-600 font-medium">Send via WA.me</p>
+                        <p className="font-bold text-emerald-900 text-xs sm:text-sm">WhatsApp</p>
+                        <p className="text-[8px] sm:text-[10px] text-emerald-600 font-medium">Send via WA.me</p>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => handleSendNotification('gmail', notificationModalOpen)}
+                      className="flex flex-col items-center gap-2 p-4 bg-red-50 border border-red-100 rounded-2xl hover:bg-red-100 transition-all group"
+                    >
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-red-500/20 group-hover:scale-110 transition-transform">
+                        <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-red-900 text-xs sm:text-sm">Gmail (Web)</p>
+                        <p className="text-[8px] sm:text-[10px] text-red-600 font-medium">Open in Browser</p>
                       </div>
                     </button>
                     <button 
                       onClick={() => handleSendNotification('email', notificationModalOpen)}
-                      className="flex flex-col items-center gap-3 p-6 bg-indigo-50 border border-indigo-100 rounded-2xl hover:bg-indigo-100 transition-all group"
+                      className="flex flex-col items-center gap-2 p-4 bg-indigo-50 border border-indigo-100 rounded-2xl hover:bg-indigo-100 transition-all group"
                     >
-                      <div className="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                        <Mail className="w-6 h-6" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+                        <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-indigo-900">Email</p>
-                        <p className="text-[10px] text-indigo-600 font-medium">Send via Mailto</p>
+                        <p className="font-bold text-indigo-900 text-xs sm:text-sm">Default Mail</p>
+                        <p className="text-[8px] sm:text-[10px] text-indigo-600 font-medium">Send via Mailto</p>
                       </div>
                     </button>
                   </div>
@@ -3661,9 +3859,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="flex-1 overflow-y-auto space-y-2 pr-2">
                 {filteredReportUsers.length > 0 ? (
-                  filteredReportUsers.map(user => (
+                  filteredReportUsers.map((user, i) => (
                     <button
-                      key={user.uid}
+                      key={user.uid || `report-user-${i}`}
                       onClick={() => {
                         setUserReportModalOpen(user);
                         setReportUserSearchModalOpen(false);
@@ -3772,6 +3970,30 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     defaultData: '',
     options: []
   });
+
+  const handleDemoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileType = file.type.includes('pdf') ? 'pdf' : 'image';
+    
+    // Check file size (limit to 5MB for base64 storage)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File is too large! Please upload a file smaller than 5MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64String = event.target?.result as string;
+      setFormData({
+        ...formData,
+        demoUrl: base64String,
+        demoFileType: fileType as 'image' | 'pdf'
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (service) {
@@ -4084,6 +4306,38 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                 />
               </div>
 
+              {/* Service Demo Upload */}
+              <div className="space-y-2 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                <label className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                  <Eye className="w-4 h-4" />
+                  Service Demo (Image or PDF)
+                </label>
+                <div className="flex flex-col gap-3">
+                  <input 
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={handleDemoUpload}
+                    className="text-xs file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
+                  />
+                  {formData.demoUrl && (
+                    <div className="flex items-center justify-between bg-white p-2 rounded-lg border border-amber-200">
+                      <span className="text-[10px] font-bold text-amber-600 truncate max-w-[150px]">
+                        Demo File Loaded ({formData.demoFileType?.toUpperCase()})
+                      </span>
+                      <button 
+                        onClick={() => setFormData({ ...formData, demoUrl: null, demoFileType: null })}
+                        className="p-1 hover:bg-red-50 text-red-500 rounded-md transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-amber-600 font-medium italic">
+                    * This file will be shown to users as a demo for this service.
+                  </p>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Order Button Text</label>
                 <input 
@@ -4146,7 +4400,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                 
                 <div className="space-y-3">
                   {(formData.options || []).map((option, index) => (
-                    <div key={index} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+                    <div key={option.id || `opt-${index}`} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                       <div className="flex-1 space-y-2">
                         <input 
                           type="text"

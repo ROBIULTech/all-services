@@ -61,7 +61,7 @@ const ServiceControls: React.FC<ServiceControlsProps> = ({ serviceId, updateProd
           <div className="grid grid-cols-1 gap-4">
             {product.options ? (
               localOptions.map((opt: any, idx: number) => (
-                <div key={idx} className="flex items-center justify-between gap-4 bg-white p-3 rounded-lg border border-slate-200">
+                <div key={opt.id || `opt-${idx}`} className="flex items-center justify-between gap-4 bg-white p-3 rounded-lg border border-slate-200">
                   <span className="text-xs font-bold text-slate-600">{opt.name}</span>
                   <div className="relative w-24">
                     <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">৳</span>

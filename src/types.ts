@@ -64,6 +64,8 @@ export interface Product {
   isDriveLinkMode?: boolean | null;
   autoDeliveryLink?: string | null;
   providerServiceId?: string | null;
+  demoUrl?: string | null;
+  demoFileType?: 'image' | 'pdf' | null;
 }
 
 export interface GlobalSettings {

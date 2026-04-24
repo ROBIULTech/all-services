@@ -19,6 +19,7 @@ import {
   CheckCircle,
   Copy,
   Download,
+  Eye,
   Settings,
   LogIn,
   Crown,
@@ -91,6 +92,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [selectedOption, setSelectedOption] = useState<{name: string, price: number, autoDeliveryLink?: string} | null>(null);
   const [orderData, setOrderData] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -2297,6 +2299,21 @@ Mobile-
                       <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">{selectedProduct.titleEn}</p>
                     </div>
                   </div>
+
+                  {/* Demo Button */}
+                  {selectedProduct.demoUrl && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDemoModal(true);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-500 font-bold hover:bg-amber-500/20 transition-all text-xs"
+                    >
+                      <Eye className="w-4 h-4" />
+                      View Demo / ডেমো দেখুন
+                    </button>
+                  )}
+
                   <button 
                     onClick={() => setSelectedProduct(null)}
                     className="p-2 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
@@ -2875,6 +2892,64 @@ Mobile-
             </motion.div>
           </div>
         )}
+
+      {/* Demo View Modal */}
+      <AnimatePresence>
+        {showDemoModal && selectedProduct?.demoUrl && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Service Demo / ডেমো</h3>
+                    <p className="text-xs text-slate-400">{selectedProduct.titleBn} ({selectedProduct.titleEn})</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowDemoModal(false)}
+                  className="p-2 hover:bg-slate-800 rounded-full transition-all text-slate-400 hover:text-white"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 bg-slate-950 flex items-center justify-center custom-scrollbar">
+                {selectedProduct.demoFileType === 'pdf' ? (
+                  <iframe 
+                    src={selectedProduct.demoUrl} 
+                    className="w-full h-full min-h-[60vh] rounded-xl"
+                    title="Service Demo PDF"
+                  />
+                ) : (
+                  <img 
+                    src={selectedProduct.demoUrl} 
+                    alt="Service Demo" 
+                    className="max-w-full h-auto rounded-xl shadow-2xl"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+              </div>
+
+              <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+                <button 
+                  onClick={() => setShowDemoModal(false)}
+                  className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                >
+                  Close / বন্ধ করুন
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {isAdmin && onBackToAdmin && (
         <button 
