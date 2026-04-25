@@ -673,7 +673,7 @@ Mobile-
   };
 
   const filteredProducts = products
-    .filter(p => p.category !== 'PREMIUM' || userProfile.isPremium)
+    .filter(p => p.category !== 'PREMIUM')
     .filter(p => {
       const matchesSearch = 
         p.titleBn.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -797,19 +797,22 @@ Mobile-
             <Wallet className="w-5 h-5 flex-shrink-0" />
             {isSidebarOpen && <span>Recharge Balance</span>}
           </button>
-          {userProfile.isPremium && (
-            <button 
-              onClick={() => setActiveTab('premium')}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-                activeTab === 'premium' ? "bg-yellow-50 text-yellow-700 shadow-sm" : "text-yellow-600 hover:bg-yellow-50/50"
-              )}
-              title={!isSidebarOpen ? "Premium Services" : ""}
-            >
-              <Crown className="w-5 h-5 flex-shrink-0" />
-              {isSidebarOpen && <span>Premium Services</span>}
-            </button>
-          )}
+          <button 
+            onClick={() => setActiveTab('premium')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
+              activeTab === 'premium' ? "bg-yellow-50 text-yellow-700 shadow-sm" : "text-yellow-600 hover:bg-yellow-50/50"
+            )}
+            title={!isSidebarOpen ? "Premium Services" : ""}
+          >
+            <Crown className={cn("w-5 h-5 flex-shrink-0", !userProfile.isPremium && "text-slate-400")} />
+            {isSidebarOpen && (
+              <div className="flex flex-col items-start leading-none gap-1">
+                <span>Premium Services</span>
+                {!userProfile.isPremium && <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400 bg-slate-100 px-1 rounded">Locked</span>}
+              </div>
+            )}
+          </button>
           
           <button 
             onClick={() => setSmartVoterModalOpen(true)}
@@ -1128,33 +1131,6 @@ Mobile-
                     </motion.div>
                   ))}
 
-                  {/* Premium Unlock Card for non-premium users */}
-                  {!userProfile.isPremium && (
-                    <motion.div 
-                      whileHover={{ y: -5 }}
-                      className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-3xl p-6 space-y-4 transition-all cursor-pointer relative overflow-hidden shadow-lg shadow-yellow-500/20 group"
-                      onClick={() => setActiveTab('premium')}
-                    >
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                        <Crown className="w-24 h-24 text-white" />
-                      </div>
-                      <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                        <Crown className="w-7 h-7 text-white" />
-                      </div>
-                      <div className="flex-1 relative z-10">
-                        <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Exclusive</span>
-                        <h3 className="text-lg font-black text-white leading-tight mt-1">প্রিমিয়াম সার্ভিস আনলক করুন</h3>
-                        <p className="text-xs text-white/80 mt-1 font-medium">Unlock Premium Services</p>
-                        <p className="text-xs text-white/70 mt-3 leading-relaxed">অটো সাইন কপি, তথ্য যাচাই এবং আরও অনেক প্রিমিয়াম সার্ভিস পেতে আনলক করুন।</p>
-                      </div>
-                      <div className="flex items-center justify-between pt-4 border-t border-white/20 relative z-10">
-                        <span className="text-white font-bold text-sm">৳{globalSettings?.premiumUnlockFee || 500}</span>
-                        <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white group-hover:text-yellow-600 transition-all">
-                          <ChevronRight className="w-5 h-5" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
               </div>
             )}
           </div>

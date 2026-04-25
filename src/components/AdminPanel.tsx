@@ -241,23 +241,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
     if (type === 'whatsapp') {
       if (targetUsers.length > 1) {
-        if (!confirm(`You are about to send messages to ${targetUsers.length} users. This will open multiple WhatsApp tabs. Continue?`)) {
-          return;
-        }
+        const confirmMsg = targetUsers.length > 20 
+          ? `You have selected ${targetUsers.length} users. This will open ${targetUsers.length} new tabs. Your browser might block pop-ups. Proceed?` 
+          : `Send WhatsApp message to ${targetUsers.length} users? (Will open multiple tabs)`;
+        
+        if (!confirm(confirmMsg)) return;
+
         targetUsers.forEach((user, index) => {
           if (user.whatsapp) {
             const cleanNumber = user.whatsapp.replace(/\D/g, '');
             const whatsappUrl = `https://wa.me/${cleanNumber}?text=${message}`;
-            // Delay to prevent browser blocking multiple popups
             setTimeout(() => {
               window.open(whatsappUrl, '_blank');
-            }, index * 1000);
+            }, index * 800); // 800ms delay to avoid browser blocking
           }
         });
       } else {
         const user = targetUsers[0];
         if (!user.whatsapp) {
-          alert('This user does not have a WhatsApp number.');
+          alert('User does not have a WhatsApp number.');
           return;
         }
         const cleanNumber = user.whatsapp.replace(/\D/g, '');
@@ -265,23 +267,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         window.open(whatsappUrl, '_blank');
       }
     } else if (type === 'gmail') {
+      const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
       if (targetUsers.length > 1) {
-        const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
+        // Use BCC for multiple recipients to protect privacy and send "at once"
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&bcc=${emails}&su=${subject}&body=${message}`;
         window.open(gmailUrl, '_blank');
       } else {
-        const user = targetUsers[0];
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${user.email}&su=${subject}&body=${message}`;
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emails}&su=${subject}&body=${message}`;
         window.open(gmailUrl, '_blank');
       }
     } else {
+      const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
       if (targetUsers.length > 1) {
-        const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
         const mailtoUrl = `mailto:?bcc=${emails}&subject=${subject}&body=${message}`;
         window.open(mailtoUrl, '_blank');
       } else {
-        const user = targetUsers[0];
-        const mailtoUrl = `mailto:${user.email}?subject=${subject}&body=${message}`;
+        const mailtoUrl = `mailto:${emails}?subject=${subject}&body=${message}`;
         window.open(mailtoUrl, '_blank');
       }
     }
