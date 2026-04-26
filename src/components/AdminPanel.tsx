@@ -54,9 +54,12 @@ import {
   Info,
   HelpCircle,
   Phone,
-  Server
+  Server,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import axios from 'axios';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -140,6 +143,8 @@ interface AdminPanelProps {
   updateAdminProfile: (displayName: string, photoURL: string, whatsapp: string, password?: string) => Promise<void>;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (value: boolean) => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const icons = {
@@ -173,7 +178,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   setIsAdminViewingUserPanel,
   updateAdminProfile,
   isSidebarOpen,
-  setIsSidebarOpen
+  setIsSidebarOpen,
+  isDarkMode,
+  toggleDarkMode
 }) => {
   const handleDownloadReport = (reportType: string) => {
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -216,7 +223,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     document.body.removeChild(link);
   };
 
-  const handleSendNotification = (type: 'whatsapp' | 'email' | 'gmail', target: UserProfile | 'all' | 'selected') => {
+  const handleSendNotification = async (type: 'whatsapp' | 'email' | 'gmail' | 'server-email', target: UserProfile | 'all' | 'selected') => {
     if (!notificationMessage) {
       alert('Please enter a message.');
       return;
@@ -275,6 +282,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       } else {
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${emails}&su=${subject}&body=${message}`;
         window.open(gmailUrl, '_blank');
+      }
+    } else if (type === 'server-email') {
+      const confirmMsg = targetUsers.length > 1 
+        ? `Send server-side email to ${targetUsers.length} users? (This uses the secure.node.admin@gmail.com account)` 
+        : `Send server-side email to ${targetUsers[0].email}?`;
+      
+      if (!confirm(confirmMsg)) return;
+
+      setIsProcessing(true);
+      try {
+        const emails = targetUsers.map(u => u.email).filter(Boolean);
+        let successCount = 0;
+
+        // For large lists, it's better to send in small batches or individually to avoid timeouts
+        for (const email of emails) {
+          const response = await axios.post('/api/send-email', {
+            to: email,
+            subject: notificationSubject,
+            message: notificationMessage,
+            isEmailNotifyActive: true
+          });
+          if (response.data.success) successCount++;
+        }
+
+        alert(`Successfully sent ${successCount} out of ${emails.length} emails via server.`);
+        setNotificationModalOpen(null);
+      } catch (error: any) {
+        console.error('Failed to send server email:', error);
+        alert('Failed to send email via server. Check console for details.');
+      } finally {
+        setIsProcessing(false);
       }
     } else {
       const emails = targetUsers.map(u => u.email).filter(Boolean).join(',');
@@ -442,6 +480,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   );
   const [resultFile, setResultFile] = useState<string | null>(null);
   const [adminNote, setAdminNote] = useState('Order completed successfully');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleDownloadTrashFile = (item: TrashItem) => {
     // Generate CSV content
@@ -517,7 +556,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     telegramChatId: globalSettings?.telegramChatId || '',
     whatsappNotifyNumber: globalSettings?.whatsappNotifyNumber || '',
     isTelegramNotifyActive: globalSettings?.isTelegramNotifyActive ?? false,
-    isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false
+    isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false,
+    marqueeText: globalSettings?.marqueeText || 'যেকোনো অভিযোগ বা মূল্যবান পরামর্শ থাকলে আমাদের জানাতে ভুলবেন না। আপনাদের আস্থাই আমাদের মূল লক্ষ্য। ধন্যবাদ।'
   });
 
   useEffect(() => {
@@ -770,6 +810,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-40 no-print">
           <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleDarkMode}
+              className={cn(
+                "p-2 rounded-xl transition-all shadow-lg",
+                isDarkMode 
+                  ? "bg-slate-800 text-white hover:bg-slate-700" 
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              )}
+            >
+              {isDarkMode ? <Moon className="w-5 h-5 fill-current" /> : <Sun className="w-5 h-5 fill-current" />}
+            </button>
+
             <div className="relative hidden md:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
@@ -2960,6 +3012,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         )}
                       </div>
 
+
                       <p className="text-[10px] text-orange-600 font-medium">
                         * When API Mode is ON, the system will automatically fetch results using the provided API Key. When OFF, orders will be placed manually for admins to process.
                       </p>
@@ -3225,6 +3278,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
 
+                      {/* User Notice / Marquee Setting */}
+                      <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 mt-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                            <Megaphone className="w-4 h-4 text-indigo-500" />
+                            User Panel Notice (Marquee)
+                          </label>
+                          <textarea 
+                            value={premiumSettingsForm.marqueeText}
+                            onChange={(e) => setPremiumSettingsForm(prev => ({ ...prev, marqueeText: e.target.value }))}
+                            className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 min-h-[100px]"
+                            placeholder="Enter scrolling notice text here..."
+                          />
+                          <p className="text-[10px] text-slate-500 font-medium">ইউজার প্যানেলের উপরে স্ক্রলিং নোটিশ হিসেবে এটি দেখাবে।</p>
+                        </div>
+                      </div>
+
                     {/* Developer API Documentation */}
                     <div className="p-4 bg-slate-900 rounded-xl border border-slate-800 space-y-4 mt-6">
                       <h4 className="font-bold text-white flex items-center gap-2">
@@ -3335,7 +3405,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             telegramChatId: premiumSettingsForm.telegramChatId,
                             whatsappNotifyNumber: premiumSettingsForm.whatsappNotifyNumber,
                             isTelegramNotifyActive: premiumSettingsForm.isTelegramNotifyActive,
-                            isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive
+                            isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive,
+                            marqueeText: premiumSettingsForm.marqueeText
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);
@@ -3411,7 +3482,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                     <button 
                       onClick={() => handleSendNotification('whatsapp', notificationModalOpen)}
                       className="flex flex-col items-center gap-2 p-4 bg-emerald-50 border border-emerald-100 rounded-2xl hover:bg-emerald-100 transition-all group"
@@ -3420,8 +3491,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-emerald-900 text-xs sm:text-sm">WhatsApp</p>
-                        <p className="text-[8px] sm:text-[10px] text-emerald-600 font-medium">Send via WA.me</p>
+                        <p className="font-bold text-emerald-900 text-[10px] sm:text-xs">WhatsApp</p>
+                        <p className="text-[8px] text-emerald-600 font-medium">Remote App</p>
                       </div>
                     </button>
                     <button 
@@ -3432,8 +3503,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-red-900 text-xs sm:text-sm">Gmail (Web)</p>
-                        <p className="text-[8px] sm:text-[10px] text-red-600 font-medium">Open in Browser</p>
+                        <p className="font-bold text-red-900 text-[10px] sm:text-xs">Gmail (Web)</p>
+                        <p className="text-[8px] text-red-600 font-medium">Browser Tab</p>
                       </div>
                     </button>
                     <button 
@@ -3444,8 +3515,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-indigo-900 text-xs sm:text-sm">Default Mail</p>
-                        <p className="text-[8px] sm:text-[10px] text-indigo-600 font-medium">Send via Mailto</p>
+                        <p className="font-bold text-indigo-900 text-[10px] sm:text-xs">Default Mail</p>
+                        <p className="text-[8px] text-indigo-600 font-medium">Mailto Link</p>
+                      </div>
+                    </button>
+                    <button 
+                      onClick={() => handleSendNotification('server-email', notificationModalOpen)}
+                      className="flex flex-col items-center gap-2 p-4 bg-slate-100 border border-slate-200 rounded-2xl hover:bg-slate-200 transition-all group"
+                    >
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-700 text-white rounded-full flex items-center justify-center shadow-lg shadow-slate-500/20 group-hover:scale-110 transition-transform">
+                        <Send className="w-5 h-5 sm:w-6 sm:h-6" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-slate-900 text-[10px] sm:text-xs">Server Email</p>
+                        <p className="text-[8px] text-slate-500 font-medium">Direct SMTP</p>
                       </div>
                     </button>
                   </div>
@@ -3453,7 +3536,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
                   <p className="text-[10px] text-slate-400 font-medium">
-                    Note: This will open your default Email client or WhatsApp application.
+                    Note: Server Email uses secure.node.admin@gmail.com and sends in the background.
                   </p>
                 </div>
               </motion.div>

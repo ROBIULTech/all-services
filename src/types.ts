@@ -15,6 +15,7 @@ export interface UserProfile {
   apiKey?: string;
   isBlocked?: boolean;
   isApiEnabled?: boolean;
+  themeColor?: string;
 }
 
 export interface Order {
@@ -122,6 +123,7 @@ export interface GlobalSettings {
   smartVoterApiKey?: string;
   isSmartVoterTokenBased?: boolean;
   smartVoterTokenUrl?: string;
+  marqueeText?: string;
 }
 
 export interface TrashItem {

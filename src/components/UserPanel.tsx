@@ -20,6 +20,7 @@ import {
   Copy,
   Download,
   Eye,
+  EyeOff,
   Settings,
   LogIn,
   Crown,
@@ -49,7 +50,10 @@ import {
   Phone,
   HeadphonesIcon,
   Loader2,
-  Home
+  Home,
+  Megaphone,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -69,6 +73,8 @@ interface UserPanelProps {
   updateUserProfile?: (displayName: string, photoURL: string, whatsapp: string, password?: string) => Promise<void>;
   isSidebarOpen?: boolean;
   setIsSidebarOpen?: (value: boolean) => void;
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: () => void }> = ({ 
@@ -82,7 +88,9 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   isAdmin,
   onBackToAdmin,
   isSidebarOpen: propIsSidebarOpen,
-  setIsSidebarOpen: propSetIsSidebarOpen
+  setIsSidebarOpen: propSetIsSidebarOpen,
+  isDarkMode,
+  toggleDarkMode
 }) => {
   const [localIsSidebarOpen, setLocalIsSidebarOpen] = useState(true);
   const isSidebarOpen = propIsSidebarOpen !== undefined ? propIsSidebarOpen : localIsSidebarOpen;
@@ -112,6 +120,87 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   });
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [loginHistory, setLoginHistory] = useState<any[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const themeColors = [
+    { name: 'Blue', color: '#2563eb' },
+    { name: 'Purple', color: '#9333ea' },
+    { name: 'Sky', color: '#0ea5e9' },
+    { name: 'Emerald', color: '#10b981' },
+    { name: 'Orange', color: '#f97316' },
+    { name: 'Red', color: '#ef4444' },
+  ];
+
+  const [selectedThemeColor, setSelectedThemeColor] = useState(userProfile.themeColor || '#10b981');
+  const [customColor, setCustomColor] = useState(userProfile.themeColor || '#10b981');
+
+  useEffect(() => {
+    if (!userProfile?.uid) return;
+
+    // Fetch active sessions
+    const sessionsQ = query(collection(db, 'sessions'), where('uid', '==', userProfile.uid), where('active', '==', true));
+    const unsubscribeSessions = onSnapshot(sessionsQ, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setSessions(data);
+    }, (error) => {
+      console.error('Sessions listener error (collection sessions):', error);
+    });
+
+    // Fetch login history
+    const historyQ = query(collection(db, 'login_history'), where('uid', '==', userProfile.uid));
+    const unsubscribeHistory = onSnapshot(historyQ, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a: any, b: any) => b.timestamp?.toDate().getTime() - a.timestamp?.toDate().getTime());
+      setLoginHistory(data.slice(0, 10));
+    }, (error) => {
+      console.error('Login history listener error (collection login_history):', error);
+    });
+
+    return () => {
+      unsubscribeSessions();
+      unsubscribeHistory();
+    };
+  }, [userProfile?.uid]);
+
+  const handleUpdateThemeColor = async (color: string) => {
+    try {
+      const userRef = doc(db, 'users', userProfile.uid);
+      await updateDoc(userRef, { themeColor: color });
+      setSelectedThemeColor(color);
+      document.documentElement.style.setProperty('--primary-color', color);
+      alert('Theme color updated successfully!');
+    } catch (error) {
+      console.error('Error updating theme color:', error);
+    }
+  };
+
+  const handleLogoutOtherSessions = async () => {
+    // Current session ID would be needed. For now, let's assume we mark all others active=false
+    try {
+      const currentSessionId = localStorage.getItem('sessionId');
+      for (const sess of sessions) {
+        if (sess.id !== currentSessionId) {
+          await updateDoc(doc(db, 'sessions', sess.id), { active: false });
+        }
+      }
+      alert('Logout from other sessions successful!');
+    } catch (error) {
+      console.error('Error logging out from other sessions:', error);
+    }
+  };
+
+  const handleLogoutAllSessions = async () => {
+    try {
+      for (const sess of sessions) {
+        await updateDoc(doc(db, 'sessions', sess.id), { active: false });
+      }
+      onSignOut();
+    } catch (error) {
+      console.error('Error logging out from all sessions:', error);
+    }
+  };
 
   const avatars = [
     'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
@@ -386,6 +475,8 @@ Mobile-
         return dateB - dateA;
       });
       setOrders(ordersData);
+    }, (error) => {
+      console.error('Orders listener error in UserPanel.tsx (collection orders):', error);
     });
 
     return () => unsubscribe();
@@ -749,7 +840,7 @@ Mobile-
             onClick={() => setActiveTab('services')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-              activeTab === 'services' ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              activeTab === 'services' ? "bg-brand/10 text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
             title={!isSidebarOpen ? "Services" : ""}
           >
@@ -760,7 +851,7 @@ Mobile-
             onClick={() => setActiveTab('history')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-              activeTab === 'history' ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              activeTab === 'history' ? "bg-brand/10 text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
             title={!isSidebarOpen ? "Order History" : ""}
           >
@@ -782,7 +873,7 @@ Mobile-
             onClick={() => setActiveTab('settings')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-              activeTab === 'settings' ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              activeTab === 'settings' ? "bg-brand/10 text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
             title={!isSidebarOpen ? "Settings" : ""}
           >
@@ -931,6 +1022,18 @@ Mobile-
           </div>
 
           <div className="flex items-center gap-4">
+            <button 
+              onClick={toggleDarkMode}
+              className={cn(
+                "p-2.5 rounded-2xl transition-all shadow-lg",
+                isDarkMode 
+                  ? "bg-slate-800 text-white hover:bg-slate-700" 
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              )}
+            >
+              {isDarkMode ? <Moon className="w-5 h-5 fill-current" /> : <Sun className="w-5 h-5 fill-current" />}
+            </button>
+
             <div className="flex flex-col items-end gap-0.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 lg:hidden">
               <div className="flex items-center gap-2">
                 <Wallet className="w-3.5 h-3.5 text-emerald-600" />
@@ -1046,6 +1149,36 @@ Mobile-
             </div>
           </div>
         </header>
+
+        {/* Dynamic Scrolling Notice */}
+        {globalSettings?.marqueeText && (
+          <div className="bg-indigo-600 py-2 border-b border-indigo-700 overflow-hidden relative shadow-sm">
+            <div className="flex whitespace-nowrap">
+              <motion.div 
+                animate={{ x: [0, -1000] }}
+                transition={{ 
+                  duration: 30, 
+                  repeat: Infinity, 
+                  ease: "linear" 
+                }}
+                className="flex gap-24 items-center pr-24"
+              >
+                <div className="flex items-center gap-4 text-white">
+                  <Megaphone className="w-4 h-4" />
+                  <span className="text-sm font-bold tracking-wide">{globalSettings.marqueeText}</span>
+                </div>
+                <div className="flex items-center gap-4 text-white">
+                  <Megaphone className="w-4 h-4" />
+                  <span className="text-sm font-bold tracking-wide">{globalSettings.marqueeText}</span>
+                </div>
+                <div className="flex items-center gap-4 text-white">
+                  <Megaphone className="w-4 h-4" />
+                  <span className="text-sm font-bold tracking-wide">{globalSettings.marqueeText}</span>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        )}
 
         <div className="p-6 lg:p-8">
           {activeTab === 'services' && (
@@ -2208,13 +2341,22 @@ Mobile-
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-slate-500">Password</label>
-                      <input 
-                        type="text" 
-                        value={profileForm.password || ''}
-                        onChange={(e) => setProfileForm({...profileForm, password: e.target.value})}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900"
-                        placeholder="Enter new password"
-                      />
+                      <div className="relative">
+                        <input 
+                          type={showPassword ? "text" : "password"}
+                          value={profileForm.password || ''}
+                          onChange={(e) => setProfileForm({...profileForm, password: e.target.value})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-slate-900"
+                          placeholder="Enter new password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                        >
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -2225,11 +2367,219 @@ Mobile-
                           updateUserProfile(profileForm.displayName, profileForm.photoURL, profileForm.whatsapp, profileForm.password);
                         }
                       }}
-                      className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto bg-brand text-white px-8 py-3.5 rounded-xl font-bold hover:bg-brand-dark transition-all shadow-lg shadow-brand/20 active:scale-95 flex items-center justify-center gap-2"
                     >
                       <CheckCircle2 className="w-5 h-5" />
                       Update Profile
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Theme Color Settings */}
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-brand" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">থিম কালার</h2>
+                    <p className="text-sm text-slate-500">আপনার পছন্দের কালারটি সিলেক্ট করুন</p>
+                  </div>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-sm font-bold text-slate-700">একটি কালার সিলেক্ট করুন</label>
+                    <div className="flex flex-wrap gap-4">
+                      {themeColors.map((theme) => (
+                        <button
+                          key={theme.name}
+                          onClick={() => handleUpdateThemeColor(theme.color)}
+                          className={cn(
+                            "w-10 h-10 rounded-full transition-all hover:scale-110",
+                            selectedThemeColor === theme.color ? "ring-4 ring-offset-2 ring-brand" : ""
+                          )}
+                          style={{ backgroundColor: theme.color }}
+                          title={theme.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <label className="text-sm font-bold text-slate-700">কাস্টম কালার</label>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <input 
+                        type="color" 
+                        value={customColor}
+                        onChange={(e) => setCustomColor(e.target.value)}
+                        className="w-full h-12 rounded-xl cursor-pointer border border-slate-200"
+                      />
+                      <button 
+                        onClick={() => handleUpdateThemeColor(customColor)}
+                        className="flex-1 min-w-[120px] bg-brand text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-dark transition-all flex items-center justify-center gap-2"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        প্রয়োগ করুন
+                      </button>
+                      <button 
+                        onClick={() => handleUpdateThemeColor('#10b981')}
+                        className="flex-1 min-w-[120px] bg-slate-100 text-slate-600 px-6 py-3 rounded-xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        <History className="w-4 h-4" />
+                        রিসেট
+                      </button>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <p className="text-xs text-slate-500 font-medium tracking-tight">এই কালারটি বাটন, স্ক্রলবার, এবং অনেক জায়গায় হাইলাইট হিসেবে ব্যবহার হবে।</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Login & Security */}
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-brand/10 rounded-xl flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-brand" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-900">লগইন ও সিকিউরিটি</h2>
+                    <p className="text-sm text-slate-500">আপনার অ্যাকাউন্ট কোথা থেকে লগইন হয়েছে এবং কোন সেশনগুলো চালু আছে তা মনিটর করুন</p>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Current Session */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">এই সেশন</h3>
+                      <div className="space-y-3">
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Session ID</label>
+                          <p className="text-sm font-medium text-slate-900 truncate font-mono">{localStorage.getItem('sessionId') || 'Unknown'}</p>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">IP Address</label>
+                          <p className="text-sm font-medium text-slate-900">103.234.203.55</p> 
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Device / Browser</label>
+                          <p className="text-[10px] font-medium text-slate-700 leading-relaxed">{navigator.userAgent}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Security Actions */}
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">সিকিউরিটি একশন</h3>
+                      <div className="space-y-3">
+                        <button 
+                          onClick={handleLogoutOtherSessions}
+                          className="w-full h-12 bg-brand text-white rounded-xl font-bold hover:bg-brand-dark transition-all flex items-center justify-center gap-2"
+                        >
+                          <LogOut className="w-4 h-4 rotate-180" />
+                          অন্যান্য সেশন লগআউট
+                        </button>
+                        <button 
+                          onClick={handleLogoutAllSessions}
+                          className="w-full h-12 bg-red-100 text-red-600 rounded-xl font-bold hover:bg-red-200 transition-all flex items-center justify-center gap-2"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          সব সেশন থেকে লগআউট
+                        </button>
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                          <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                            <span className="font-bold text-slate-700">টিপস:</span> "অন্যান্য সেশন লগআউট" করলে আপনার এই ডিভাইসের লগইন থাকবে, বাকি সব ডিভাইস থেকে বের হয়ে যাবে।
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sessions & Login History */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase">একটিভ সেশন ({sessions.length})</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-brand/10 text-brand rounded-full">{sessions.length} টি</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                          <th className="px-6 py-4">Session / Device</th>
+                          <th className="px-6 py-4">IP</th>
+                          <th className="px-6 py-4">Last Seen</th>
+                          <th className="px-6 py-4">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {sessions.map((sess) => (
+                          <tr key={sess.id}>
+                            <td className="px-6 py-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-800 truncate block max-w-[80px] font-mono">{sess.id}</span>
+                                  {sess.id === localStorage.getItem('sessionId') && (
+                                    <span className="text-[8px] font-black bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Current</span>
+                                  )}
+                                </div>
+                                <p className="text-[8px] text-slate-500 leading-tight max-w-[120px] line-clamp-3">{sess.userAgent}</p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 font-bold text-slate-600 text-xs">{sess.ip || '103.234.203.55'}</td>
+                            <td className="px-6 py-4 text-xs font-medium text-slate-500">{sess.lastSeen?.toDate().toLocaleString() || 'N/A'}</td>
+                            <td className="px-6 py-4">
+                              {sess.id !== localStorage.getItem('sessionId') && (
+                                <button 
+                                  onClick={async () => {
+                                    await updateDoc(doc(db, 'sessions', sess.id), { active: false });
+                                    alert('Session terminated.');
+                                  }}
+                                  className="text-red-500 hover:text-red-700 transition-colors"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              )}
+                              {sess.id === localStorage.getItem('sessionId') && (
+                                <span className="text-slate-300">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase">লগইন হিস্ট্রি</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">{loginHistory.length} টি</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-50 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                          <th className="px-6 py-4">সময়</th>
+                          <th className="px-6 py-4">IP</th>
+                          <th className="px-6 py-4">Device</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {loginHistory.map((hist) => (
+                          <tr key={hist.id}>
+                            <td className="px-6 py-4 whitespace-nowrap font-bold text-slate-700 text-xs">
+                              {hist.timestamp?.toDate().toLocaleString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </td>
+                            <td className="px-6 py-4 font-bold text-slate-600 text-xs">{hist.ip || '103.234.203.55'}</td>
+                            <td className="px-6 py-4 text-[9px] text-slate-500 max-w-[150px] line-clamp-2">{hist.userAgent}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>

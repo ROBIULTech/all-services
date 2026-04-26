@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, auth, db, doc, getDoc, setDoc, serverTimestamp, query, where, collection, getDocs } from '../firebase';
 import { motion } from 'motion/react';
 import { Logo } from './Logo';
@@ -18,6 +18,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [isAdminRoute, setIsAdminRoute] = useState(false);
   const [pendingProfile, setPendingProfile] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const checkPath = () => {
@@ -190,14 +191,21 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     <Lock className="h-5 w-5 text-slate-500" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password || ''}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-12 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder="••••••••"
                     required
                     minLength={6}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
 

@@ -1,61 +1,85 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    function isAuthenticated() {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helpers ---
+    function isSignedIn() {
       return request.auth != null;
     }
     
     function isAdmin() {
-      return isAuthenticated() && (request.auth.token.email == "shasultan2003@gmail.com");
+      return isSignedIn() && (
+        request.auth.token.email == "shasultan2003@gmail.com" || 
+        request.auth.token.email == "secure.node.admin@gmail.com"
+      );
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
     }
 
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
+    // --- Collection Rules ---
+
+    // User profiles - Needed for public search during login
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
     }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
-    // User profiles
-    match /users/{document=**} {
-      allow read, write: if true;
+    
+    // Global settings
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
-
-    // Orders
-    match /orders/{document=**} {
-      allow read, write: if true;
-    }
-
+    
     // Products
-    match /products/{document=**} {
-      allow read, write: if true;
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
     
-    // Settings
-    match /settings/{document=**} {
-      allow read, write: if true;
-    }
-
-    // Archived Users
-    match /archived_users/{document=**} {
-      allow read, write: if true;
+    // Orders
+    match /orders/{orderId} {
+      // Use resource.data for permission checking
+      allow get: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() || isAdmin(); 
+      allow update, delete: if isAdmin();
     }
 
     // Trash
-    match /trash/{document=**} {
-      allow read, write: if true;
+    match /trash/{trashId} {
+      allow read, write: if isAdmin();
     }
-    
+
+    // Sessions - Vital for auditing
+    match /sessions/{sessionId} {
+      allow get: if true; // Allow checking session status by ID
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create, update: if true; // App logic needs this for session heartbeat/tracking
+      allow delete: if isAdmin();
+    }
+
+    // Login History
+    match /login_history/{historyId} {
+      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if true;
+    }
+
+    // Archived Users
+    match /archived_users/{docId} {
+      allow read, write: if isAdmin();
+    }
+
     // Test connection
-    match /test/{document=**} {
+    match /test/{docId} {
       allow read, write: if true;
     }
   }

@@ -6,6 +6,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import multer from "multer";
 import FormData from "form-data";
+import nodemailer from "nodemailer";
 import { db, collection, query, where, getDocs, doc, getDoc, addDoc, updateDoc, serverTimestamp } from "./src/firebase";
 
 dotenv.config();
@@ -103,6 +104,64 @@ async function startServer() {
     } catch (error: any) {
       console.log(`[SMS Gateway] Failed to send SMS: ${error.message || 'Unknown error'}`);
       res.status(200).json({ success: false, error: "Failed to send SMS" });
+    }
+  });
+
+  // API Route for sending Email
+  app.post("/api/send-email", async (req, res) => {
+    const { to, subject, message, isEmailNotifyActive } = req.body;
+
+    // Check if Email is globally active
+    if (isEmailNotifyActive === false) {
+      return res.status(200).json({ success: false, message: "Email notification is disabled" });
+    }
+
+    const SMTP_USER = process.env.SMTP_USER || "secure.node.admin@gmail.com";
+    const SMTP_PASS = process.env.SMTP_PASS;
+    const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+    const SMTP_PORT = parseInt(process.env.SMTP_PORT || "465");
+
+    if (!SMTP_PASS) {
+      console.log("SMTP Password (SMTP_PASS) not provided. Email notification skipped.");
+      return res.status(200).json({ success: false, message: "SMTP not configured" });
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_PORT === 465, // true for 465, false for other ports
+        auth: {
+          user: SMTP_USER,
+          pass: SMTP_PASS,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"All Services Platform" <${SMTP_USER}>`,
+        to: to || SMTP_USER, // Fallback to admin if no recipient
+        subject: subject || "System Notification",
+        text: message,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+            <div style="background: #4f46e5; color: white; padding: 20px; text-align: center;">
+              <h1 style="margin: 0; font-size: 20px;">System Notification</h1>
+            </div>
+            <div style="padding: 30px; line-height: 1.6; color: #334155;">
+              <p style="margin-top: 0;">${message.replace(/\n/g, '<br>')}</p>
+            </div>
+            <div style="background: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+              &copy; ${new Date().getFullYear()} All Services Platform. All rights reserved.
+            </div>
+          </div>
+        `,
+      });
+
+      console.log("[Email Gateway] Email sent successfully:", info.messageId);
+      res.json({ success: true, messageId: info.messageId });
+    } catch (error: any) {
+      console.error(`[Email Gateway] Failed to send Email:`, error);
+      res.status(200).json({ success: false, error: "Failed to send Email", details: error.message });
     }
   });
 

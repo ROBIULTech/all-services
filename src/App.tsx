@@ -272,11 +272,119 @@ Received নাম্বার:
 ];
 
 export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleDarkMode = () => setIsDarkMode(prev => !prev);
+
   const [user, setUser] = useState<FirebaseUser | any | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(initialProducts);
+
+  useEffect(() => {
+    if (userProfile?.themeColor) {
+      document.documentElement.style.setProperty('--primary-color', userProfile.themeColor);
+    } else {
+      document.documentElement.style.setProperty('--primary-color', '#10b981');
+    }
+  }, [userProfile?.themeColor]);
+
+  useEffect(() => {
+    const trackSessionAndHistory = async () => {
+      if (!user || loading) return;
+
+      const uid = user.uid;
+      const userAgent = navigator.userAgent;
+      const ip = '103.234.203.55'; 
+
+      let sessionId = localStorage.getItem(`sessionId_${uid}`);
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem(`sessionId_${uid}`, sessionId);
+
+        // Record in sessions
+        try {
+          await setDoc(doc(db, 'sessions', sessionId), {
+            uid,
+            active: true,
+            userAgent,
+            ip,
+            createdAt: serverTimestamp(),
+            lastSeen: serverTimestamp()
+          });
+
+          // Record in login history
+          await addDoc(collection(db, 'login_history'), {
+            uid,
+            userAgent,
+            ip,
+            timestamp: serverTimestamp()
+          });
+        } catch (err) {
+          console.error("Error creating session in collection 'sessions' or 'login_history':", err);
+        }
+      } else {
+        // Update last seen
+        try {
+          await updateDoc(doc(db, 'sessions', sessionId), {
+            lastSeen: serverTimestamp()
+          });
+        } catch (err) {
+          // If session doc doesn't exist, recreate it
+          try {
+            await setDoc(doc(db, 'sessions', sessionId), {
+              uid,
+              active: true,
+              userAgent,
+              ip,
+              createdAt: serverTimestamp(),
+              lastSeen: serverTimestamp()
+            });
+          } catch (e) {
+            console.error("Error updating/recreating session in collection 'sessions':", e);
+          }
+        }
+      }
+
+      // Listen for session inactivation
+      if (sessionId) {
+        const unsubSession = onSnapshot(doc(db, 'sessions', sessionId), (docSnap) => {
+          if (docSnap.exists() && docSnap.data().active === false) {
+            handleSignOut();
+            alert('Your session has been terminated from another device.');
+          }
+        }, (error) => {
+           console.warn('Session listener error in App.tsx (collection sessions):', error);
+        });
+        return unsubSession;
+      }
+    };
+
+    let sessionUnsub: (() => void) | undefined;
+    if (user && !loading) {
+      trackSessionAndHistory().then(unsub => {
+        if (typeof unsub === 'function') sessionUnsub = unsub;
+      });
+    }
+
+    return () => {
+      if (sessionUnsub) sessionUnsub();
+    };
+  }, [user, loading]);
   const [trashItems, setTrashItems] = useState<TrashItem[]>([]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
@@ -309,6 +417,9 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
+      if (user?.uid) {
+        localStorage.removeItem(`sessionId_${user.uid}`);
+      }
       await signOut(auth);
       localStorage.removeItem('demo_session');
       setUser(null);
@@ -412,11 +523,13 @@ export default function App() {
 
   useEffect(() => {
     const bootstrapAdmin = async () => {
+      // Only bootstrap once
       if (initializationRef.current.admin) return;
-      initializationRef.current.admin = true;
-
+      
       try {
         const adminEmail = 'secure.node.admin@gmail.com';
+        
+        initializationRef.current.admin = true;
         const q = query(collection(db, 'users'), where('email', '==', adminEmail));
         const snapshot = await getDocs(q);
         
@@ -442,7 +555,11 @@ export default function App() {
         console.error('Error bootstrapping admin:', error);
       }
     };
-    bootstrapAdmin();
+    // Delay bootstrap slightly to allow auth to warm up
+    const timer = setTimeout(() => {
+      bootstrapAdmin();
+    }, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -991,6 +1108,8 @@ export default function App() {
           updateUserProfile={updateUserProfile}
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={toggleDarkMode}
         />
       </div>
     );
@@ -1022,6 +1141,8 @@ export default function App() {
       updateAdminProfile={updateUserProfile}
       isSidebarOpen={isSidebarOpen}
       setIsSidebarOpen={setIsSidebarOpen}
+      isDarkMode={isDarkMode}
+      toggleDarkMode={toggleDarkMode}
     />
   );
 }
