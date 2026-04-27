@@ -457,6 +457,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
   const filteredOrders = orders.filter(o => 
     o.status !== 'rejected' &&
+    o.status !== 'completed' &&
+    o.serviceTitle !== 'Recharge Request' && (
+      o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+      o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    )
+  );
+
+  const filteredCompletedOrders = orders.filter(o => 
+    o.status === 'completed' &&
     o.serviceTitle !== 'Recharge Request' && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
@@ -630,7 +639,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'premium-stats', label: 'Premium Stats', icon: Crown, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
-    { id: 'rejected-orders', label: 'Rejected Order Management', icon: XCircle, isSpecial: false },
+    { id: 'completed-orders', label: 'Completed Orders', icon: CheckCircle, isSpecial: false },
+    { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
     { id: 'recharge-requests', label: 'Recharge Requests', icon: CreditCard, isSpecial: false },
     { id: 'notifications', label: 'Notifications', icon: Megaphone, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
@@ -1487,6 +1497,98 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'completed-orders' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-emerald-600">Completed Orders</h1>
+                    <p className="text-slate-500">View all successfully processed service requests.</p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search completed orders..." 
+                      value={orderSearchQuery || ''}
+                      onChange={(e) => setOrderSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-emerald-500">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Result</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredCompletedOrders.length > 0 ? filteredCompletedOrders.map((order, i) => (
+                          <tr key={order.id || `completed-${i}`} className="hover:bg-emerald-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900 border-l-4 border-emerald-500 pl-3">
+                                {order.serviceTitle}
+                              </p>
+                              <p className="text-[10px] text-slate-400 pl-4">৳{order.price || 0} • {order.createdAt?.toDate?.()?.toLocaleString()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">{order.userEmail}</p>
+                              <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              {order.resultFile ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
+                                  <button 
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile!;
+                                      link.download = `result_${order.id}.jpg`;
+                                      link.click();
+                                    }}
+                                    className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">No file</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">
+                                COMPLETED
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button 
+                                onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
+                                className="p-1.5 bg-slate-50 text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">
+                              No completed orders found.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>

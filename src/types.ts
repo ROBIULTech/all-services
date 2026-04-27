@@ -10,6 +10,7 @@ export interface UserProfile {
   photoURL?: string;
   createdAt?: Timestamp;
   isPremium?: boolean;
+  isVerified?: boolean;
   whatsapp?: string;
   password?: string;
   apiKey?: string;

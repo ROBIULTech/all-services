@@ -430,7 +430,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Fetch global settings
+    // 1. Listen for global settings
     const settingsRef = doc(db, 'settings', 'general');
     const unsubSettings = onSnapshot(settingsRef, async (docSnap) => {
       if (docSnap.exists()) {
@@ -447,7 +447,6 @@ export default function App() {
         });
         initializationRef.current.settings = true;
       } else if (!initializationRef.current.settings) {
-        // Initialize settings if they don't exist and we haven't tried yet
         initializationRef.current.settings = true;
         const initialSettings: GlobalSettings = { 
           premiumUnlockFee: 500, 
@@ -471,55 +470,64 @@ export default function App() {
       handleFirestoreError(error, OperationType.GET, 'settings/general');
     });
 
-    // Check for local demo session
-    const demoSession = localStorage.getItem('demo_session');
-    let unsubProfileDemo: (() => void) | null = null;
-
-    if (demoSession) {
-      const session = JSON.parse(demoSession);
-      setUser(session.user);
-      // Still set up a listener for the profile even for demo session if it has a real UID
-      if (session.user.uid) {
-        const userRef = doc(db, 'users', session.user.uid);
-        unsubProfileDemo = onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-          } else {
-            setUserProfile(session.profile); // Fallback to session profile if doc doesn't exist yet
-          }
-          setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${session.user.uid}`);
-        });
-      }
-    }
-
+    // 2. Auth State Listener (Real Firebase Auth)
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
       if (firebaseUser) {
-        // Fetch user profile
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-          }
-          setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-        });
+        setUser(firebaseUser);
       } else {
-        localStorage.removeItem('demo_session');
-        setUserProfile(null);
-        setLoading(false);
+        // If not authenticated via Firebase, check for demo session
+        const demoSession = localStorage.getItem('demo_session');
+        if (demoSession) {
+          const session = JSON.parse(demoSession);
+          setUser(session.user);
+          setUserProfile(session.profile);
+        } else {
+          setUser(null);
+          setUserProfile(null);
+        }
       }
+      setLoading(false);
     });
 
     return () => {
       unsubSettings();
       unsubscribeAuth();
-      if (unsubProfileDemo) unsubProfileDemo();
     };
   }, []);
+
+  // 3. User Profile Real-time Sync (Crucial for Balance updates)
+  useEffect(() => {
+    // Current user UID can come from Firebase Auth or Demo session
+    const currentUid = user?.uid || userProfile?.uid;
+    if (!currentUid) return;
+
+    console.log('Starting profile listener for:', currentUid);
+    const userRef = doc(db, 'users', currentUid);
+    const unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as UserProfile;
+        console.log('Profile updated from Firestore:', data.balance);
+        setUserProfile(prev => {
+          // Only update if balance or basic info changed to avoid unnecessary re-renders
+          if (prev?.balance !== data.balance || prev?.isPremium !== data.isPremium || prev?.isBlocked !== data.isBlocked || prev?.isVerified !== data.isVerified) {
+             return data;
+          }
+          return prev;
+        });
+        
+        // Sync back to demo session if used
+        const demoSession = localStorage.getItem('demo_session');
+        if (demoSession) {
+          const session = JSON.parse(demoSession);
+          localStorage.setItem('demo_session', JSON.stringify({ ...session, profile: data }));
+        }
+      }
+    }, (error) => {
+      console.warn('Profile listener error:', error);
+    });
+
+    return () => unsubscribeProfile();
+  }, [user?.uid, userProfile?.uid]);
 
   useEffect(() => {
     const bootstrapAdmin = async () => {

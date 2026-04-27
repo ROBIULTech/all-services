@@ -965,13 +965,21 @@ Mobile-
               </button>
             </div>
           ) : (
-            <button 
-              onClick={() => setShowRechargeModal(true)}
-              className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 hover:bg-emerald-200 transition-all mx-auto"
-              title="Recharge Now"
-            >
-              <Wallet className="w-6 h-6" />
-            </button>
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex flex-col items-center justify-center text-emerald-600 cursor-help group relative">
+                <Wallet className="w-5 h-5" />
+                <div className="absolute left-full ml-2 px-2 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  Balance: ৳{userProfile.balance.toLocaleString()}
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowRechargeModal(true)}
+                className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+                title="Recharge Now"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
           )}
         </div>
 
@@ -1034,13 +1042,33 @@ Mobile-
               {isDarkMode ? <Moon className="w-5 h-5 fill-current" /> : <Sun className="w-5 h-5 fill-current" />}
             </button>
 
-            <div className="flex flex-col items-end gap-0.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 lg:hidden">
+            <div className="flex flex-col items-end gap-0.5 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
               <div className="flex items-center gap-2">
                 <Wallet className="w-3.5 h-3.5 text-emerald-600" />
                 <span className="text-sm font-bold text-emerald-600">৳{userProfile.balance.toLocaleString()}</span>
                 <button 
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!userProfile?.uid) return;
+                    try {
+                      const { getDoc, doc } = await import('firebase/firestore');
+                      const userSnap = await getDoc(doc(db, 'users', userProfile.uid));
+                      if (userSnap.exists()) {
+                        setUserProfile?.(userSnap.data() as UserProfile);
+                      }
+                    } catch (e) {
+                      console.error('Refresh balance error:', e);
+                    }
+                  }}
+                  className="ml-1 p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                  title="Refresh Balance"
+                >
+                  <History className="w-3 h-3" />
+                </button>
+                <button 
                   onClick={() => setShowRechargeModal(true)}
                   className="ml-1 p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all"
+                  title="Recharge"
                 >
                   <Plus className="w-2.5 h-2.5" />
                 </button>

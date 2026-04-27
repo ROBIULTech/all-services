@@ -65,43 +65,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           throw new Error('এডমিন লগইন শুধুমাত্র এডমিন প্যানেল থেকে সম্ভব।');
         }
 
-        // 2. Real Auth: Synchronize with Firebase Auth to satisfy Security Rules
-        try {
-          await signInWithEmailAndPassword(auth, email, password);
-        } catch (authErr: any) {
-          console.error('Firebase Auth Status:', authErr.code);
-          
-          if (authErr.code === 'auth/operation-not-allowed') {
-            console.warn('CRITICAL: Email/Password login is not enabled in Firebase Console.');
-          } else if (authErr.code === 'auth/user-not-found' || authErr.code === 'auth/invalid-credential') {
-            try {
-              // Try creating the user if they don't exist in Auth but exist in Firestore
-              await createUserWithEmailAndPassword(auth, email, password);
-            } catch (createErr: any) {
-              if (createErr.code !== 'auth/operation-not-allowed') {
-                console.error('Failed to create auth user:', createErr);
-              }
-              // Fallback to anonymous if enabled
-              try { await signInAnonymously(auth); } catch(e) {}
-            }
-          } else {
-            // Fallback to anonymous for other errors
-            try { await signInAnonymously(auth); } catch(e) {}
-          }
-        }
-        
-        const finalUser = auth.currentUser;
-        const mockUser = {
-          uid: finalUser?.uid || profileData.uid,
-          email: finalUser?.email || profileData.email,
-          displayName: finalUser?.displayName || profileData.displayName,
-          photoURL: finalUser?.photoURL || profileData.photoURL
-        };
-        
-        localStorage.setItem('demo_session', JSON.stringify({ user: mockUser, profile: profileData }));
-        onLogin(mockUser, profileData);
+        localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
+        onLogin(profileData, profileData);
       } else {
-        // simulated Sign Up logic remains but we will add real auth at the end
+        // simulated Sign Up logic remains
         const q = query(collection(db, 'users'), where('email', '==', email));
         const querySnapshot = await getDocs(q);
 
@@ -180,23 +147,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={async () => {
-                  try {
-                    // Create real auth user first
-                    await createUserWithEmailAndPassword(auth, pendingProfile.email, pendingProfile.password);
-                    const finalUser = auth.currentUser;
-                    const profileWithUid = { ...pendingProfile, uid: finalUser?.uid || pendingProfile.uid };
-                    await setDoc(doc(db, 'users', profileWithUid.uid), profileWithUid);
-                    alert('ভেরিফিকেশন মেসেজ পাঠানো হয়েছে। এডমিন শীঘ্রই আপনার অ্যাকাউন্টটি সচল করে দেবে।');
-                    setIsLogin(true);
-                    setShowVerification(false);
-                  } catch (err: any) {
-                    console.error('Sign up auth error:', err);
-                    // Fallback to just firestore if auth creation fails (already exists etc)
-                    await setDoc(doc(db, 'users', pendingProfile.uid), pendingProfile);
-                    alert('ভেরিফিকেশন মেসেজ পাঠানো হয়েছে। এডমিন শীঘ্রই আপনার অ্যাকাউন্টটি সচল করে দেবে।');
-                    setIsLogin(true);
-                    setShowVerification(false);
-                  }
+                  await setDoc(doc(db, 'users', pendingProfile.uid), pendingProfile);
+                  alert('ভেরিফিকেশন মেসেজ পাঠানো হয়েছে। এডমিন শীঘ্রই আপনার অ্যাকাউন্টটি সচল করে দেবে।');
+                  setIsLogin(true);
+                  setShowVerification(false);
                 }}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 block text-center"
               >
