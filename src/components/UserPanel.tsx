@@ -2365,12 +2365,11 @@ Mobile-
                             )}
                           </button>
                         ))}
-                        <label htmlFor="profile-upload-input" className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex items-center justify-center bg-slate-50 hover:bg-slate-100">
-                          <Upload className="w-5 h-5 text-slate-400" />
+                        <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex items-center justify-center bg-slate-50 hover:bg-slate-100">
+                          <Upload className="w-5 h-5 text-slate-400 pointer-events-none" />
                           <input 
-                            id="profile-upload-input"
                             type="file" 
-                            className="hidden" 
+                            className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" 
                             accept="image/*"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
@@ -2387,7 +2386,7 @@ Mobile-
                               }
                             }}
                           />
-                        </label>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2887,15 +2886,10 @@ Mobile-
                       </label>
                       <div className="flex flex-wrap items-center justify-start w-full gap-4">
                         {orderFiles.length === 0 ? (
-                          <label htmlFor="order-document-upload" className="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
-                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                              <Plus className="w-6 h-6 text-slate-500 mb-2" />
-                              <p className="text-xs text-slate-500">Click to upload document</p>
-                            </div>
+                          <div className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden">
                             <input 
-                              id="order-document-upload"
                               type="file" 
-                              className="hidden" 
+                              className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" 
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
@@ -2915,7 +2909,11 @@ Mobile-
                                 }
                               }}
                             />
-                          </label>
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none z-0 relative">
+                              <Plus className="w-6 h-6 text-slate-500 mb-2" />
+                              <p className="text-xs text-slate-500">Click to upload document</p>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex flex-wrap items-center gap-4 w-full">
                             {orderFiles.map((file, index) => (
@@ -2937,12 +2935,11 @@ Mobile-
                                 </button>
                               </div>
                             ))}
-                            <label htmlFor="order-document-upload-add" className="flex flex-col items-center justify-center w-24 h-24 border-none rounded-2xl cursor-pointer bg-[#3b82f6] hover:bg-[#2563eb] transition-all shadow-lg shadow-blue-500/20 active:scale-95">
-                              <Plus className="w-8 h-8 text-white stroke-[3]" />
+                            <div className="relative flex flex-col items-center justify-center w-24 h-24 border-none rounded-2xl cursor-pointer bg-[#3b82f6] hover:bg-[#2563eb] transition-all shadow-lg shadow-blue-500/20 active:scale-95 overflow-hidden">
+                              <Plus className="w-8 h-8 text-white stroke-[3] pointer-events-none" />
                               <input 
-                                id="order-document-upload-add"
                                 type="file" 
-                                className="hidden" 
+                                className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" 
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
@@ -2962,7 +2959,7 @@ Mobile-
                                   }
                                 }}
                               />
-                            </label>
+                            </div>
                           </div>
                         )}
                       </div>

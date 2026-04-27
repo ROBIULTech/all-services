@@ -3684,15 +3684,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Upload Result File (Optional)</span>
-                  <label htmlFor="admin-result-file-upload" className="relative group block w-full cursor-pointer">
+                  <div className="relative group block w-full cursor-pointer">
                     <input 
-                      id="admin-result-file-upload"
                       type="file" 
                       onChange={handleFileChange}
-                      className="hidden"
+                      className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
                     />
                     <div className={cn(
-                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all relative overflow-hidden",
+                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all relative overflow-hidden pointer-events-none",
                       resultFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 group-hover:border-indigo-500 group-hover:bg-indigo-50"
                     )}>
                       {resultFile ? (
@@ -3705,7 +3704,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               e.preventDefault(); 
                               setResultFile(null); 
                             }} 
-                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative"
+                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative pointer-events-auto"
                           >
                             Remove File
                           </button>
@@ -3718,7 +3717,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       )}
                     </div>
-                  </label>
+                  </div>
                 </div>
 
                 <div className="flex gap-4">
