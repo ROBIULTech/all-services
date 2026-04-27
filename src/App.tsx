@@ -168,104 +168,92 @@ import UserPanel from './components/UserPanel';
 import AdminPanel from './components/AdminPanel';
 
 const initialProducts: Product[] = [
-  { id: 1, titleBn: 'সাইন কপি অর্ডার', titleEn: 'Sign Copy Order', category: 'NID', icon: FileText, color: 'bg-blue-500', price: 40, isActive: true, options: [{ name: 'FORM_NO', price: 40 }, { name: 'NID_NO', price: 40 }, { name: 'VOTER_NO', price: 40 }, { name: 'BIRTH_NO', price: 40 }], defaultData: `এনআইডি নম্বর:
-জন্ম তারিখ:
-ভোটার নম্বর (যদি থাকে):` },
-  { id: 2, titleBn: 'এনআইডি কপি অর্ডার', titleEn: 'NID Copy Order', category: 'NID', icon: CreditCard, color: 'bg-indigo-500', price: 50, isActive: true, options: [{ name: 'FORM_NO', price: 50 }, { name: 'NID_NO', price: 50 }, { name: 'VOTER_NO', price: 50 }, { name: 'BIRTH_NO', price: 50 }], defaultData: `এনআইডি নম্বর:
-জন্ম তারিখ:` },
-  { id: 3, titleBn: 'অফিসিয়াল সার্ভার কপি', titleEn: 'Official Server Copy', category: 'Server', icon: Server, color: 'bg-slate-700', price: 80, isActive: true, options: [{ name: 'FORM_NO', price: 80 }, { name: 'NID_NO', price: 80 }, { name: 'VOTER_NO', price: 80 }, { name: 'BIRTH_NO', price: 80 }], defaultData: `এনআইডি নম্বর:
-জন্ম তারিখ:` },
-  { id: 4, titleBn: 'টিন সার্টিফিকেট অর্ডার করুন', titleEn: 'TIN Certificate Order', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 100, isActive: true },
-  { id: 5, titleBn: 'বায়োমেট্রিক অর্ডার', titleEn: 'Biometric Order', category: 'Biometric', icon: ShieldCheck, color: 'bg-pink-500', price: 200, isActive: true, options: [{ name: 'Grameenphone', price: 100 }, { name: 'Banglalink', price: 100 }, { name: 'Robi', price: 100 }, { name: 'Airtel', price: 100 }, { name: 'Teletalk', price: 100 }], defaultData: `নাম:
-এনআইডি নম্বর:
-মোবাইল নম্বর:
-অপারেটর:
-পিতার নাম:
-মাতার নাম:` },
-  { id: 6, titleBn: 'লোকেশন অর্ডার', titleEn: 'Location Order', category: 'Location', icon: MapPin, color: 'bg-slate-800', price: 300, isActive: true },
-  { id: 7, titleBn: 'নতুন জন্ম নিবন্ধন', titleEn: 'New Birth Registration', category: 'Government', icon: Baby, color: 'bg-cyan-500', price: 1200, isActive: true, options: [{ name: 'মিনিস্ট্রি', price: 1200 }], defaultData: `• Name (English):*
-• পিতার নাম (বাংলা):*
+  { id: 1, titleBn: 'Sign Copy Order', titleEn: 'Sign Copy Order', category: 'NID', icon: FileText, color: 'bg-blue-500', price: 40, isActive: true, options: [{ name: 'FORM_NO', price: 40 }, { name: 'NID_NO', price: 40 }, { name: 'VOTER_NO', price: 40 }, { name: 'BIRTH_NO', price: 40 }], defaultData: `NID Number:
+Birth Date:
+Voter Number (if any):` },
+  { id: 2, titleBn: 'NID Copy Order', titleEn: 'NID Copy Order', category: 'NID', icon: CreditCard, color: 'bg-indigo-500', price: 50, isActive: true, options: [{ name: 'FORM_NO', price: 50 }, { name: 'NID_NO', price: 50 }, { name: 'VOTER_NO', price: 50 }, { name: 'BIRTH_NO', price: 50 }], defaultData: `NID Number:
+Birth Date:` },
+  { id: 3, titleBn: 'Official Server Copy', titleEn: 'Official Server Copy', category: 'Server', icon: Server, color: 'bg-slate-700', price: 80, isActive: true, options: [{ name: 'FORM_NO', price: 80 }, { name: 'NID_NO', price: 80 }, { name: 'VOTER_NO', price: 80 }, { name: 'BIRTH_NO', price: 80 }], defaultData: `NID Number:
+Birth Date:` },
+  { id: 4, titleBn: 'TIN Certificate Order', titleEn: 'TIN Certificate Order', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 100, isActive: true },
+  { id: 5, titleBn: 'Biometric Order', titleEn: 'Biometric Order', category: 'Biometric', icon: ShieldCheck, color: 'bg-pink-500', price: 200, isActive: true, options: [{ name: 'Grameenphone', price: 100 }, { name: 'Banglalink', price: 100 }, { name: 'Robi', price: 100 }, { name: 'Airtel', price: 100 }, { name: 'Teletalk', price: 100 }], defaultData: `Name:
+NID Number:
+Mobile Number:
+Operator:
+Father's Name:
+Mother's Name:` },
+  { id: 6, titleBn: 'Location Order', titleEn: 'Location Order', category: 'Location', icon: MapPin, color: 'bg-slate-800', price: 300, isActive: true },
+  { id: 7, titleBn: 'New Birth Registration', titleEn: 'New Birth Registration', category: 'Government', icon: Baby, color: 'bg-cyan-500', price: 1200, isActive: true, options: [{ name: 'Ministry', price: 1200 }], defaultData: `• Name (English):*
 • Father's Name:*
-• মাতার নাম (বাংলা):*
 • Mother's Name:*
-• জন্মতারিখ:*
 • Date of Birth:*
-• লিঙ্গ:*
-• জন্মস্থান (বাংলা):*
-• জন্মস্থান (ইংরেজি):*
-• স্থায়ী ঠিকানা (বাংলা):*
-• স্থায়ী ঠিকানা (ইংরেজি):*
-• বর্তমান ঠিকানা (বাংলা):*
-• বর্তমান ঠিকানা (ইংরেজি):*` },
-  { id: 8, titleBn: 'কললিস্ট অর্ডার', titleEn: 'Call List Order', category: 'Biometric', icon: PhoneCall, color: 'bg-orange-600', price: 750, isActive: true, options: [{ name: '৩ মাস কল লিস্ট', price: 750 }, { name: '৬ মাস কল লিস্ট', price: 1200 }], defaultData: `কললিস্ট এর কাজের ফরমেট* ↩️
-✅ তার এক কপি ছবি
-
-⚠️নামঃ
-⚠️পিতার নাম:
-⚠️মাতার নামঃ 
-⚠️গ্রামঃ
-⚠️ইউনিয়নঃ 
-⚠️উপ উপজেলাঃ 
-⚠️জেলাঃ
-⚠️বিভাগঃ
-⚠️কত সালে ভোটার হয়েছেঃ
-⚠️জন্ম নিবন্ধন নাম্বার -(যদি থাকে) 
-*🚫সাথে ভোটার হওয়া ১জনের আইডিঃ* যদি থাকে` },
-  { id: 9, titleBn: 'NID টু অল নাম্বার অর্ডার', titleEn: 'NID to All Number', category: 'NID', icon: Hash, color: 'bg-indigo-600', price: 500, isActive: true },
-  { id: 10, titleBn: 'Nid ইউজার পাসওয়ার্ড চেঞ্জ', titleEn: 'NID Password Change', category: 'NID', icon: Key, color: 'bg-pink-600', price: 220, isActive: true },
-  { id: 11, titleBn: 'নাম ঠিকানা NID', titleEn: 'Name Address NID', category: 'NID', icon: UserCheck, color: 'bg-blue-600', price: 350, isActive: true },
-  { id: 12, titleBn: 'INFO অর্ডার', titleEn: 'INFO Order', category: 'Biometric', icon: Info, color: 'bg-sky-500', price: 1150, isActive: true, options: [{ name: 'Bkash', price: 900 }, { name: 'Nagad', price: 1150 }, { name: 'Bkash Agent', price: 950 }, { name: 'BKash Merchant', price: 1000 }], defaultData: `নাম:
-মোবাইল নম্বর:
-তথ্য যা প্রয়োজন:
-এনআইডি নম্বর (যদি থাকে):` },
-  { id: 13, titleBn: 'অরজিনাল স্মার্ট কার্ড অর্ডার', titleEn: 'Original Smart Card Order', category: 'NID', icon: Smartphone, color: 'bg-blue-700', price: 3800, isActive: true, options: [{ name: 'নতুন স্মার্ট কার্ড প্রিন্ট', price: 3300 }, { name: 'রি-প্রিন্ট স্মার্ট কার্ড', price: 3800 }], defaultData: `স্মার্ট কার্ড তথ্য প্রদান করুন:
-Name:
-NID:
-DOB:
-আপনার হোয়াটসঅ্যাপ নাম্বার:
-
-সুন্দরবন কুরিয়ার ঠিকানা:
-কুরিয়ার ঠিকানা দিন
-Received নাম:
-Received নাম্বার:
-জেলা:
-থানা:
-ইউনিয়ন:` },
-  { id: 14, titleBn: 'পাসপোর্ট SB কপি', titleEn: 'Passport SB Copy', category: 'Passport', icon: Globe, color: 'bg-indigo-700', price: 800, isActive: true, options: [{ name: 'MRP Passport SB Copy', price: 500 }, { name: 'E Passport SB Copy', price: 800 }], defaultData: `পাসপোর্ট নম্বর:
-এনআইডি নম্বর:
-নাম:` },
-  { id: 15, titleBn: 'পাসপোর্ট মূল কপি', titleEn: 'Passport Main Copy', category: 'Passport', icon: Globe, color: 'bg-sky-700', price: 1200, isActive: true, options: [{ name: 'MRP Passport Main Copy', price: 1000 }, { name: 'E Passport Main Copy', price: 1200 }], defaultData: `পাসপোর্ট নম্বর:
-এনআইডি নম্বর:
-নাম:` },
-  { id: 16, titleBn: 'সুুবর্ণ প্রতিবন্ধী কার্ড', titleEn: 'Disability Card', category: 'Social', icon: HeartHandshake, color: 'bg-slate-900', price: 1250, isActive: true },
-  { id: 17, titleBn: 'হারিয়ে যাওয়া জন্ম সনদ', titleEn: 'Lost Birth Certificate', category: 'Government', icon: FileSearch, color: 'bg-orange-400', price: 30, isActive: true },
-  { id: 18, titleBn: 'হারিয়ে যাওয়া মৃত্যু সনদ', titleEn: 'Lost Death Certificate', category: 'Government', icon: FileSearch, color: 'bg-red-500', price: 30, isActive: true },
-  { id: 19, titleBn: 'নিকানাম ফর্ম', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'পিডিএফ (বাংলা)', price: 300 }, { name: 'পিডিএফ (English)', price: 300 }, { name: 'ওয়াড ফাইল (বাংলা)', price: 400 }, { name: 'ওয়াড ফাইল (English)', price: 400 }], defaultData: `নাম:
-পিতার নাম:
-মাতার নাম:
-ঠিকানা:` },
-  { id: 20, titleBn: 'পিএসসি সার্টিফিকেট ভেক্টর ফাইল', titleEn: 'PSC Certificate Vector', category: 'Certificate', icon: GraduationCap, color: 'bg-indigo-400', price: 150, isActive: true, options: [{ name: 'ভেক্টর ফাইল', price: 150 }], defaultData: `রোল নম্বর:
-রেজিস্ট্রেশন নম্বর:
-সাল:
-বোর্ড:` },
-  { id: 21, titleBn: 'ইপিআইড/শিশুদের টিকা কার্ড ভেক্টর ফাইল', titleEn: 'EPI/Vaccine Card Vector', category: 'Certificate', icon: Stethoscope, color: 'bg-blue-400', price: 150, isActive: true, options: [{ name: 'পিডিএফ', price: 150 }, { name: 'ভেক্টর ফাইল', price: 150 }], defaultData: `শিশুর নাম:
-পিতার নাম:
-মাতার নাম:
-জন্ম তারিখ:` },
-  { id: 22, titleBn: 'আন অফিসিয়াল সার্ভার কপি', titleEn: 'Unofficial Server Copy', category: 'Server', icon: Server, color: 'bg-slate-600', price: 30, isActive: true, options: [{ name: 'Server Copy Type 1', price: 30 }, { name: 'Server Copy Type 2', price: 30 }], defaultData: `এনআইডি নম্বর:
-জন্ম তারিখ:` },
-  { id: 23, titleBn: 'এনআইডি সংশোধন কপি', titleEn: 'NID Correction Copy', category: 'NID', icon: CreditCard, color: 'bg-indigo-400', price: 150, isActive: true },
-  { id: 24, titleBn: 'পাসপোর্ট ইনফরমেশন', titleEn: 'Passport Information', category: 'Passport', icon: FileSearch, color: 'bg-teal-600', price: 500, isActive: true, options: [{ name: 'MRP Passport Information', price: 500 }, { name: 'E Passport Information', price: 500 }], defaultData: `পাসপোর্ট নম্বর:
-এনআইডি নম্বর:
-নাম:` },
-  { id: 25, titleBn: 'টিন সাটিফিকেট সংশোধন', titleEn: 'TIN Certificate Correction', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 150, isActive: true, defaultData: `টিন নম্বর:
-সংশোধন এর বিবরণ:` },
-  { id: 26, titleBn: 'ট্যাক্স রিটার্ন', titleEn: 'Tax Return', category: 'Tax', icon: Landmark, color: 'bg-emerald-600', price: 500, isActive: true, requiresFileUpload: true, instructions: 'দয়া করে আপনার ট্যাক্স ফাইলটি আপলোড করুন।' },
-  { id: 27, titleBn: 'টিন সার্টিফিকেট বাতিল', titleEn: 'TIN Certificate Cancellation', category: 'Tax', icon: XCircle, color: 'bg-red-500', price: 250, isActive: true, defaultData: `টিন নম্বর:
-এনআইডি নম্বর:
-বাতিল করার কারণ:` },
-  { id: 101, titleBn: 'অটো সাইন কপি', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'এনআইডি নম্বর:' },
-  { id: 102, titleBn: 'তথ্য যাচাই', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'নম্বর:' },
+• Gender:*
+• Birth Place:*
+• Permanent Address:*
+• Present Address:*` },
+  { id: 8, titleBn: 'Call List Order', titleEn: 'Call List Order', category: 'Biometric', icon: PhoneCall, color: 'bg-orange-600', price: 750, isActive: true, options: [{ name: '3 Months Call List', price: 750 }, { name: '6 Months Call List', price: 1200 }], defaultData: `Call List Format* ↩️
+✅ One Copy Photo
+⚠️Name:
+⚠️Father's Name:
+⚠️Mother's Name:
+⚠️Village:
+⚠️Union:
+⚠️Upazila: 
+⚠️District:
+⚠️Division:
+⚠️Voter Registration Year:
+⚠️Birth Registration Number (If any):
+*🚫With any 1 Voter ID (if available)*` },
+  { id: 9, titleBn: 'NID to All Number', titleEn: 'NID to All Number', category: 'NID', icon: Hash, color: 'bg-indigo-600', price: 500, isActive: true },
+  { id: 10, titleBn: 'NID Password Change', titleEn: 'NID Password Change', category: 'NID', icon: Key, color: 'bg-pink-600', price: 220, isActive: true },
+  { id: 11, titleBn: 'Name Address NID', titleEn: 'Name Address NID', category: 'NID', icon: UserCheck, color: 'bg-blue-600', price: 350, isActive: true },
+  { id: 12, titleBn: 'INFO Order', titleEn: 'INFO Order', category: 'Biometric', icon: Info, color: 'bg-sky-500', price: 1150, isActive: true, options: [{ name: 'Bkash', price: 900 }, { name: 'Nagad', price: 1150 }, { name: 'Bkash Agent', price: 950 }, { name: 'BKash Merchant', price: 1000 }], defaultData: `Name:
+Mobile Number:
+Required Info:
+NID Number (If any):` },
+  { id: 13, titleBn: 'Original Smart Card Order', titleEn: 'Original Smart Card Order', category: 'NID', icon: Smartphone, color: 'bg-blue-700', price: 3800, isActive: true, options: [{ name: 'New Smart Card Print', price: 3300 }, { name: 'Reprint Smart Card', price: 3800 }], defaultData: `Smart Card Info:
+Your WhatsApp Number:
+Courier Address:
+Receiver Name:
+Receiver Number:
+District:
+Thana:
+Union:` },
+  { id: 14, titleBn: 'Passport SB Copy', titleEn: 'Passport SB Copy', category: 'Passport', icon: Globe, color: 'bg-indigo-700', price: 800, isActive: true, options: [{ name: 'MRP Passport SB Copy', price: 500 }, { name: 'E Passport SB Copy', price: 800 }], defaultData: `Passport Number:
+NID Number:
+Name:` },
+  { id: 15, titleBn: 'Passport Main Copy', titleEn: 'Passport Main Copy', category: 'Passport', icon: Globe, color: 'bg-sky-700', price: 1200, isActive: true, options: [{ name: 'MRP Passport Main Copy', price: 1000 }, { name: 'E Passport Main Copy', price: 1200 }], defaultData: `Passport Number:
+NID Number:
+Name:` },
+  { id: 16, titleBn: 'Disability Card', titleEn: 'Disability Card', category: 'Social', icon: HeartHandshake, color: 'bg-slate-900', price: 1250, isActive: true },
+  { id: 17, titleBn: 'Lost Birth Certificate', titleEn: 'Lost Birth Certificate', category: 'Government', icon: FileSearch, color: 'bg-orange-400', price: 30, isActive: true },
+  { id: 18, titleBn: 'Lost Death Certificate', titleEn: 'Lost Death Certificate', category: 'Government', icon: FileSearch, color: 'bg-red-500', price: 30, isActive: true },
+  { id: 19, titleBn: 'Nickname Form', titleEn: 'Nickname Form', category: 'Certificate', icon: FileText, color: 'bg-slate-500', price: 150, isActive: true, options: [{ name: 'PDF (Bengali)', price: 300 }, { name: 'PDF (English)', price: 300 }, { name: 'Word File (Bengali)', price: 400 }, { name: 'Word File (English)', price: 400 }], defaultData: `Name:
+Father's Name:
+Mother's Name:
+Address:` },
+  { id: 20, titleBn: 'PSC Certificate Vector', titleEn: 'PSC Certificate Vector', category: 'Certificate', icon: GraduationCap, color: 'bg-indigo-400', price: 150, isActive: true, options: [{ name: 'Vector File', price: 150 }], defaultData: `Roll Number:
+Registration Number:
+Year:
+Board:` },
+  { id: 21, titleBn: 'Vaccine Card Vector', titleEn: 'Vaccine Card Vector', category: 'Certificate', icon: Stethoscope, color: 'bg-blue-400', price: 150, isActive: true, options: [{ name: 'PDF', price: 150 }, { name: 'Vector File', price: 150 }], defaultData: `Child Name:
+Father's Name:
+Mother's Name:
+Birth Date:` },
+  { id: 22, titleBn: 'Unofficial Server Copy', titleEn: 'Unofficial Server Copy', category: 'Server', icon: Server, color: 'bg-slate-600', price: 30, isActive: true, options: [{ name: 'Server Copy Type 1', price: 30 }, { name: 'Server Copy Type 2', price: 30 }], defaultData: `NID Number:
+Birth Date:` },
+  { id: 23, titleBn: 'NID Correction Copy', titleEn: 'NID Correction Copy', category: 'NID', icon: CreditCard, color: 'bg-indigo-400', price: 150, isActive: true },
+  { id: 24, titleBn: 'Passport Information', titleEn: 'Passport Information', category: 'Passport', icon: FileSearch, color: 'bg-teal-600', price: 500, isActive: true, options: [{ name: 'MRP Passport Information', price: 500 }, { name: 'E Passport Information', price: 500 }], defaultData: `Passport Number:
+NID Number:
+Name:` },
+  { id: 25, titleBn: 'TIN Certificate Correction', titleEn: 'TIN Certificate Correction', category: 'Tax', icon: FileText, color: 'bg-orange-500', price: 150, isActive: true, defaultData: `TIN Number:
+Correction Details:` },
+  { id: 26, titleBn: 'Tax Return', titleEn: 'Tax Return', category: 'Tax', icon: Landmark, color: 'bg-emerald-600', price: 500, isActive: true, requiresFileUpload: true, instructions: 'Please upload your Tax file.' },
+  { id: 27, titleBn: 'TIN Certificate Cancellation', titleEn: 'TIN Certificate Cancellation', category: 'Tax', icon: XCircle, color: 'bg-red-500', price: 250, isActive: true, defaultData: `TIN Number:
+NID Number:
+Reason for Cancellation:` },
+  { id: 101, titleBn: 'Auto Sign Copy', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'NID Number:' },
+  { id: 102, titleBn: 'Info Verification', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'Number:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
   { id: 104, titleBn: 'অটো এনআইডি', titleEn: 'Auto NID', category: 'PREMIUM', icon: CreditCard, color: 'bg-purple-600', price: 100, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
   { id: 105, titleBn: 'স্মার্ট ভোটার অনুসন্ধান', titleEn: 'Smart Voter Search', category: 'PREMIUM', icon: UserCheck, color: 'bg-teal-600', price: 50, isActive: true }

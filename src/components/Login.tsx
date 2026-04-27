@@ -47,22 +47,22 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          throw new Error('এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। দয়া করে সাইন আপ করুন।');
+          throw new Error('No account found with this email. Please sign up.');
         }
 
         const userDoc = querySnapshot.docs[0];
         const profileData = userDoc.data();
         
         if (profileData.password && profileData.password !== password) {
-          throw new Error('ভুল পাসওয়ার্ড। আবার চেষ্টা করুন।');
+          throw new Error('Wrong password. Please try again.');
         }
 
         if (isAdminRoute && profileData.role !== 'admin') {
-          throw new Error('অ্যাক্সেসDenied! শুধুমাত্র এডমিন লগইন করতে পারবেন।');
+          throw new Error('Access Denied! Only admins can login.');
         }
         
         if (!isAdminRoute && profileData.role === 'admin') {
-          throw new Error('এডমিন লগইন শুধুমাত্র এডমিন প্যানেল থেকে সম্ভব।');
+          throw new Error('Admin login is only possible through the admin panel.');
         }
 
         localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
@@ -73,7 +73,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-          throw new Error('এই ইমেইলটি ইতিমধ্যে ব্যবহার করা হয়েছে। অনুগ্রহ করে অন্য ইমেইল ব্যবহার করুন।');
+          throw new Error('This email is already in use. Please use a different email.');
         }
 
         // Create a new user profile in Firestore
@@ -85,8 +85,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           email: email,
           password: password,
           whatsapp: whatsapp,
-          displayName: email.split('@')[0] || 'ইউজার',
-          photoURL: `https://ui-avatars.com/api/?name=${email.split('@')[0] || 'ইউজার'}&background=random`,
+          displayName: email.split('@')[0] || 'User',
+          photoURL: `https://ui-avatars.com/api/?name=${email.split('@')[0] || 'User'}&background=random`,
           role: 'user',
           balance: 0,
           isPremium: false,
@@ -100,7 +100,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
     } catch (err: any) {
       console.error('Simulated Auth error:', err);
-      setError(err.message || 'অথেন্টিকেশন ব্যর্থ হয়েছে');
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -118,15 +118,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="flex flex-col items-center justify-center mx-auto mb-6">
               <Logo className="w-16 h-16 mb-2" />
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-black tracking-tight text-white leading-none mt-1">সব সার্ভিস</span>
-                <span className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-1">প্লাটফর্ম</span>
+                <span className="text-2xl font-black tracking-tight text-white leading-none mt-1">ALL SERVICES</span>
+                <span className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-1">PLATFORM</span>
               </div>
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              {isAdminRoute ? 'এডমিন প্যানেল' : (isLogin ? 'স্বাগতম' : 'অ্যাকাউন্ট তৈরি করুন')}
+              {isAdminRoute ? 'Admin Panel' : (isLogin ? 'Welcome' : 'Create Account')}
             </h1>
             <p className="text-sm text-slate-400">
-              {isAdminRoute ? 'এডমিন প্যানেলে প্রবেশ করুন' : (isLogin ? 'আপনার অ্যাকাউন্টে লগইন করুন' : 'নতুন অ্যাকাউন্ট তৈরি করতে তথ্য দিন')}
+              {isAdminRoute ? 'Login to Admin Panel' : (isLogin ? 'Login to your account' : 'Provide information to create a new account')}
             </p>
           </div>
 
@@ -139,29 +139,29 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           {showVerification ? (
             <div className="space-y-6 text-center">
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-xl text-emerald-500">
-                <p className="font-bold">আর কিছু ধাপ বাকি!</p>
-                <p className="text-sm mt-1">আপনার অ্যাকাউন্টটি সচল করতে অনুগ্রহ করে হোয়াটসঅ্যাপ নম্বরটি ভেরিফাই করুন।</p>
+                <p className="font-bold">A few more steps left!</p>
+                <p className="text-sm mt-1">Please verify your WhatsApp number to activate your account.</p>
               </div>
               <a
-                href={`https://wa.me/8801811152997?text=${encodeURIComponent(`হ্যালো, আমি আমার অ্যাকাউন্টটি সচল করতে চাই। আমার ইমেইল: ${pendingProfile.email}`)}`}
+                href={`https://wa.me/8801811152997?text=${encodeURIComponent(`Hello, I want to activate my account. My email: ${pendingProfile.email}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={async () => {
                   await setDoc(doc(db, 'users', pendingProfile.uid), pendingProfile);
-                  alert('ভেরিফিকেশন মেসেজ পাঠানো হয়েছে। এডমিন শীঘ্রই আপনার অ্যাকাউন্টটি সচল করে দেবে।');
+                  alert('Verification message sent. Admin will activate your account soon.');
                   setIsLogin(true);
                   setShowVerification(false);
                 }}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 block text-center"
               >
-                হোয়াটসঅ্যাপের মাধ্যমে ভেরিফাই করুন
+                Verify via WhatsApp
               </a>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* ... existing form fields ... */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'ইমেইল' : 'ইমেইল এড্রেস'}</label>
+                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'Email' : 'Email Address'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Mail className="h-5 w-5 text-slate-500" />
@@ -178,7 +178,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'পাসওয়ার্ড' : 'পাসওয়ার্ড'}</label>
+                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'Password' : 'Password'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-5 w-5 text-slate-500" />
@@ -204,7 +204,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
               {!isLogin && !isAdminRoute && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">হোয়াটসঅ্যাপ নম্বর</label>
+                  <label className="text-sm font-medium text-slate-300">WhatsApp Number</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -233,7 +233,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 ) : (
                   <>
                     {isAdminRoute ? null : <LogIn className="w-5 h-5" />}
-                    {isAdminRoute ? 'লগইন করুন' : (isLogin ? 'লগইন করুন' : 'সাইন আপ করুন')}
+                    {isAdminRoute ? 'Login' : (isLogin ? 'Login' : 'Sign Up')}
                   </>
                 )}
               </button>
@@ -249,7 +249,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 }}
                 className="text-sm text-slate-400 hover:text-indigo-400 transition-colors block w-full"
               >
-                {isLogin ? "অ্যাকাউন্ট নেই? সাইন আপ করুন" : "ইতিমধ্যে অ্যাকাউন্ট আছে? লগইন করুন"}
+                {isLogin ? "No account? Sign up" : "Already have an account? Login"}
               </button>
             </div>
           )}

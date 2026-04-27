@@ -32,6 +32,7 @@ export interface Order {
   userEmail?: string;
   resultFile?: string;
   fileURL?: string;
+  fileURLs?: string[];
   senderNumber?: string;
   trxID?: string;
 }

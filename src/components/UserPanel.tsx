@@ -16,6 +16,7 @@ import {
   Package,
   Plus,
   X,
+  Trash2,
   CheckCircle,
   Copy,
   Download,
@@ -95,7 +96,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [localIsSidebarOpen, setLocalIsSidebarOpen] = useState(true);
   const isSidebarOpen = propIsSidebarOpen !== undefined ? propIsSidebarOpen : localIsSidebarOpen;
   const setIsSidebarOpen = propSetIsSidebarOpen !== undefined ? propSetIsSidebarOpen : setLocalIsSidebarOpen;
-  const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium' | 'rejected'>('services');
+  const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium' | 'rejected' | 'completed-orders'>('services');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -111,7 +112,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [rechargeMethod, setRechargeMethod] = useState<{id: string, name: string, color: string, logo: string, number?: string} | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [rechargeData, setRechargeData] = useState({ amount: '', senderNumber: '', trxID: '' });
-  const [orderFile, setOrderFile] = useState<string | null>(null);
+  const [orderFiles, setOrderFiles] = useState<string[]>([]);
   const [profileForm, setProfileForm] = useState({ 
     displayName: userProfile?.displayName || '', 
     photoURL: userProfile?.photoURL || '',
@@ -444,7 +445,7 @@ Mobile-
     } else {
       setOrderData('');
     }
-    setOrderFile(null);
+    setOrderFiles([]);
   }, [selectedProduct]);
 
   const calculatePrice = (basePrice: number, product?: Product) => {
@@ -567,7 +568,7 @@ Mobile-
         serviceTitle: selectedProduct.titleBn + (selectedOption ? ` (${selectedOption.name})` : ''),
         status: 'pending',
         data: orderData,
-        fileURL: orderFile,
+        fileURLs: orderFiles,
         price: currentPrice,
         createdAt: serverTimestamp()
       };
@@ -853,10 +854,21 @@ Mobile-
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
               activeTab === 'history' ? "bg-brand/10 text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
-            title={!isSidebarOpen ? "Order History" : ""}
+            title={!isSidebarOpen ? "My Orders" : ""}
           >
             <History className="w-5 h-5 flex-shrink-0" />
-            {isSidebarOpen && <span>Order History</span>}
+            {isSidebarOpen && <span>My Orders</span>}
+          </button>
+          <button 
+            onClick={() => setActiveTab('completed-orders')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
+              activeTab === 'completed-orders' ? "bg-emerald-50 text-emerald-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+            title={!isSidebarOpen ? "Completed Orders" : ""}
+          >
+            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+            {isSidebarOpen && <span>Completed Orders</span>}
           </button>
           <button 
             onClick={() => setActiveTab('rejected')}
@@ -1300,11 +1312,11 @@ Mobile-
           {activeTab === 'history' && (
             <div className="space-y-8">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">Order History</h1>
-                <p className="text-slate-500 mt-1">Track your service requests and their status</p>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900">My Orders</h1>
+                <p className="text-slate-500 mt-1">Track your active service requests and their status</p>
               </div>
 
-              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm font-sans">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
@@ -1313,18 +1325,17 @@ Mobile-
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Result</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Admin Note</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {orders.filter(o => o.status !== 'rejected').length > 0 ? orders.filter(o => o.status !== 'rejected').map((order, i) => {
+                    <tbody className="divide-y divide-slate-100 italic">
+                      {orders.filter(o => o.status !== 'rejected' && o.status !== 'completed').length > 0 ? orders.filter(o => o.status !== 'rejected' && o.status !== 'completed').map((order, i) => {
                         const StatusIcon = getStatusIcon(order.status);
                         return (
                           <tr key={order.id || i} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
                               <p className="text-sm font-bold text-slate-900">{order.serviceTitle}</p>
-                              <p className="text-[10px] text-slate-500">ID: {order.id?.slice(-6).toUpperCase()}</p>
+                              <p className="text-[10px] text-slate-500">ID: {order.id?.slice(-8).toUpperCase()}</p>
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-sm text-slate-600">
@@ -1335,45 +1346,13 @@ Mobile-
                               </p>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-sm font-bold text-emerald-400">৳{order.price}</span>
+                              <span className="text-sm font-bold text-emerald-600">৳{order.price}</span>
                             </td>
                             <td className="px-6 py-4">
                               <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider", getStatusColor(order.status))}>
                                 <StatusIcon className="w-3 h-3" />
-                                {order.status}
+                                {order.status === 'pending' ? 'Pending' : order.status === 'processing' ? 'Processing' : order.status}
                               </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              {order.resultFile ? (
-                                <button 
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = order.resultFile!;
-                                    
-                                    // Determine extension from data URL
-                                    let ext = 'pdf';
-                                    if (order.resultFile?.startsWith('data:image/jpeg')) ext = 'jpg';
-                                    else if (order.resultFile?.startsWith('data:image/png')) ext = 'png';
-                                    else if (order.resultFile?.startsWith('data:image/webp')) ext = 'webp';
-                                    else if (order.resultFile?.startsWith('data:application/msword')) ext = 'doc';
-                                    else if (order.resultFile?.startsWith('data:application/vnd.openxmlformats-officedocument.wordprocessingml.document')) ext = 'docx';
-                                    else if (order.resultFile?.startsWith('data:application/vnd.ms-excel')) ext = 'xls';
-                                    else if (order.resultFile?.startsWith('data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) ext = 'xlsx';
-                                    else if (order.resultFile?.startsWith('data:application/zip') || order.resultFile?.startsWith('data:application/x-zip-compressed')) ext = 'zip';
-                                    
-                                    link.download = `result-${order.id?.slice(-6)}.${ext}`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-all text-[10px] font-bold uppercase"
-                                >
-                                  <Download className="w-3 h-3" />
-                                  Download
-                                </button>
-                              ) : (
-                                <span className="text-[10px] text-slate-600 font-bold uppercase">No File</span>
-                              )}
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-xs text-slate-400 italic">
@@ -1385,9 +1364,101 @@ Mobile-
                       }) : (
                         <tr>
                           <td colSpan={5} className="px-6 py-20 text-center">
-                            <div className="flex flex-col items-center gap-3">
+                            <div className="flex flex-col items-center gap-3 opacity-40">
                               <Package className="w-12 h-12 text-slate-700" />
-                              <p className="text-slate-500 font-medium">No orders found</p>
+                              <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No active orders</p>
+                              <p className="text-[10px]">Your pending and processing orders will appear here.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'completed-orders' && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight text-emerald-600">Completed Orders</h1>
+                  <p className="text-slate-500 mt-1">Successfully processed service requests</p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-emerald-600" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm border-t-4 border-t-emerald-500 font-sans">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Result</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 italic">
+                      {orders.filter(o => o.status === 'completed').length > 0 ? orders.filter(o => o.status === 'completed').map((order, i) => {
+                        return (
+                          <tr key={order.id || `completed-${i}`} className="hover:bg-emerald-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900 border-l-4 border-emerald-500 pl-3">
+                                {order.serviceTitle}
+                              </p>
+                              <p className="text-[10px] text-slate-400 pl-4">ID: {order.id?.slice(-8).toUpperCase()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">
+                                {order.createdAt?.toDate?.()?.toLocaleDateString()}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                {order.createdAt?.toDate?.()?.toLocaleTimeString()}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-bold text-emerald-600 tracking-tighter">৳{order.price}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {order.resultFile ? (
+                                <button 
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = order.resultFile!;
+                                    link.download = `result_${order.id}.jpg`;
+                                    link.click();
+                                  }}
+                                  className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+                                  title="Download Result"
+                                >
+                                  <Download className="w-5 h-5" />
+                                </button>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                  <XCircle className="w-5 h-5 text-slate-400" />
+                                  <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">No File</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                                COMPLETED
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-20 text-center text-slate-400">
+                            <div className="flex flex-col items-center gap-2">
+                              <CheckCircle className="w-10 h-10 mb-2 opacity-20" />
+                              <p className="font-bold uppercase tracking-widest text-xs">No completed orders found</p>
+                              <p className="text-[10px]">Your successfully processed orders will appear here.</p>
                             </div>
                           </td>
                         </tr>
@@ -2813,46 +2884,84 @@ Mobile-
                         {selectedProduct.requiresFileUpload ? "Upload Document (Required)" : "Upload Document (Optional)"}
                         {selectedProduct.requiresFileUpload && <span className="text-red-500">*</span>}
                       </label>
-                      <div className="flex items-center justify-center w-full">
-                        <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
-                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                            {orderFile ? (
-                              <div className="flex items-center gap-2 text-emerald-400">
-                                <CheckCircle className="w-6 h-6" />
-                                <span className="text-sm font-bold">File Selected</span>
+                      <div className="flex flex-wrap items-center justify-start w-full gap-4">
+                        {orderFiles.length === 0 ? (
+                          <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all">
+                            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                              <Plus className="w-6 h-6 text-slate-500 mb-2" />
+                              <p className="text-xs text-slate-500">Click to upload document</p>
+                            </div>
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 5 * 1024 * 1024) {
+                                    alert('File is too large. Please upload a file smaller than 5MB.');
+                                    return;
+                                  }
+                                  if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
+                                    alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setOrderFiles([reader.result as string]);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-4 w-full">
+                            {orderFiles.map((file, index) => (
+                              <div key={index} className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/30 bg-slate-800 flex flex-col items-center justify-center group">
+                                {file.startsWith('data:image/') ? (
+                                  <img src={file} className="w-full h-full object-cover" alt="upload preview" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-8 h-8 text-emerald-400 mb-1" />
+                                    <span className="text-[10px] font-bold text-slate-300 break-words px-1 cursor-pointer" onClick={() => window.open(file, '_blank')}>Document {index + 1}</span>
+                                  </>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.preventDefault(); setOrderFiles(orderFiles.filter((_, i) => i !== index)); }}
+                                  className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all z-10"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
                               </div>
-                            ) : (
-                              <>
-                                <Plus className="w-6 h-6 text-slate-500 mb-2" />
-                                <p className="text-xs text-slate-500">Click to upload document</p>
-                              </>
-                            )}
+                            ))}
+                            <label className="flex flex-col items-center justify-center w-24 h-24 border-none rounded-2xl cursor-pointer bg-[#3b82f6] hover:bg-[#2563eb] transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                              <Plus className="w-8 h-8 text-white stroke-[3]" />
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    if (file.size > 5 * 1024 * 1024) {
+                                      alert('File is too large. Please upload a file smaller than 5MB.');
+                                      return;
+                                    }
+                                    if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
+                                      alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
+                                      return;
+                                    }
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      setOrderFiles([...orderFiles, reader.result as string]);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
                           </div>
-                          <input 
-                            type="file" 
-                            className="hidden" 
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                // Check file size (e.g., limit to 5MB)
-                                if (file.size > 5 * 1024 * 1024) {
-                                  alert('File is too large. Please upload a file smaller than 5MB.');
-                                  return;
-                                }
-                                // Check file type (e.g., allow images, PDFs, and ZIP files)
-                                if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
-                                  alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
-                                  return;
-                                }
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  setOrderFile(reader.result as string);
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2888,7 +2997,7 @@ Mobile-
                   </button>
                   <button 
                     onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || (selectedProduct.requiresFileUpload && !orderFile)}
+                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || (selectedProduct.requiresFileUpload && orderFiles.length === 0)}
                     className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                   >
                     {isPlacingOrder ? (
@@ -3010,7 +3119,7 @@ Mobile-
                   setSuccessLink(null);
                   setSelectedProduct(null);
                   setOrderData('');
-                  setOrderFile(null);
+                  setOrderFiles([]);
                 }}
                 className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20"
               >

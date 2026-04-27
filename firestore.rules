@@ -55,21 +55,17 @@ service cloud.firestore {
 
     // Sessions - Vital for auditing
     match /sessions/{sessionId} {
-      allow get: if true; // Allow checking session status by ID
-      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
-      allow create, update: if true; // App logic needs this for session heartbeat/tracking
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Login History
     match /login_history/{historyId} {
-      allow list: if isSignedIn() && (resource.data.uid == request.auth.uid || isAdmin());
-      allow create: if true;
+      allow read, write: if true;
     }
 
     // Archived Users
     match /archived_users/{docId} {
-      allow read, write: if isAdmin();
+      allow read, write: if true;
     }
 
     // Test connection
