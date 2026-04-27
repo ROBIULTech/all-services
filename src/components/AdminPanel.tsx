@@ -3684,8 +3684,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div className="space-y-2">
                   <span className="text-sm font-medium text-slate-700">Upload Result File (Optional)</span>
-                  <label className="block w-full cursor-pointer group">
+                  <label htmlFor="admin-result-file-upload" className="relative group block w-full cursor-pointer">
                     <input 
+                      id="admin-result-file-upload"
                       type="file" 
                       onChange={handleFileChange}
                       className="hidden"
@@ -3704,7 +3705,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               e.preventDefault(); 
                               setResultFile(null); 
                             }} 
-                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors relative z-20"
+                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative"
                           >
                             Remove File
                           </button>
