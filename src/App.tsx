@@ -252,6 +252,8 @@ Correction Details:` },
   { id: 27, titleBn: 'TIN Certificate Cancellation', titleEn: 'TIN Certificate Cancellation', category: 'Tax', icon: XCircle, color: 'bg-red-500', price: 250, isActive: true, defaultData: `TIN Number:
 NID Number:
 Reason for Cancellation:` },
+  { id: 28, titleBn: 'TIN রিটার্ন ভেরিফিকেশন', titleEn: 'TIN Return Verification', category: 'Tax', icon: FileText, color: 'bg-emerald-600', price: 10, isActive: true, defaultData: `TIN নম্বর:
+Assessment Year:` },
   { id: 101, titleBn: 'Auto Sign Copy', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'NID Number:' },
   { id: 102, titleBn: 'Info Verification', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'Number:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
@@ -418,45 +420,45 @@ export default function App() {
   };
 
   useEffect(() => {
-    // 1. Listen for global settings
+    // 1. Fetch global settings once on load
     const settingsRef = doc(db, 'settings', 'general');
-    const unsubSettings = onSnapshot(settingsRef, async (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() as GlobalSettings;
-        setGlobalSettings({
-          ...data,
-          premiumUnlockFee: data.premiumUnlockFee || 500,
-          isPremiumFeatureActive: data.isPremiumFeatureActive ?? true,
-          isServiceManagementActive: data.isServiceManagementActive ?? true,
-          bkashNumber: data.bkashNumber || '',
-          nagadNumber: data.nagadNumber || '',
-          rocketNumber: data.rocketNumber || '',
-          whatsappGroupLink: data.whatsappGroupLink || ''
-        });
-        initializationRef.current.settings = true;
-      } else if (!initializationRef.current.settings) {
-        initializationRef.current.settings = true;
-        const initialSettings: GlobalSettings = { 
-          premiumUnlockFee: 500, 
-          isPremiumFeatureActive: true, 
-          isServiceManagementActive: true,
-          bkashNumber: '01811152997',
-          nagadNumber: '',
-          rocketNumber: '',
-          whatsappGroupLink: '',
-          isTelegramNotifyActive: false,
-          isWhatsappNotifyActive: false
-        };
-        try {
+    const fetchSettings = async () => {
+      try {
+        const docSnap = await getDoc(settingsRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data() as GlobalSettings;
+          setGlobalSettings({
+            ...data,
+            premiumUnlockFee: data.premiumUnlockFee || 500,
+            isPremiumFeatureActive: data.isPremiumFeatureActive ?? true,
+            isServiceManagementActive: data.isServiceManagementActive ?? true,
+            bkashNumber: data.bkashNumber || '',
+            nagadNumber: data.nagadNumber || '',
+            rocketNumber: data.rocketNumber || '',
+            whatsappGroupLink: data.whatsappGroupLink || ''
+          });
+          initializationRef.current.settings = true;
+        } else if (!initializationRef.current.settings) {
+          initializationRef.current.settings = true;
+          const initialSettings: GlobalSettings = { 
+            premiumUnlockFee: 500, 
+            isPremiumFeatureActive: true, 
+            isServiceManagementActive: true,
+            bkashNumber: '01811152997',
+            nagadNumber: '',
+            rocketNumber: '',
+            whatsappGroupLink: '',
+            isTelegramNotifyActive: false,
+            isWhatsappNotifyActive: false
+          };
           await setDoc(settingsRef, initialSettings);
           setGlobalSettings(initialSettings);
-        } catch (error) {
-          console.error('Error initializing settings:', error);
         }
+      } catch (error) {
+        console.error('Error fetching/initializing settings:', error);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.GET, 'settings/general');
-    });
+    };
+    fetchSettings();
 
     // 2. Auth State Listener (Real Firebase Auth)
     const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
@@ -478,7 +480,6 @@ export default function App() {
     });
 
     return () => {
-      unsubSettings();
       unsubscribeAuth();
     };
   }, []);

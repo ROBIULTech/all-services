@@ -59,7 +59,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
-import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc } from '../firebase';
+import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc } from '../firebase';
 import axios from 'axios';
 
 import { Logo } from './Logo';
@@ -548,6 +548,16 @@ Mobile-
       return false;
     } finally {
       setIsPlacingOrder(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to delete this order from your history?')) return;
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+    } catch (error) {
+      console.error('Failed to delete order', error);
+      alert('Failed to delete order history.');
     }
   };
 
@@ -1349,9 +1359,18 @@ Mobile-
                               <span className="text-sm font-bold text-emerald-600">৳{order.price}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider", getStatusColor(order.status))}>
-                                <StatusIcon className="w-3 h-3" />
-                                {order.status === 'pending' ? 'Pending' : order.status === 'processing' ? 'Processing' : order.status}
+                              <div className="flex items-center gap-2">
+                                <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap", getStatusColor(order.status))}>
+                                  <StatusIcon className="w-3 h-3" />
+                                  {order.status === 'pending' ? 'Pending' : order.status === 'processing' ? 'Processing' : order.status}
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteOrder(order.id!)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -1446,9 +1465,18 @@ Mobile-
                               )}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                                COMPLETED
-                              </span>
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 whitespace-nowrap">
+                                  COMPLETED
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteOrder(order.id!)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1516,9 +1544,18 @@ Mobile-
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider", getStatusColor('rejected'))}>
-                                <XCircle className="w-3 h-3" />
-                                REJECTED
+                              <div className="flex items-center gap-2">
+                                <div className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider whitespace-nowrap", getStatusColor('rejected'))}>
+                                  <XCircle className="w-3 h-3" />
+                                  REJECTED
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteOrder(order.id!)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               </div>
                             </td>
                           </tr>

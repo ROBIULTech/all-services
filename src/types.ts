@@ -126,6 +126,7 @@ export interface GlobalSettings {
   isSmartVoterTokenBased?: boolean;
   smartVoterTokenUrl?: string;
   marqueeText?: string;
+  categories?: string[];
 }
 
 export interface TrashItem {

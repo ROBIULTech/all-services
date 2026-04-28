@@ -566,7 +566,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     whatsappNotifyNumber: globalSettings?.whatsappNotifyNumber || '',
     isTelegramNotifyActive: globalSettings?.isTelegramNotifyActive ?? false,
     isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false,
-    marqueeText: globalSettings?.marqueeText || 'যেকোনো অভিযোগ বা মূল্যবান পরামর্শ থাকলে আমাদের জানাতে ভুলবেন না। আপনাদের আস্থাই আমাদের মূল লক্ষ্য। ধন্যবাদ।'
+    marqueeText: globalSettings?.marqueeText || 'যেকোনো অভিযোগ বা মূল্যবান পরামর্শ থাকলে আমাদের জানাতে ভুলবেন না। আপনাদের আস্থাই আমাদের মূল লক্ষ্য। ধন্যবাদ।',
+    categories: globalSettings?.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium']
   });
 
   useEffect(() => {
@@ -628,7 +629,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         telegramChatId: globalSettings.telegramChatId || '',
         whatsappNotifyNumber: globalSettings.whatsappNotifyNumber || '',
         isTelegramNotifyActive: globalSettings.isTelegramNotifyActive ?? false,
-        isWhatsappNotifyActive: globalSettings.isWhatsappNotifyActive ?? false
+        isWhatsappNotifyActive: globalSettings.isWhatsappNotifyActive ?? false,
+        categories: globalSettings.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium']
       });
     }
   }, [globalSettings]);
@@ -3508,7 +3510,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             whatsappNotifyNumber: premiumSettingsForm.whatsappNotifyNumber,
                             isTelegramNotifyActive: premiumSettingsForm.isTelegramNotifyActive,
                             isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive,
-                            marqueeText: premiumSettingsForm.marqueeText
+                            marqueeText: premiumSettingsForm.marqueeText || '',
+                            categories: premiumSettingsForm.categories || []
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);
@@ -3517,6 +3520,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       >
                         Save Settings
                       </button>
+                    </div>
+
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                      <h3 className="text-lg font-bold text-slate-900 mb-4">Manage Categories</h3>
+                      <div className="space-y-4">
+                        {premiumSettingsForm.categories?.map((cat, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              type="text"
+                              value={cat}
+                              onChange={(e) => {
+                                const newCategories = [...(premiumSettingsForm.categories || [])];
+                                newCategories[index] = e.target.value;
+                                setPremiumSettingsForm(prev => ({ ...prev, categories: newCategories }));
+                              }}
+                              className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <button
+                              onClick={() => {
+                                const newCategories = premiumSettingsForm.categories?.filter((_, i) => i !== index);
+                                setPremiumSettingsForm(prev => ({ ...prev, categories: newCategories }));
+                              }}
+                              className="px-4 py-2 bg-red-100 text-red-600 rounded-xl font-bold"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            setPremiumSettingsForm(prev => ({ ...prev, categories: [...(prev.categories || []), 'New Category'] }));
+                          }}
+                          className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-xl font-bold w-full"
+                        >
+                          Add Category
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4195,7 +4235,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
       setFormData({
         ...service,
         iconName: service.iconName || 'LayoutGrid',
-        options: service.options || []
+        options: service.options || [],
+        isDriveLinkMode: service.isDriveLinkMode || false,
+        autoDeliveryLink: service.autoDeliveryLink || ''
       });
     } else {
       setFormData({
@@ -4566,7 +4608,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
               <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
                 <div>
                   <p className="text-sm font-bold text-indigo-900">Google Drive Link Mode</p>
-                  <p className="text-xs text-indigo-600">On: User must provide Drive Link. Off: Manual Order.</p>
+                  <p className="text-xs text-indigo-600">On: User must provide Drive Link.</p>
                 </div>
                 <button 
                   onClick={() => setFormData({ ...formData, isDriveLinkMode: !formData.isDriveLinkMode })}
