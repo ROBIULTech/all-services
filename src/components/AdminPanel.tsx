@@ -779,6 +779,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSuccessMessage({ title: 'Success!', message: `Order marked as ${status}.` });
   };
 
+  const handleForwardPremiumOrder = async (order: Order) => {
+    // Immediately set to processing
+    await updateOrderStatus(order.id!, 'processing', 'Processing your request');
+
+    try {
+      const response = await axios.post('/api/reseller/forward', {
+        providerUrl: globalSettings.providerApiUrl || 'https://cyber71bd.xyz/api/v2/',
+        apiKey: globalSettings.providerApiKey || 'sk_2da8c6f13265200f415e473b194f4e52',
+        orderData: {
+          ...order,
+          providerServiceId: products.find(p => p.id === order.serviceId)?.providerServiceId
+        }
+      });
+      if (response.data.success) {
+        alert('Order forwarded successfully!');
+      } else {
+        alert('API Error: ' + response.data.error);
+        // Optionally revert if failed
+        await updateOrderStatus(order.id!, 'pending', 'Forwarding failed');
+      }
+    } catch (error) {
+      console.error('API Forwarding Error:', error);
+      alert('Failed to forward order to API: ' + error);
+      // Optionally revert if failed
+      await updateOrderStatus(order.id!, 'pending', 'Forwarding failed');
+    }
+  };
+
   // ServiceControls imported from components/ServiceControls.tsx
 
   return (
@@ -1552,6 +1580,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
                         </tr>
@@ -1570,12 +1599,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                              <p className="text-xs text-slate-600 max-w-[200px] break-words">{order.data || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'processing' ? 'bg-blue-100 text-blue-700' : order.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                                 {order.status}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right flex items-center justify-end gap-1.5">
-                              <button className="p-2 bg-slate-50 text-blue-500 rounded-xl hover:bg-blue-50 transition-colors">
+                              <button 
+                                onClick={() => handleForwardPremiumOrder(order)}
+                                className="p-2 bg-slate-50 text-blue-500 rounded-xl hover:bg-blue-50 transition-colors">
                                 <Zap className="w-4 h-4" />
                               </button>
                               {order.status === 'pending' ? (
@@ -1609,7 +1643,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </tr>
                         )) : (
                           <tr>
-                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-400 italic">
                               No premium orders found.
                             </td>
                           </tr>

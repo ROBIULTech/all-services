@@ -508,6 +508,8 @@ async function startServer() {
     try {
       console.log(`Forwarding order to ${providerUrl} with serviceId: ${orderData.providerServiceId}`);
       
+      console.log('Forwarding order to:', providerUrl, 'with serviceId:', orderData.providerServiceId, 'API Key:', apiKey.substring(0, 5) + '***');
+      
       const params = new URLSearchParams();
       params.append('key', apiKey);
       params.append('action', 'add');
@@ -532,7 +534,7 @@ async function startServer() {
       console.error("API Reselling Error Details:", error.response?.data || error.message);
       res.status(200).json({ 
         success: false, 
-        error: error.response?.data?.message || error.message || "Failed to forward order to provider" 
+        error: error.response?.data || error.message || "Failed to forward order to provider" 
       });
     }
   });
