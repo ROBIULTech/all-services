@@ -36,6 +36,7 @@ import {
   Tag,
   Filter,
   Edit3,
+  Edit2,
   LayoutGrid,
   Smartphone,
   CreditCard,
@@ -455,10 +456,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // Modal for completing order with file upload
   const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
+  const premiumProductIds = products.filter(p => p.category === 'PREMIUM').map(p => p.id);
+  const isPremium = (order: Order) => premiumProductIds.includes(order.serviceId);
+
   const filteredOrders = orders.filter(o => 
     o.status !== 'rejected' &&
     o.status !== 'completed' &&
-    o.serviceTitle !== 'Recharge Request' && (
+    o.serviceTitle !== 'Recharge Request' &&
+    !isPremium(o) && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
     )
@@ -466,7 +471,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const filteredCompletedOrders = orders.filter(o => 
     o.status === 'completed' &&
-    o.serviceTitle !== 'Recharge Request' && (
+    o.serviceTitle !== 'Recharge Request' &&
+    !isPremium(o) && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
     )
@@ -475,6 +481,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const filteredRejectedOrders = orders.filter(o => 
     o.status === 'rejected' &&
     o.serviceTitle !== 'Recharge Request' && (
+      o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
+      o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
+    )
+  );
+
+  const filteredPremiumOrders = orders.filter(o =>
+    isPremium(o) && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
     )
@@ -637,9 +650,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isSpecial: false },
+    { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
     { id: 'premium-stats', label: 'Premium Stats', icon: Crown, isSpecial: false },
-    { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
+    { id: 'premium-orders', label: 'Premium Orders', icon: Crown, isSpecial: false },
     { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
     { id: 'completed-orders', label: 'Completed Orders', icon: CheckCircle, isSpecial: false },
     { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
@@ -757,6 +771,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setSuccessMessage({ title: 'Success!', message: 'Order marked as completed.' });
       setShowSuccess(true);
     }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    await updateOrderStatus(orderId, status, 'Order updated via Admin Panel');
+    setShowSuccess(true);
+    setSuccessMessage({ title: 'Success!', message: `Order marked as ${status}.` });
   };
 
   // ServiceControls imported from components/ServiceControls.tsx
@@ -1506,6 +1526,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
             )}
 
+            {activeTab === 'premium-orders' && (
+              <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-indigo-600">Premium Orders</h1>
+                    <p className="text-slate-500">Manage all premium service requests.</p>
+                  </div>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search premium orders..." 
+                      value={orderSearchQuery || ''}
+                      onChange={(e) => setOrderSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm w-64 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden border-t-4 border-t-indigo-500">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredPremiumOrders.length > 0 ? filteredPremiumOrders.map((order, i) => (
+                          <tr key={order.id || `premium-${i}`} className="hover:bg-indigo-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900 border-l-4 border-indigo-500 pl-3">
+                                {order.serviceTitle}
+                              </p>
+                              <p className="text-[10px] text-slate-400 pl-4">৳{order.price || 0} • {order.createdAt?.toDate?.()?.toLocaleString()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">{order.userEmail}</p>
+                              <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {order.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right flex items-center justify-end gap-1.5">
+                              <button className="p-2 bg-slate-50 text-blue-500 rounded-xl hover:bg-blue-50 transition-colors">
+                                <Zap className="w-4 h-4" />
+                              </button>
+                              {order.status === 'pending' ? (
+                                <>
+                                  <button 
+                                    onClick={() => setCompletingOrder(order)}
+                                    className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </button>
+                                  <button className="p-2 bg-indigo-50 text-indigo-500 rounded-xl hover:bg-indigo-100 transition-colors">
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleUpdateOrderStatus(order.id!, 'rejected')}
+                                    className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </>
+                              ) : (
+                                <div className="w-10 h-10" /> // Placeholder to maintain alignment
+                              )}
+                              <button 
+                                onClick={() => setDeleteConfirm({ type: 'order', id: order.id! })}
+                                className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">
+                              No premium orders found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'completed-orders' && (
               <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="flex items-center justify-between gap-4">
@@ -1649,7 +1764,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 max-w-[200px]">
-                                {order.adminNote || 'No reason provided'}
+                                {order.adminNote || (isPremium(order) ? 'No specific reason provided by api call' : 'No reason provided')}
                               </div>
                             </td>
                             <td className="px-6 py-4">

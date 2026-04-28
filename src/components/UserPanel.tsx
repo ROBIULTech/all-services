@@ -455,6 +455,8 @@ Mobile-
   };
 
   const currentPrice = calculatePrice(selectedOption ? selectedOption.price : (selectedProduct?.price || 0), selectedProduct || undefined);
+  const premiumProductIds = products.filter(p => p.category === 'PREMIUM').map(p => p.id);
+  const isPremium = (order: Order) => premiumProductIds.includes(order.serviceId);
 
   useEffect(() => {
     if (!userProfile?.uid) return;
@@ -1539,7 +1541,7 @@ Mobile-
                             <td className="px-6 py-4">
                               <div className="bg-red-50 p-3 rounded-xl border border-red-100 min-w-[200px]">
                                 <p className="text-xs font-bold text-red-600 leading-relaxed">
-                                  {order.adminNote || 'No specific reason provided by admin'}
+                                  {order.adminNote || (isPremium(order) ? 'No specific reason provided by api call' : 'No specific reason provided by admin')}
                                 </p>
                               </div>
                             </td>
