@@ -96,7 +96,7 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [localIsSidebarOpen, setLocalIsSidebarOpen] = useState(true);
   const isSidebarOpen = propIsSidebarOpen !== undefined ? propIsSidebarOpen : localIsSidebarOpen;
   const setIsSidebarOpen = propSetIsSidebarOpen !== undefined ? propSetIsSidebarOpen : setLocalIsSidebarOpen;
-  const [activeTab, setActiveTab] = useState<'services' | 'history' | 'settings' | 'premium' | 'rejected' | 'completed-orders'>('services');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'services' | 'history' | 'settings' | 'premium' | 'rejected' | 'completed-orders'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -461,28 +461,69 @@ Mobile-
   useEffect(() => {
     if (!userProfile?.uid) return;
 
-    const q = query(
+    // Listen to active orders
+    const qOrders = query(
       collection(db, 'orders'),
       where('uid', '==', userProfile.uid)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ordersData: Order[] = [];
-      snapshot.forEach((doc) => {
-        ordersData.push({ id: doc.id, ...doc.data() } as Order);
+    // Listen to trashed orders
+    const qTrash = query(
+      collection(db, 'trash'),
+      where('type', '==', 'order'),
+      where('data.uid', '==', userProfile.uid)
+    );
+
+    let activeOrders: Order[] = [];
+    let trashedOrders: Order[] = [];
+
+    const combineAndSetOrders = () => {
+      const combinedMap = new Map<string, Order>();
+      
+      activeOrders.forEach(o => combinedMap.set(o.id, o));
+      trashedOrders.forEach(o => {
+        if (!combinedMap.has(o.id)) {
+          combinedMap.set(o.id, o);
+        }
       });
-      // Sort by createdAt descending
-      ordersData.sort((a, b) => {
+
+      const combined = Array.from(combinedMap.values());
+      
+      combined.sort((a, b) => {
         const dateA = a.createdAt?.toDate?.()?.getTime() || 0;
         const dateB = b.createdAt?.toDate?.()?.getTime() || 0;
         return dateB - dateA;
       });
-      setOrders(ordersData);
+      setOrders(combined);
+    };
+
+    const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
+      activeOrders = [];
+      snapshot.forEach((doc) => {
+        activeOrders.push({ id: doc.id, ...doc.data() } as Order);
+      });
+      combineAndSetOrders();
     }, (error) => {
-      console.error('Orders listener error in UserPanel.tsx (collection orders):', error);
+      console.error('Orders listener error in UserPanel.tsx:', error);
     });
 
-    return () => unsubscribe();
+    const unsubscribeTrash = onSnapshot(qTrash, (snapshot) => {
+      trashedOrders = [];
+      snapshot.forEach((doc) => {
+        const trashData = doc.data();
+        if (trashData.data) {
+          trashedOrders.push({ id: doc.id, ...trashData.data } as Order);
+        }
+      });
+      combineAndSetOrders();
+    }, (error) => {
+      console.error('Trash listener error in UserPanel.tsx:', error);
+    });
+
+    return () => {
+      unsubscribeOrders();
+      unsubscribeTrash();
+    };
   }, [userProfile?.uid]);
 
   const handlePlacePremiumOrder = async (productId: number, data: string) => {
@@ -849,6 +890,17 @@ Mobile-
         </div>
 
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+          <button 
+            onClick={() => setActiveTab('dashboard')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
+              activeTab === 'dashboard' ? "bg-brand/10 text-brand" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            )}
+            title={!isSidebarOpen ? "Dashboard" : ""}
+          >
+            <Home className="w-5 h-5 flex-shrink-0" />
+            {isSidebarOpen && <span>Dashboard</span>}
+          </button>
           <button 
             onClick={() => setActiveTab('services')}
             className={cn(
@@ -1233,6 +1285,74 @@ Mobile-
         )}
 
         <div className="p-6 lg:p-8">
+          {activeTab === 'dashboard' && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900 flex items-center gap-3">
+                  <Home className="w-8 h-8 text-indigo-600" />
+                  Dashboard
+                </h1>
+                <p className="text-slate-500 mt-1 font-medium">Overview of your orders</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div 
+                  onClick={() => setActiveTab('history')}
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-orange-100 text-orange-600 rounded-xl">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-medium px-2 py-1 bg-orange-50 text-orange-600 rounded-full">
+                      Action Required
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-medium text-slate-500 mb-1">Pending Orders</h3>
+                  <p className="text-3xl font-bold text-slate-900">
+                    {orders.filter(o => o.status === 'pending' || o.status === 'processing').length}
+                  </p>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab('history')}
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full">
+                      Completed
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-medium text-slate-500 mb-1">Completed Orders</h3>
+                  <p className="text-3xl font-bold text-slate-900">
+                    {orders.filter(o => o.status === 'completed').length}
+                  </p>
+                </div>
+
+                <div 
+                  onClick={() => setActiveTab('rejected')}
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="p-3 bg-red-100 text-red-600 rounded-xl">
+                      <XCircle className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-medium px-2 py-1 bg-red-50 text-red-600 rounded-full">
+                      Canceled
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-medium text-slate-500 mb-1">Canceled Orders</h3>
+                  <p className="text-3xl font-bold text-slate-900">
+                    {orders.filter(o => o.status === 'rejected').length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'services' && (
             <div className="space-y-8">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -3058,6 +3178,19 @@ Mobile-
 
       {/* Mobile Bottom Navigation */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-slate-200 px-4 py-2 flex items-center justify-around z-50 pb-safe shadow-[0_-8px_30px_rgba(0,0,0,0.08)]">
+        <button 
+          onClick={() => setActiveTab('dashboard')} 
+          className={cn(
+            "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
+            activeTab === 'dashboard' ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
+          )}
+        >
+          <Home className={cn("w-6 h-6 transition-transform", activeTab === 'dashboard' && "scale-110")} />
+          <span className="text-[10px] font-bold">Dashboard</span>
+          {activeTab === 'dashboard' && (
+            <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />
+          )}
+        </button>
         <button 
           onClick={() => setActiveTab('services')} 
           className={cn(

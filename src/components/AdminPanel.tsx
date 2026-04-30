@@ -57,7 +57,8 @@ import {
   Phone,
   Server,
   Sun,
-  Moon
+  Moon,
+  ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -369,6 +370,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [showCompletedOrdersPicker, setShowCompletedOrdersPicker] = useState(false);
   const [serviceFilter, setServiceFilter] = useState('All');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [userSearchQuery, setUserSearchQuery] = useState('');
@@ -653,7 +655,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
     { id: 'premium-stats', label: 'Premium Stats', icon: Crown, isSpecial: false },
-    { id: 'premium-orders', label: 'Premium Orders', icon: Crown, isSpecial: false },
     { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
     { id: 'completed-orders', label: 'Completed Orders', icon: CheckCircle, isSpecial: false },
     { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
@@ -839,10 +840,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {navItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  if (item.id === 'completed-orders') {
+                    setShowCompletedOrdersPicker(true);
+                  } else {
+                    setActiveTab(item.id);
+                  }
+                }}
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  activeTab === item.id 
+                  activeTab === item.id || (item.id === 'completed-orders' && activeTab === 'premium-orders')
                     ? "bg-indigo-50 text-indigo-600" 
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 )}
@@ -873,7 +880,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <button 
               onClick={toggleDarkMode}
               className={cn(
-                "p-2 rounded-xl transition-all shadow-lg",
+                "p-2 rounded-xl transition-all shadow-lg flex-shrink-0",
                 isDarkMode 
                   ? "bg-slate-800 text-white hover:bg-slate-700" 
                   : "bg-blue-600 text-white hover:bg-blue-700"
@@ -882,7 +889,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {isDarkMode ? <Moon className="w-5 h-5 fill-current" /> : <Sun className="w-5 h-5 fill-current" />}
             </button>
 
-            <div className="relative hidden md:block">
+            {activeTab !== 'dashboard' && (
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className="hidden sm:flex items-center gap-2 px-3 py-2 text-sm font-bold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100 flex-shrink-0"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </button>
+            )}
+
+            <div className="relative hidden md:block ml-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input 
                 type="text" 
@@ -1128,20 +1145,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 })()}
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {[
-                        { label: 'Total Revenue', value: `৳${orders.reduce((acc, o) => acc + (o.status === 'completed' ? o.price : 0), 0).toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100' },
-                        { label: 'Total Users', value: allUsers.length.toString(), change: '+5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-                        { label: 'Total Orders', value: orders.length.toString(), change: '+15%', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-100' },
-                        { label: 'Pending Orders', value: orders.filter(o => o.status === 'pending').length.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100' },
-                      ].map((stat, i) => (
-                        <motion.div
-                          key={stat.label}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
-                    >
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                      {(() => {
+                        const startOfToday = new Date();
+                        startOfToday.setHours(0, 0, 0, 0);
+
+                        const todayRevenue = orders.reduce((acc, o) => {
+                          if (o.status !== 'rejected') {
+                            const orderDate = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt as any);
+                            if (orderDate >= startOfToday) {
+                              return acc + o.price;
+                            }
+                          }
+                          return acc;
+                        }, 0);
+
+                        const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
+                        const pendingOrders = orders.filter(o => o.status === 'pending').length;
+                        const canceledOrders = orders.filter(o => o.status === 'rejected').length;
+                        const completedOrders = orders.filter(o => o.status === 'completed').length;
+
+                        return [
+                          { label: 'Total Revenue', value: `৳${todayRevenue.toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'dashboard' },
+                          { label: 'Total Users', value: allUsers.length.toString(), change: '+5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100', tab: 'users' },
+                          { label: 'Total Orders', value: activeOrders.toString(), change: '+15%', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-100', tab: 'orders' },
+                          { label: 'Pending Orders', value: pendingOrders.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100', tab: 'orders' },
+                          { label: 'Completed Orders', value: completedOrders.toString(), change: 'Completed', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'completed-orders' },
+                          { label: 'Canceled Orders', value: canceledOrders.toString(), change: 'Canceled', icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', tab: 'rejected-orders' },
+                        ].map((stat, i) => (
+                          <motion.div
+                            key={stat.label}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: i * 0.1 }}
+                            onClick={() => {
+                              if (stat.label === 'Completed Orders') {
+                                setShowCompletedOrdersPicker(true);
+                              } else if (stat.tab !== 'dashboard') {
+                                setActiveTab(stat.tab);
+                              }
+                            }}
+                        className={cn("bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow", stat.tab !== 'dashboard' && "cursor-pointer")}
+                      >
                       <div className="flex items-center justify-between mb-4">
                         <div className={cn("p-2 rounded-xl", stat.bg)}>
                           <stat.icon className={cn("w-6 h-6", stat.color)} />
@@ -1156,7 +1201,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                       <h3 className="text-2xl font-bold mt-1">{stat.value}</h3>
                     </motion.div>
-                  ))}
+                  ));
+                  })()}
                 </div>
 
                 {/* Charts Section */}
@@ -3835,6 +3881,78 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
         </AnimatePresence>
       </main>
+
+      {/* Completed Orders Picker Modal */}
+      <AnimatePresence>
+        {showCompletedOrdersPicker && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCompletedOrdersPicker(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-slate-800">Select Order Type</h3>
+                    <p className="text-xs text-slate-500 font-medium">Choose which completed orders to view.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCompletedOrdersPicker(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('premium-orders');
+                    setShowCompletedOrdersPicker(false);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50 cursor-pointer transition-all group"
+                >
+                  <div className="px-3 py-3 rounded-xl bg-amber-100 text-amber-600">
+                    <Crown className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-slate-900 group-hover:text-amber-700 transition-colors">Premium Orders</h4>
+                    <p className="text-xs text-slate-500">View automated and premium service orders.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('completed-orders');
+                    setShowCompletedOrdersPicker(false);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition-all group"
+                >
+                  <div className="px-3 py-3 rounded-xl bg-emerald-100 text-emerald-600">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">Completed Orders</h4>
+                    <p className="text-xs text-slate-500">View normal standard service orders.</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Complete Order Modal */}
       <AnimatePresence>
