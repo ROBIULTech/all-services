@@ -107,38 +107,38 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#1a202c] flex items-center justify-center p-4 relative">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-[#2d3748] rounded-2xl border border-slate-700 shadow-2xl overflow-hidden"
+        className="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
       >
         <div className="p-8 space-y-6">
           <div className="text-center space-y-2">
             <div className="flex flex-col items-center justify-center mx-auto mb-6">
               <Logo className="w-16 h-16 mb-2" />
               <div className="flex flex-col items-center">
-                <span className="text-2xl font-black tracking-tight text-white leading-none mt-1">ALL SERVICES</span>
-                <span className="text-xs font-bold tracking-widest text-slate-400 uppercase mt-1">PLATFORM</span>
+                <span className="text-2xl font-black tracking-tight text-slate-900 leading-none mt-1">ALL SERVICES</span>
+                <span className="text-xs font-bold tracking-widest text-slate-500 uppercase mt-1">PLATFORM</span>
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               {isAdminRoute ? 'Admin Panel' : (isLogin ? 'Welcome' : 'Create Account')}
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-slate-500">
               {isAdminRoute ? 'Login to Admin Panel' : (isLogin ? 'Login to your account' : 'Provide information to create a new account')}
             </p>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm text-center">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm text-center">
               {error}
             </div>
           )}
 
           {showVerification ? (
             <div className="space-y-6 text-center">
-              <div className="p-4 bg-emerald-500/10 border border-emerald-500/50 rounded-xl text-emerald-500">
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
                 <p className="font-bold">A few more steps left!</p>
                 <p className="text-sm mt-1">Please verify your WhatsApp number to activate your account.</p>
               </div>
@@ -159,18 +159,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* ... existing form fields ... */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'Email' : 'Email Address'}</label>
+                <label className="text-sm font-medium text-slate-700">{isAdminRoute ? 'Email' : 'Email Address'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-slate-500" />
+                    <Mail className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
                     type="email"
                     value={email || ''}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder={isAdminRoute ? "secure.node.admin@gmail.com" : "you@example.com"}
                     required
                   />
@@ -178,16 +177,16 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">{isAdminRoute ? 'Password' : 'Password'}</label>
+                <label className="text-sm font-medium text-slate-700">{isAdminRoute ? 'Password' : 'Password'}</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-slate-500" />
+                    <Lock className="h-5 w-5 text-slate-400" />
                   </div>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password || ''}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-12 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-12 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     placeholder="••••••••"
                     required
                     minLength={6}
@@ -195,7 +194,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-slate-300 transition-colors focus:outline-none"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -204,10 +203,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
               {!isLogin && !isAdminRoute && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">WhatsApp Number</label>
+                  <label className="text-sm font-medium text-slate-700">WhatsApp Number</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                       </svg>
                     </div>
@@ -215,7 +214,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       type="tel"
                       value={whatsapp || ''}
                       onChange={(e) => setWhatsapp(e.target.value)}
-                      className="w-full bg-[#1a202c] border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                       placeholder="017XXXXXXXX"
                       required
                     />
@@ -226,7 +225,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <button 
                 type="submit"
                 disabled={loading}
-                className={`w-full py-3.5 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed ${isAdminRoute ? 'bg-[#f43f5e] hover:bg-rose-600 shadow-rose-500/25' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'}`}
+                className={`w-full py-3.5 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed ${isAdminRoute ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25'}`}
               >
                 {loading ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -241,13 +240,13 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
           )}
 
           {!isAdminRoute && !showVerification && (
-            <div className="text-center pt-2 space-y-4 border-t border-slate-700/50">
+             <div className="text-center pt-2 space-y-4 border-t border-slate-100">
               <button
                 onClick={() => {
                   setIsLogin(!isLogin);
                   setError('');
                 }}
-                className="text-sm text-slate-400 hover:text-indigo-400 transition-colors block w-full"
+                className="text-sm text-slate-500 hover:text-indigo-600 transition-colors block w-full"
               >
                 {isLogin ? "No account? Sign up" : "Already have an account? Login"}
               </button>
