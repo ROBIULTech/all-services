@@ -96,7 +96,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [localIsSidebarOpen, setLocalIsSidebarOpen] = useState(true);
   const isSidebarOpen = propIsSidebarOpen !== undefined ? propIsSidebarOpen : localIsSidebarOpen;
   const setIsSidebarOpen = propSetIsSidebarOpen !== undefined ? propSetIsSidebarOpen : setLocalIsSidebarOpen;
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'services' | 'history' | 'settings' | 'premium' | 'rejected' | 'completed-orders'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'services' | 'history' | 'settings' | 'premium' | 'rejected' | 'completed-orders' | 'premium-orders'>('dashboard');
+  const [showCompletedOrdersPicker, setShowCompletedOrdersPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -598,6 +599,7 @@ Mobile-
     if (!window.confirm('Are you sure you want to delete this order from your history?')) return;
     try {
       await deleteDoc(doc(db, 'orders', orderId));
+      await deleteDoc(doc(db, 'trash', orderId));
     } catch (error) {
       console.error('Failed to delete order', error);
       alert('Failed to delete order history.');
@@ -924,10 +926,10 @@ Mobile-
             {isSidebarOpen && <span>My Orders</span>}
           </button>
           <button 
-            onClick={() => setActiveTab('completed-orders')}
+            onClick={() => setShowCompletedOrdersPicker(true)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium",
-              activeTab === 'completed-orders' ? "bg-emerald-50 text-emerald-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              activeTab === 'completed-orders' || activeTab === 'premium-orders' ? "bg-emerald-50 text-emerald-600" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
             )}
             title={!isSidebarOpen ? "Completed Orders" : ""}
           >
@@ -1315,7 +1317,7 @@ Mobile-
                 </div>
 
                 <div 
-                  onClick={() => setActiveTab('history')}
+                  onClick={() => setShowCompletedOrdersPicker(true)}
                   className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between mb-4">
@@ -1545,7 +1547,7 @@ Mobile-
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 italic">
-                      {orders.filter(o => o.status === 'completed').length > 0 ? orders.filter(o => o.status === 'completed').map((order, i) => {
+                      {orders.filter(o => o.status === 'completed' && !isPremium(o)).length > 0 ? orders.filter(o => o.status === 'completed' && !isPremium(o)).map((order, i) => {
                         return (
                           <tr key={order.id || `completed-${i}`} className="hover:bg-emerald-50/30 transition-colors">
                             <td className="px-6 py-4">
@@ -1609,6 +1611,106 @@ Mobile-
                               <CheckCircle className="w-10 h-10 mb-2 opacity-20" />
                               <p className="font-bold uppercase tracking-widest text-xs">No completed orders found</p>
                               <p className="text-[10px]">Your successfully processed orders will appear here.</p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'premium-orders' && (
+            <div className="space-y-8 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold tracking-tight text-amber-600">Premium Orders</h1>
+                  <p className="text-slate-500 mt-1">Successfully processed premium orders</p>
+                </div>
+                <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center">
+                  <Crown className="w-6 h-6 text-amber-600" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm border-t-4 border-t-amber-500 font-sans">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Result</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 italic">
+                      {orders.filter(o => o.status === 'completed' && isPremium(o)).length > 0 ? orders.filter(o => o.status === 'completed' && isPremium(o)).map((order, i) => {
+                        return (
+                          <tr key={order.id || `premium-${i}`} className="hover:bg-amber-50/30 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-sm font-bold text-slate-900 border-l-4 border-amber-500 pl-3">
+                                {order.serviceTitle}
+                              </p>
+                              <p className="text-[10px] text-slate-400 pl-4">ID: {order.id?.slice(-8).toUpperCase()}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-600">
+                                {order.createdAt?.toDate?.()?.toLocaleDateString()}
+                              </p>
+                              <p className="text-[10px] text-slate-400">
+                                {order.createdAt?.toDate?.()?.toLocaleTimeString()}
+                              </p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-bold text-amber-600 tracking-tighter">৳{order.price}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              {order.resultFile ? (
+                                <button 
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = order.resultFile!;
+                                    link.download = `result_${order.id}.jpg`;
+                                    link.click();
+                                  }}
+                                  className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
+                                  title="Download Result"
+                                >
+                                  <Download className="w-5 h-5" />
+                                </button>
+                              ) : (
+                                <div className="flex flex-col items-center gap-1 opacity-40">
+                                  <XCircle className="w-5 h-5 text-slate-400" />
+                                  <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">No File</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-600/20 whitespace-nowrap">
+                                  PREMIUM
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteOrder(order.id!)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Order"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }) : (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-20 text-center text-slate-400">
+                            <div className="flex flex-col items-center gap-2">
+                              <Crown className="w-10 h-10 mb-2 opacity-20" />
+                              <p className="font-bold uppercase tracking-widest text-xs">No premium orders found</p>
+                              <p className="text-[10px]">Your successfully processed premium orders will appear here.</p>
                             </div>
                           </td>
                         </tr>
@@ -2845,6 +2947,78 @@ Mobile-
           )}
         </div>
       </main>
+
+      {/* Completed Orders Picker Modal */}
+      <AnimatePresence>
+        {showCompletedOrdersPicker && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCompletedOrdersPicker(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold tracking-tight text-slate-800">Select Order Type</h3>
+                    <p className="text-xs text-slate-500 font-medium">Choose which completed orders to view.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCompletedOrdersPicker(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 grid grid-cols-1 gap-4">
+                <button
+                  onClick={() => {
+                    setActiveTab('premium-orders');
+                    setShowCompletedOrdersPicker(false);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50 cursor-pointer transition-all group"
+                >
+                  <div className="px-3 py-3 rounded-xl bg-amber-100 text-amber-600">
+                    <Crown className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-slate-900 group-hover:text-amber-700 transition-colors">Premium Orders</h4>
+                    <p className="text-xs text-slate-500">View automated and premium service orders.</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setActiveTab('completed-orders');
+                    setShowCompletedOrdersPicker(false);
+                  }}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 cursor-pointer transition-all group"
+                >
+                  <div className="px-3 py-3 rounded-xl bg-emerald-100 text-emerald-600">
+                    <CheckCircle className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">Completed Orders</h4>
+                    <p className="text-xs text-slate-500">View normal standard service orders.</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Order Modal */}
       <AnimatePresence>
