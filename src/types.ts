@@ -127,6 +127,7 @@ export interface GlobalSettings {
   smartVoterTokenUrl?: string;
   marqueeText?: string;
   categories?: string[];
+  apkLink?: string;
 }
 
 export interface TrashItem {

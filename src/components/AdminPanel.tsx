@@ -582,7 +582,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     isTelegramNotifyActive: globalSettings?.isTelegramNotifyActive ?? false,
     isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false,
     marqueeText: globalSettings?.marqueeText || 'যেকোনো অভিযোগ বা মূল্যবান পরামর্শ থাকলে আমাদের জানাতে ভুলবেন না। আপনাদের আস্থাই আমাদের মূল লক্ষ্য। ধন্যবাদ।',
-    categories: globalSettings?.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium']
+    categories: globalSettings?.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'],
+    apkLink: globalSettings?.apkLink || ''
   });
 
   useEffect(() => {
@@ -645,7 +646,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         whatsappNotifyNumber: globalSettings.whatsappNotifyNumber || '',
         isTelegramNotifyActive: globalSettings.isTelegramNotifyActive ?? false,
         isWhatsappNotifyActive: globalSettings.isWhatsappNotifyActive ?? false,
-        categories: globalSettings.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium']
+        categories: globalSettings.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'],
+        apkLink: globalSettings.apkLink || ''
       });
     }
   }, [globalSettings]);
@@ -3593,6 +3595,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           />
                           <p className="text-[10px] text-slate-500 font-medium">ইউজার প্যানেলের উপরে স্ক্রলিং নোটিশ হিসেবে এটি দেখাবে।</p>
                         </div>
+                        
+                        <div className="space-y-2 bg-amber-50 p-4 rounded-xl border border-amber-100">
+                          <label className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0004.5511-.4482.9997-.9993.9997zm-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0004.5511-.4482.9997-.9993.9997zm11.4045-6.02l1.9973-3.4592a.415.415 0 0 0-.1521-.5676.416.416 0 0 0-.5684.1521l-2.022 3.503C15.6982 8.3248 13.9168 7.95 12 7.95s-3.6982.3748-5.1363.9997L4.8417 5.4468a.4173.4173 0 0 0-.5684-.1521.4155.4155 0 0 0-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396z"/>
+                            </svg>
+                            Android App Download Link
+                          </label>
+                          <input 
+                            type="text"
+                            value={premiumSettingsForm.apkLink || ''}
+                            onChange={(e) => setPremiumSettingsForm(prev => ({ ...prev, apkLink: e.target.value }))}
+                            className="w-full px-4 py-3 bg-white border border-amber-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500"
+                            placeholder="https://example.com/app.apk"
+                          />
+                          <p className="text-[10px] text-amber-700 font-medium">ইউজার প্যানেলে অ্যান্ড্রয়েড অ্যাপ ডাউনলোডের জন্য এই লিংকটি ব্যবহৃত হবে। খালি রাখা হলে ডিফল্ট /app.apk ব্যবহার হবে।</p>
+                        </div>
                       </div>
 
                     {/* Developer API Documentation */}
@@ -3707,7 +3726,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             isTelegramNotifyActive: premiumSettingsForm.isTelegramNotifyActive,
                             isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive,
                             marqueeText: premiumSettingsForm.marqueeText || '',
-                            categories: premiumSettingsForm.categories || []
+                            categories: premiumSettingsForm.categories || [],
+                            apkLink: premiumSettingsForm.apkLink || ''
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);

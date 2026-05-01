@@ -1297,6 +1297,30 @@ Mobile-
                 <p className="text-slate-500 mt-1 font-medium">Overview of your orders</p>
               </div>
 
+              <div className="bg-[#1e2330] rounded-xl border border-amber-500/50 p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg mb-8">
+                <div className="flex items-start md:items-center gap-4">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-amber-500 fill-current flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0004.5511-.4482.9997-.9993.9997zm-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993.0004.5511-.4482.9997-.9993.9997zm11.4045-6.02l1.9973-3.4592a.415.415 0 0 0-.1521-.5676.416.416 0 0 0-.5684.1521l-2.022 3.503C15.6982 8.3248 13.9168 7.95 12 7.95s-3.6982.3748-5.1363.9997L4.8417 5.4468a.4173.4173 0 0 0-.5684-.1521.4155.4155 0 0 0-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396z"/>
+                  </svg>
+                  <div>
+                    <h3 className="text-amber-500 font-bold mb-1">Install Web APK</h3>
+                    <p className="text-[#94a3b8] text-sm">Install the APK on your device. It's lightweight, and required for the best experience..</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = globalSettings?.apkLink || '/app.apk';
+                    link.download = 'app.apk';
+                    link.target = '_blank';
+                    link.click();
+                  }}
+                  className="px-6 py-2 border border-amber-500 text-amber-500 rounded-lg font-medium hover:bg-amber-500 hover:text-slate-900 transition-colors flex-shrink-0"
+                >
+                  Install
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div 
                   onClick={() => setActiveTab('history')}
