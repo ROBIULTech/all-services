@@ -50,6 +50,7 @@ export interface Product {
   requiredDocuments?: string | null;
   instructions?: string | null;
   isActive: boolean;
+  showFileUpload?: boolean | null;
   requiresFileUpload?: boolean | null;
   icon?: any;
   iconName?: string;

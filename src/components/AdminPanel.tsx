@@ -58,7 +58,8 @@ import {
   Server,
   Sun,
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -1504,9 +1505,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-500 font-mono">
-                                {order.data || '-'}
-                              </div>
+                              {order.data ? (
+                                <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                  {order.data}
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.data || '');
+                                    }}
+                                    className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                    title="Copy Data"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : '-'}
                             </td>
                             <td className="px-6 py-4">
                               <span className={cn(
@@ -1648,7 +1660,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <p className="text-xs text-slate-600 max-w-[200px] break-words">{order.data || 'N/A'}</p>
+                              {order.data ? (
+                                <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                  {order.data}
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.data || '');
+                                    }}
+                                    className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                    title="Copy Data"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : '-'}
                             </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'processing' ? 'bg-blue-100 text-blue-700' : order.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -1841,9 +1866,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="max-w-xs overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-500 font-mono">
-                                {order.data || '-'}
-                              </div>
+                              {order.data ? (
+                                <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                  {order.data}
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.data || '');
+                                    }}
+                                    className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                    title="Copy Data"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : '-'}
                             </td>
                             <td className="px-6 py-4">
                               <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 max-w-[200px]">
@@ -4484,6 +4520,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     orderButtonText: 'অর্ডার করুন',
     displayOrder: 0,
     isActive: true,
+    showFileUpload: true,
     requiresFileUpload: false,
     isDriveLinkMode: false,
     autoDeliveryLink: '',
@@ -4542,6 +4579,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
         orderButtonText: 'অর্ডার করুন',
         displayOrder: 0,
         isActive: true,
+        showFileUpload: true,
         requiresFileUpload: false,
         isDriveLinkMode: false,
         autoDeliveryLink: '',
@@ -4876,22 +4914,43 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
 
               <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
                 <div>
-                  <p className="text-sm font-bold text-slate-900">Require File Upload</p>
-                  <p className="text-xs text-slate-500">Force user to upload a document</p>
+                  <p className="text-sm font-bold text-slate-900">Show File Upload Field</p>
+                  <p className="text-xs text-slate-500">Allow users to upload files for this service</p>
                 </div>
                 <button 
-                  onClick={() => setFormData({ ...formData, requiresFileUpload: !formData.requiresFileUpload })}
+                  onClick={() => setFormData({ ...formData, showFileUpload: !formData.showFileUpload })}
                   className={cn(
                     "w-12 h-6 rounded-full transition-all relative",
-                    formData.requiresFileUpload ? "bg-indigo-600" : "bg-slate-300"
+                    formData.showFileUpload ? "bg-indigo-600" : "bg-slate-300"
                   )}
                 >
                   <div className={cn(
                     "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
-                    formData.requiresFileUpload ? "right-1" : "left-1"
+                    formData.showFileUpload ? "right-1" : "left-1"
                   )} />
                 </button>
               </div>
+
+              {formData.showFileUpload && (
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Require File Upload</p>
+                    <p className="text-xs text-slate-500">Force user to upload a document</p>
+                  </div>
+                  <button 
+                    onClick={() => setFormData({ ...formData, requiresFileUpload: !formData.requiresFileUpload })}
+                    className={cn(
+                      "w-12 h-6 rounded-full transition-all relative",
+                      formData.requiresFileUpload ? "bg-indigo-600" : "bg-slate-300"
+                    )}
+                  >
+                    <div className={cn(
+                      "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                      formData.requiresFileUpload ? "right-1" : "left-1"
+                    )} />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
                 <div>

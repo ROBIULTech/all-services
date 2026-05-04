@@ -3235,14 +3235,15 @@ Mobile-
                       )}
                     </div>
 
-                    <div className="space-y-4">
-                      <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
-                        <Plus className="w-4 h-4" />
-                        {selectedProduct.requiresFileUpload ? "Upload Document (Required)" : "Upload Document (Optional)"}
-                        {selectedProduct.requiresFileUpload && <span className="text-red-500">*</span>}
-                      </label>
-                      <div className="flex flex-wrap items-center justify-start w-full gap-4">
-                        {orderFiles.length === 0 ? (
+                    {(selectedProduct.showFileUpload !== false) && (
+                      <div className="space-y-4">
+                        <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                          <Plus className="w-4 h-4" />
+                          {selectedProduct.requiresFileUpload ? "Upload Document (Required)" : "Upload Document (Optional)"}
+                          {selectedProduct.requiresFileUpload && <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="flex flex-wrap items-center justify-start w-full gap-4">
+                          {orderFiles.length === 0 ? (
                           <div className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden">
                             <input 
                               type="file" 
@@ -3321,6 +3322,7 @@ Mobile-
                         )}
                       </div>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3354,7 +3356,7 @@ Mobile-
                   </button>
                   <button 
                     onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || (selectedProduct.requiresFileUpload && orderFiles.length === 0)}
+                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || ((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0)}
                     className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                   >
                     {isPlacingOrder ? (
