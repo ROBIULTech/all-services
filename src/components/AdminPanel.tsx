@@ -66,7 +66,8 @@ import axios from 'axios';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth } from '../firebase';
+import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import ServiceControls from './ServiceControls';
 import { Logo } from './Logo';
 
@@ -504,6 +505,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     )
   );
   const [resultFile, setResultFile] = useState<string | null>(null);
+  const [orderResultFileObj, setOrderResultFileObj] = useState<File | null>(null);
+  const [orderResultUploadStatus, setOrderResultUploadStatus] = useState<string>('');
   const [adminNote, setAdminNote] = useState('Order completed successfully');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -703,77 +706,61 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (max ~750KB to allow for base64 overhead)
-      if (file.size > 750 * 1024) {
-        // If it's an image, try to compress it
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const img = new Image();
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              let width = img.width;
-              let height = img.height;
-              
-              // Max dimensions
-              const MAX_WIDTH = 1200;
-              const MAX_HEIGHT = 1200;
-              
-              if (width > height) {
-                if (width > MAX_WIDTH) {
-                  height *= MAX_WIDTH / width;
-                  width = MAX_WIDTH;
-                }
-              } else {
-                if (height > MAX_HEIGHT) {
-                  width *= MAX_HEIGHT / height;
-                  height = MAX_HEIGHT;
-                }
-              }
-              
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-              
-              // Compress to JPEG with 0.7 quality
-              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-              
-              // Final size check
-              const base64Size = Math.round((compressedBase64.length * 3) / 4);
-              if (base64Size > 1000 * 1024) {
-                alert('Compressed image is still too large. Please upload a smaller file (under 750KB).');
-                return;
-              }
-              
-              setResultFile(compressedBase64);
-            };
-            img.src = event.target?.result as string;
-          };
-          reader.readAsDataURL(file);
-          return;
-        } else {
-          alert('File is too large. Please upload a file under 750KB.');
-          return;
-        }
+      if (file.size > 20 * 1024 * 1024) {
+        alert('File is too large. Please upload a file under 20MB.');
+        return;
       }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setResultFile(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setOrderResultFileObj(file);
+      setResultFile(URL.createObjectURL(file));
     }
   };
 
   const handleCompleteOrder = async () => {
-    if (completingOrder) {
-      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, resultFile || undefined);
+    if (!completingOrder) return;
+    setIsProcessing(true);
+    try {
+      let documentUrl = resultFile || undefined;
+
+      if (orderResultFileObj) {
+        setOrderResultUploadStatus('Uploading file...');
+        const fileRef = ref(storage, `results/${completingOrder.id}/${orderResultFileObj.name}`);
+        const uploadTask = uploadBytesResumable(fileRef, orderResultFileObj);
+        
+        documentUrl = (await new Promise((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setOrderResultUploadStatus(`Uploading: ${Math.round(progress)}%`);
+            },
+            (error) => {
+              console.error("Upload error", error);
+              reject(error);
+            },
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              resolve(downloadURL);
+            }
+          );
+        })) as string;
+      }
+
+      setOrderResultUploadStatus('Completing order...');
+      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, documentUrl);
+      
       setCompletingOrder(null);
       setResultFile(null);
+      setOrderResultFileObj(null);
+      setOrderResultUploadStatus('');
       setAdminNote('Order completed successfully');
       setSuccessMessage({ title: 'Success!', message: 'Order marked as completed.' });
       setShowSuccess(true);
+    } catch (error) {
+       console.error("Failed completing order", error);
+       alert("Failed to complete order. " + error);
+    } finally {
+      setIsProcessing(false);
+      setOrderResultUploadStatus('');
     }
   };
 
@@ -4123,7 +4110,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             type="button" 
                             onClick={(e) => { 
                               e.preventDefault(); 
-                              setResultFile(null); 
+                              setResultFile(null);
+                              setOrderResultFileObj(null);
                             }} 
                             className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative pointer-events-auto"
                           >
@@ -4143,16 +4131,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div className="flex gap-4">
                   <button 
-                    onClick={() => setCompletingOrder(null)}
-                    className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                    onClick={() => {
+                      setCompletingOrder(null);
+                      setResultFile(null);
+                      setOrderResultFileObj(null);
+                    }}
+                    className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                    disabled={isProcessing}
                   >
                     Cancel
                   </button>
                   <button 
                     onClick={handleCompleteOrder}
-                    className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25"
+                    disabled={isProcessing}
+                    className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 disabled:opacity-75"
                   >
-                    Complete Order
+                    {isProcessing ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        {orderResultUploadStatus || 'Processing...'}
+                      </>
+                    ) : (
+                      'Complete Order'
+                    )}
                   </button>
                 </div>
               </div>
