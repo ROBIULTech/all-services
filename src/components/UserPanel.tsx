@@ -59,7 +59,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, compressImageAsBase64 } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
-import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage } from '../firebase';
+import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage, getDocs } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import axios from 'axios';
 
@@ -142,42 +142,37 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   useEffect(() => {
     if (!userProfile?.uid) return;
 
-    // Fetch active sessions
-    const sessionsQ = query(
-      collection(db, 'sessions'), 
-      where('uid', '==', userProfile.uid), 
-      where('active', '==', true),
-      limit(5)
-    );
-    const unsubscribeSessions = onSnapshot(sessionsQ, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSessions(data);
-    }, (error) => {
-      if (!error.message?.includes('quota')) {
-        console.error('Sessions listener error (collection sessions):', error);
-      }
-    });
+    const fetchHistoryData = async () => {
+      try {
+        // Fetch active sessions once
+        const sessionsQ = query(
+          collection(db, 'sessions'), 
+          where('uid', '==', userProfile.uid), 
+          where('active', '==', true),
+          limit(5)
+        );
+        const sessionsSnap = await getDocs(sessionsQ);
+        const sessionsData = sessionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSessions(sessionsData);
 
-    // Fetch login history
-    const historyQ = query(
-      collection(db, 'login_history'), 
-      where('uid', '==', userProfile.uid),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
-    const unsubscribeHistory = onSnapshot(historyQ, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setLoginHistory(data);
-    }, (error) => {
-      if (!error.message?.includes('quota')) {
-        console.error('Login history listener error (collection login_history):', error);
+        // Fetch login history once
+        const historyQ = query(
+          collection(db, 'login_history'), 
+          where('uid', '==', userProfile.uid),
+          orderBy('timestamp', 'desc'),
+          limit(10)
+        );
+        const historySnap = await getDocs(historyQ);
+        const historyData = historySnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLoginHistory(historyData);
+      } catch (error: any) {
+        if (!error.message?.includes('quota')) {
+          console.error('History fetch error:', error);
+        }
       }
-    });
-
-    return () => {
-      unsubscribeSessions();
-      unsubscribeHistory();
     };
+
+    fetchHistoryData();
   }, [userProfile?.uid]);
 
   const handleUpdateThemeColor = async (color: string) => {
@@ -475,85 +470,63 @@ Mobile-
 
   useEffect(() => {
     if (!userProfile?.uid) return;
+    
+    const fetchOrdersData = async () => {
+      // Only fetch orders if we are on a tab that displays them
+      const orderTabs = ['dashboard', 'history', 'rejected', 'completed-orders', 'premium-orders'];
+      if (!orderTabs.includes(activeTab)) {
+        return;
+      }
 
-    // Listen to active orders
-    const qOrders = query(
-      collection(db, 'orders'),
-      where('uid', '==', userProfile.uid),
-      orderBy('createdAt', 'desc'),
-      limit(30)
-    );
+      try {
+        // Fetch active orders once
+        const qOrders = query(
+          collection(db, 'orders'),
+          where('uid', '==', userProfile.uid),
+          orderBy('createdAt', 'desc'),
+          limit(30)
+        );
+        const ordersSnap = await getDocs(qOrders);
+        const activeOrders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
 
-    // Listen to trashed orders
-    const qTrash = query(
-      collection(db, 'trash'),
-      where('type', '==', 'order'),
-      where('data.uid', '==', userProfile.uid),
-      orderBy('deletedAt', 'desc'),
-      limit(10)
-    );
+        // Fetch trashed orders once
+        const qTrash = query(
+          collection(db, 'trash'),
+          where('type', '==', 'order'),
+          where('data.uid', '==', userProfile.uid),
+          orderBy('deletedAt', 'desc'),
+          limit(10)
+        );
+        const trashSnap = await getDocs(qTrash);
+        const trashedOrders = trashSnap.docs.map(doc => {
+          const trashData = doc.data();
+          return { id: doc.id, ...(trashData.data || {}) } as Order;
+        });
 
-    let activeOrders: Order[] = [];
-    let trashedOrders: Order[] = [];
+        // Combine and sort
+        const combinedMap = new Map<string, Order>();
+        activeOrders.forEach(o => combinedMap.set(o.id, o));
+        trashedOrders.forEach(o => {
+          if (!combinedMap.has(o.id)) combinedMap.set(o.id, o);
+        });
 
-    const combineAndSetOrders = () => {
-      const combinedMap = new Map<string, Order>();
-      
-      activeOrders.forEach(o => combinedMap.set(o.id, o));
-      trashedOrders.forEach(o => {
-        if (!combinedMap.has(o.id)) {
-          combinedMap.set(o.id, o);
+        const combined = Array.from(combinedMap.values());
+        combined.sort((a, b) => {
+          const dateA = (a.createdAt as any)?.toDate?.()?.getTime() || 0;
+          const dateB = (b.createdAt as any)?.toDate?.()?.getTime() || 0;
+          return dateB - dateA;
+        });
+        
+        setOrders(combined);
+      } catch (error: any) {
+        if (!error.message?.includes('quota')) {
+          console.error('Orders manual fetch error:', error);
         }
-      });
-
-      const combined = Array.from(combinedMap.values());
-      
-      combined.sort((a, b) => {
-        const dateA = a.createdAt?.toDate?.()?.getTime() || 0;
-        const dateB = b.createdAt?.toDate?.()?.getTime() || 0;
-        return dateB - dateA;
-      });
-      setOrders(combined);
+      }
     };
 
-    const unsubscribeOrders = onSnapshot(qOrders, (snapshot) => {
-      activeOrders = [];
-      snapshot.forEach((doc) => {
-        activeOrders.push({ id: doc.id, ...doc.data() } as Order);
-      });
-      combineAndSetOrders();
-    }, (error) => {
-      if (error.message?.includes('quota')) {
-        console.error('Orders listener quota exceeded');
-        unsubscribeOrders();
-      } else {
-        console.error('Orders listener error (collection orders):', error);
-      }
-    });
-
-    const unsubscribeTrash = onSnapshot(qTrash, (snapshot) => {
-      trashedOrders = [];
-      snapshot.forEach((doc) => {
-        const trashData = doc.data();
-        if (trashData.data) {
-          trashedOrders.push({ id: doc.id, ...trashData.data } as Order);
-        }
-      });
-      combineAndSetOrders();
-    }, (error) => {
-      if (error.message?.includes('quota')) {
-        console.error('Trash listener quota exceeded');
-        unsubscribeTrash();
-      } else {
-        console.error('Trash listener error (collection trash):', error);
-      }
-    });
-
-    return () => {
-      unsubscribeOrders();
-      unsubscribeTrash();
-    };
-  }, [userProfile?.uid]);
+    fetchOrdersData();
+  }, [userProfile?.uid, activeTab]);
 
   const handlePlacePremiumOrder = async (productId: number, data: string) => {
     const product = products.find(p => p.id === productId);

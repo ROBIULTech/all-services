@@ -11,7 +11,7 @@ export const storage = getStorage(app, firebaseConfig.storageBucket);
 console.log('Using Firestore database ID:', firebaseConfig.firestoreDatabaseId);
 export const googleProvider = new GoogleAuthProvider();
 
-export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, getDocFromServer, Timestamp, signInWithEmailAndPassword, createUserWithEmailAndPassword, getDocs, deleteDoc, writeBatch, signInAnonymously, orderBy, limit };
+export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, getDocFromServer, Timestamp, signInWithEmailAndPassword, createUserWithEmailAndPassword, getDocs, deleteDoc, writeBatch, signInAnonymously, orderBy, limit, ref, uploadBytesResumable, getDownloadURL };
 export type { FirebaseUser };
 
 // Test connection

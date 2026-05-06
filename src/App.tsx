@@ -284,6 +284,9 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | any | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isAdminViewingUserPanel, setIsAdminViewingUserPanel] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(initialProducts);
 
@@ -582,6 +585,20 @@ export default function App() {
       initializationRef.current.products = true;
 
       try {
+        // Check localStorage cache first
+        const cacheKey = 'cached_products';
+        const cacheTimeKey = 'cached_products_time';
+        const cachedProducts = localStorage.getItem(cacheKey);
+        const cachedTime = localStorage.getItem(cacheTimeKey);
+        const now = Date.now();
+
+        // Use cache if it's less than 30 minutes old
+        if (cachedProducts && cachedTime && (now - parseInt(cachedTime)) < 30 * 60 * 1000) {
+          console.log('Using cached products');
+          setProducts(JSON.parse(cachedProducts));
+          return;
+        }
+
         const q = query(collection(db, 'products'), limit(100));
         const snapshot = await getDocs(q);
         const productsData: Product[] = [];
@@ -591,9 +608,14 @@ export default function App() {
         
         if (productsData.length > 0) {
           setProducts(productsData);
+          localStorage.setItem(cacheKey, JSON.stringify(productsData));
+          localStorage.setItem(cacheTimeKey, now.toString());
+        } else {
+          // Fallback to initial products if DB is empty (only for early setup)
+          setProducts(initialProducts);
         }
 
-        // Only admins should sync initial products to save quota
+        // Only admins should sync initial products to save quota (and only if DB is empty)
         if (userProfile?.role === 'admin' && productsData.length === 0) {
           const batch = writeBatch(db);
           initialProducts.forEach(p => {
@@ -601,11 +623,16 @@ export default function App() {
             batch.set(ref, p);
           });
           await batch.commit();
-          setProducts(initialProducts);
         }
       } catch (error: any) {
         if (error.message?.includes('quota')) {
-          console.error('Products fetch quota exceeded');
+          console.warn('Products fetch quota exceeded, using initial/cached products');
+          const cachedProducts = localStorage.getItem('cached_products');
+          if (cachedProducts) {
+            setProducts(JSON.parse(cachedProducts));
+          } else {
+            setProducts(initialProducts);
+          }
         } else {
           console.error('Error initializing products:', error);
         }
@@ -619,54 +646,53 @@ export default function App() {
 
   // Removed the second useEffect that was redundant with initializeProducts
 
-  useEffect(() => {
-    if (!loading && userProfile?.role === 'admin') {
-      const q = query(
+  // Optimized Admin Data Fetching to save quota
+  const fetchAdminData = async () => {
+    if (loading || userProfile?.role !== 'admin' || isAdminViewingUserPanel) return;
+
+    console.log('Fetching admin dashboard data manually to save Firestore quota...');
+    try {
+      // 1. Fetch Orders
+      const qOrders = query(
         collection(db, 'orders'),
         orderBy('createdAt', 'desc'),
-        limit(50)
+        limit(100)
       );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const ordersData: Order[] = [];
-        snapshot.forEach((doc) => {
-          ordersData.push({ id: doc.id, ...doc.data() } as Order);
-        });
-        setOrders(ordersData); // Already sorted by query
-      }, (error) => {
-        if (error.message?.includes('quota')) {
-          console.error('Firestore Read Quota Exceeded');
-          unsubscribe();
-        } else {
-          handleFirestoreError(error, OperationType.LIST, 'orders');
-        }
-      });
+      const ordersSnap = await getDocs(qOrders);
+      const ordersData = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      setOrders(ordersData);
 
-      const trashQ = query(
-        collection(db, 'trash'),
-        orderBy('deletedAt', 'desc'),
-        limit(20)
+      // 2. Fetch Trash
+      const qTrash = query(collection(db, 'trash'), orderBy('deletedAt', 'desc'), limit(50));
+      const trashSnap = await getDocs(qTrash);
+      const trashData = trashSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as TrashItem));
+      setTrashItems(trashData);
+
+      // 3. Fetch Users
+      const qUsers = query(
+        collection(db, 'users'),
+        orderBy('createdAt', 'desc'),
+        limit(100)
       );
-      const unsubTrash = onSnapshot(trashQ, (snapshot) => {
-        const trashData: TrashItem[] = [];
-        snapshot.forEach((doc) => {
-          trashData.push({ id: doc.id, ...doc.data() } as TrashItem);
-        });
-        setTrashItems(trashData);
-      }, (error) => {
-        if (error.message?.includes('quota')) {
-          console.error('Firestore Read Quota Exceeded');
-          unsubTrash();
-        } else {
-          handleFirestoreError(error, OperationType.LIST, 'trash');
-        }
-      });
-
-      return () => {
-        unsubscribe();
-        unsubTrash();
-      };
+      const usersSnap = await getDocs(qUsers);
+      const usersData = usersSnap.docs.map(doc => doc.data() as UserProfile);
+      setAllUsers(usersData);
+      
+    } catch (error: any) {
+      if (error.message?.includes('quota')) {
+        console.warn('Admin view: Firestore quota exceeded. Displaying available data.');
+      } else {
+        console.error('Error fetching admin data:', error);
+      }
     }
-  }, [userProfile?.role, loading]);
+  };
+
+  useEffect(() => {
+    // Only fetch automatically if we have no orders yet or role just confirmed as admin
+    if (!loading && userProfile?.role === 'admin' && !isAdminViewingUserPanel && orders.length === 0) {
+      fetchAdminData();
+    }
+  }, [userProfile?.role, loading, isAdminViewingUserPanel]);
 
   const updateProduct = async (id: number, updates: Partial<Product>) => {
     try {
@@ -795,28 +821,6 @@ export default function App() {
   };
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-
-  useEffect(() => {
-    if (!loading && userProfile?.role === 'admin') {
-      const q = query(
-        collection(db, 'users'),
-        orderBy('createdAt', 'desc'),
-        limit(100)
-      );
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const usersData: UserProfile[] = [];
-        snapshot.forEach((doc) => {
-          usersData.push(doc.data() as UserProfile);
-        });
-        setAllUsers(usersData);
-      }, (error) => {
-        if (!error.message?.includes('quota')) {
-          handleFirestoreError(error, OperationType.LIST, 'users');
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [userProfile?.role, loading]);
 
   const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string) => {
     try {
@@ -1030,9 +1034,6 @@ export default function App() {
     }
   };
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isAdminViewingUserPanel, setIsAdminViewingUserPanel] = useState(false);
   
   // Check for the new secure admin route
   const isAdminRoute = window.location.pathname === '/secure-node-portal-v1x9k' || window.location.pathname.startsWith('/secure-node-portal-v1x9k');
@@ -1115,6 +1116,7 @@ export default function App() {
       isAdminViewingUserPanel={isAdminViewingUserPanel}
       setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}
       updateAdminProfile={updateUserProfile}
+      onRefreshData={fetchAdminData}
       isSidebarOpen={isSidebarOpen}
       setIsSidebarOpen={setIsSidebarOpen}
       isDarkMode={isDarkMode}

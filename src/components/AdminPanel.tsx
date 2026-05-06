@@ -63,11 +63,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage } from '../firebase';
+import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase';
 import ServiceControls from './ServiceControls';
 import { Logo } from './Logo';
 
@@ -149,6 +148,7 @@ interface AdminPanelProps {
   setIsSidebarOpen: (value: boolean) => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
+  onRefreshData?: () => Promise<void>;
 }
 
 const icons = {
@@ -184,8 +184,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   isSidebarOpen,
   setIsSidebarOpen,
   isDarkMode,
-  toggleDarkMode
+  toggleDarkMode,
+  onRefreshData
 }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleManualRefresh = async () => {
+    if (onRefreshData && !isRefreshing) {
+      setIsRefreshing(true);
+      try {
+        await onRefreshData();
+      } catch (err) {
+        console.error('Refresh failed:', err);
+      } finally {
+        setTimeout(() => setIsRefreshing(false), 500); // Small delay for visual feedback
+      }
+    }
+  };
+
   const handleDownloadReport = (reportType: string) => {
     let csvContent = "data:text/csv;charset=utf-8,";
     let fileName = "report.csv";
@@ -711,12 +727,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         const fileRef = ref(storage, `results/${Date.now()}_${file.name}`);
         const uploadTask = uploadBytesResumable(fileRef, file);
         
-        const downloadURL = await new Promise((resolve, reject) => {
-          uploadTask.on('state_changed', null, reject, async () => resolve(await getDownloadURL(uploadTask.snapshot.ref)));
-        });
-        
-        setResultFile(downloadURL as string);
-        setOrderResultUploadStatus('Upload complete');
+        // Listen for progress
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setOrderResultUploadStatus(`Uploading: ${Math.round(progress)}%`);
+          },
+          (error) => {
+            console.error("Upload error listener:", error);
+            alert("Upload error: " + error.message);
+            setOrderResultUploadStatus('');
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            setResultFile(downloadURL);
+            setOrderResultUploadStatus('Upload complete');
+          }
+        );
       } catch (err: any) {
         console.error("Upload error", err);
         alert("Upload failed: " + err.message);
@@ -951,6 +978,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           <div className="flex items-center gap-4">
+            {onRefreshData && (
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className={cn(
+                  "p-2 hover:bg-slate-100 rounded-full transition-all group",
+                  isRefreshing && "opacity-50"
+                )}
+                title="Refresh dashboard data (saves quota)"
+              >
+                <RotateCcw className={cn("w-5 h-5 text-slate-500", isRefreshing && "animate-spin")} />
+              </button>
+            )}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -4128,10 +4168,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                   <button 
                     onClick={handleCompleteOrder}
-                    disabled={isProcessing}
+                    disabled={isProcessing || orderResultUploadStatus === 'Uploading file...'}
                     className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 disabled:opacity-75"
                   >
-                    {isProcessing ? (
+                    {isProcessing || orderResultUploadStatus === 'Uploading file...' ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         {orderResultUploadStatus || 'Processing...'}
