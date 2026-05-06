@@ -83,6 +83,8 @@ import {
   getDocs,
   FirebaseUser,
   Timestamp,
+  orderBy,
+  limit,
   writeBatch
 } from './firebase';
 
@@ -423,11 +425,19 @@ export default function App() {
     // 1. Fetch global settings once on load
     const settingsRef = doc(db, 'settings', 'general');
     const fetchSettings = async () => {
+      // Check localStorage for cached settings
+      const cachedSettings = localStorage.getItem('global_settings');
+      if (cachedSettings) {
+        setGlobalSettings(JSON.parse(cachedSettings));
+        initializationRef.current.settings = true;
+        return;
+      }
+      
       try {
         const docSnap = await getDoc(settingsRef);
         if (docSnap.exists()) {
           const data = docSnap.data() as GlobalSettings;
-          setGlobalSettings({
+          const settings = {
             ...data,
             premiumUnlockFee: data.premiumUnlockFee || 500,
             isPremiumFeatureActive: data.isPremiumFeatureActive ?? true,
@@ -436,7 +446,9 @@ export default function App() {
             nagadNumber: data.nagadNumber || '',
             rocketNumber: data.rocketNumber || '',
             whatsappGroupLink: data.whatsappGroupLink || ''
-          });
+          };
+          setGlobalSettings(settings);
+          localStorage.setItem('global_settings', JSON.stringify(settings));
           initializationRef.current.settings = true;
         } else if (!initializationRef.current.settings) {
           initializationRef.current.settings = true;
@@ -453,6 +465,7 @@ export default function App() {
           };
           await setDoc(settingsRef, initialSettings);
           setGlobalSettings(initialSettings);
+          localStorage.setItem('global_settings', JSON.stringify(initialSettings));
         }
       } catch (error) {
         console.error('Error fetching/initializing settings:', error);
@@ -520,14 +533,18 @@ export default function App() {
 
   useEffect(() => {
     const bootstrapAdmin = async () => {
-      // Only bootstrap once
-      if (initializationRef.current.admin) return;
+      // Check localStorage to avoid re-bootstrapping
+      if (localStorage.getItem('admin_bootstrapped') === 'true') {
+        initializationRef.current.admin = true;
+        return;
+      }
       
       try {
         const adminEmail = 'secure.node.admin@gmail.com';
         
         initializationRef.current.admin = true;
-        const q = query(collection(db, 'users'), where('email', '==', adminEmail));
+        localStorage.setItem('admin_bootstrapped', 'true');
+        const q = query(collection(db, 'users'), where('email', '==', adminEmail), limit(1));
         const snapshot = await getDocs(q);
         
         if (snapshot.empty) {
@@ -565,127 +582,83 @@ export default function App() {
       initializationRef.current.products = true;
 
       try {
-        const q = collection(db, 'products');
+        const q = query(collection(db, 'products'), limit(100));
         const snapshot = await getDocs(q);
         const productsData: Product[] = [];
         snapshot.forEach((doc) => {
           productsData.push(doc.data() as Product);
         });
         
-          const productsToSync = initialProducts.map(p => {
-            const found = productsData.find(pd => pd.id === p.id);
-            if (!found) return p;
-            
-            let needsUpdate = false;
-            const updatedProduct = { ...found };
-
-            // Sync category if it changed in initialProducts
-            if (found.category !== p.category) {
-              updatedProduct.category = p.category;
-              needsUpdate = true;
-            }
-
-          // Sync defaultData if it's in initialProducts but missing or different in Firestore
-          if (p.defaultData && found.defaultData !== p.defaultData) {
-            updatedProduct.defaultData = p.defaultData;
-            needsUpdate = true;
-          }
-          
-          return needsUpdate ? updatedProduct : null;
-        }).filter(p => p !== null) as Product[];
-        
-        if (productsToSync.length > 0) {
-          const { writeBatch } = await import('firebase/firestore');
-          const batch = writeBatch(db);
-          for (const p of productsToSync) {
-            const { icon, color, ...serializableProduct } = p;
-            const productRef = doc(db, 'products', p.id.toString());
-            batch.set(productRef, serializableProduct, { merge: true });
-          }
-          await batch.commit();
-          console.log('Products synced successfully.');
+        if (productsData.length > 0) {
+          setProducts(productsData);
         }
-      } catch (err) {
-        console.error('Error initializing products:', err);
+
+        // Only admins should sync initial products to save quota
+        if (userProfile?.role === 'admin' && productsData.length === 0) {
+          const batch = writeBatch(db);
+          initialProducts.forEach(p => {
+            const ref = doc(db, 'products', p.id.toString());
+            batch.set(ref, p);
+          });
+          await batch.commit();
+          setProducts(initialProducts);
+        }
+      } catch (error: any) {
+        if (error.message?.includes('quota')) {
+          console.error('Products fetch quota exceeded');
+        } else {
+          console.error('Error initializing products:', error);
+        }
       }
     };
-
-    if (userProfile?.role === 'admin') {
+    
+    if (!loading) {
       initializeProducts();
     }
+  }, [loading, userProfile?.role]);
 
-    // Sync products with Firestore for everyone
-    const q = collection(db, 'products');
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-        const firestoreProducts: Product[] = [];
-        snapshot.forEach((doc) => {
-          const data = doc.data() as Product;
-          firestoreProducts.push(data);
-        });
-        
-        // Create a map of initial products for easy lookup of icons/colors
-        const initialProductsMap = new Map(initialProducts.map(p => [p.id, p]));
-
-        // Merge Firestore data with initialProducts to ensure icons and colors are present
-        const mergedProducts: Product[] = firestoreProducts.map(fp => {
-          const ip = initialProductsMap.get(fp.id);
-          if (ip) {
-            // Use Firestore options directly, do not merge back deleted initial options
-            return { ...fp, icon: ip.icon, color: ip.color };
-          }
-          // For new products added via Admin Panel, provide default icon/color if missing
-          return { 
-            ...fp, 
-            icon: fp.icon || LayoutGrid, 
-            color: fp.color || 'bg-indigo-500' 
-          };
-        });
-
-        // Add any initial products that are NOT in Firestore yet (though initializeProducts should handle this)
-        initialProducts.forEach(ip => {
-          if (!firestoreProducts.some(fp => fp.id === ip.id)) {
-            mergedProducts.push(ip);
-          }
-        });
-
-        setProducts(mergedProducts.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0) || a.id - b.id));
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'products');
-    });
-
-    return () => unsubscribe();
-  }, [userProfile?.role]);
+  // Removed the second useEffect that was redundant with initializeProducts
 
   useEffect(() => {
     if (!loading && userProfile?.role === 'admin') {
-      const q = collection(db, 'orders');
+      const q = query(
+        collection(db, 'orders'),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const ordersData: Order[] = [];
         snapshot.forEach((doc) => {
           ordersData.push({ id: doc.id, ...doc.data() } as Order);
         });
-        setOrders(ordersData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.()?.getTime() || 0;
-          const dateB = b.createdAt?.toDate?.()?.getTime() || 0;
-          return dateB - dateA;
-        }));
+        setOrders(ordersData); // Already sorted by query
       }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'orders');
+        if (error.message?.includes('quota')) {
+          console.error('Firestore Read Quota Exceeded');
+          unsubscribe();
+        } else {
+          handleFirestoreError(error, OperationType.LIST, 'orders');
+        }
       });
 
-      const trashQ = collection(db, 'trash');
+      const trashQ = query(
+        collection(db, 'trash'),
+        orderBy('deletedAt', 'desc'),
+        limit(20)
+      );
       const unsubTrash = onSnapshot(trashQ, (snapshot) => {
         const trashData: TrashItem[] = [];
         snapshot.forEach((doc) => {
           trashData.push({ id: doc.id, ...doc.data() } as TrashItem);
         });
-        setTrashItems(trashData.sort((a, b) => {
-          const dateA = a.deletedAt?.toDate?.()?.getTime() || 0;
-          const dateB = b.deletedAt?.toDate?.()?.getTime() || 0;
-          return dateB - dateA;
-        }));
+        setTrashItems(trashData);
       }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'trash');
+        if (error.message?.includes('quota')) {
+          console.error('Firestore Read Quota Exceeded');
+          unsubTrash();
+        } else {
+          handleFirestoreError(error, OperationType.LIST, 'trash');
+        }
       });
 
       return () => {
@@ -825,7 +798,11 @@ export default function App() {
 
   useEffect(() => {
     if (!loading && userProfile?.role === 'admin') {
-      const q = collection(db, 'users');
+      const q = query(
+        collection(db, 'users'),
+        orderBy('createdAt', 'desc'),
+        limit(100)
+      );
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const usersData: UserProfile[] = [];
         snapshot.forEach((doc) => {
@@ -833,7 +810,9 @@ export default function App() {
         });
         setAllUsers(usersData);
       }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'users');
+        if (!error.message?.includes('quota')) {
+          handleFirestoreError(error, OperationType.LIST, 'users');
+        }
       });
       return () => unsubscribe();
     }
@@ -929,8 +908,8 @@ export default function App() {
       if (userSnap.exists()) {
         const userData = userSnap.data() as UserProfile;
         
-        // Fetch orders for this user
-        const ordersQ = query(collection(db, 'orders'), where('uid', '==', userId));
+        // Fetch orders for this user with limit
+        const ordersQ = query(collection(db, 'orders'), where('uid', '==', userId), limit(100));
         const ordersSnap = await getDocs(ordersQ);
         const userOrders = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 

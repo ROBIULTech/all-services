@@ -539,6 +539,33 @@ async function startServer() {
     }
   });
 
+  // Upload Proxy Route
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: "No file uploaded" });
+      }
+      
+      const formData = new FormData();
+      formData.append('reqtype', 'fileupload');
+      formData.append('fileToUpload', req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+      });
+
+      const response = await axios.post('https://catbox.moe/user/api.php', formData, {
+        headers: {
+          ...formData.getHeaders()
+        }
+      });
+
+      res.json({ success: true, url: response.data });
+    } catch (error: any) {
+      console.error("Catbox proxy upload error:", error.message || error);
+      res.status(500).json({ success: false, error: "Upload failed" });
+    }
+  });
+
   // Reseller API - Place Order
   app.post("/api/v1/order", async (req, res) => {
     const apiKey = req.headers['x-api-key'];

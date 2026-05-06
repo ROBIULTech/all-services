@@ -57,9 +57,10 @@ import {
   Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, compressImageAsBase64 } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
-import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc } from '../firebase';
+import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage } from '../firebase';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import axios from 'axios';
 
 import { Logo } from './Logo';
@@ -142,22 +143,35 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
     if (!userProfile?.uid) return;
 
     // Fetch active sessions
-    const sessionsQ = query(collection(db, 'sessions'), where('uid', '==', userProfile.uid), where('active', '==', true));
+    const sessionsQ = query(
+      collection(db, 'sessions'), 
+      where('uid', '==', userProfile.uid), 
+      where('active', '==', true),
+      limit(5)
+    );
     const unsubscribeSessions = onSnapshot(sessionsQ, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setSessions(data);
     }, (error) => {
-      console.error('Sessions listener error (collection sessions):', error);
+      if (!error.message?.includes('quota')) {
+        console.error('Sessions listener error (collection sessions):', error);
+      }
     });
 
     // Fetch login history
-    const historyQ = query(collection(db, 'login_history'), where('uid', '==', userProfile.uid));
+    const historyQ = query(
+      collection(db, 'login_history'), 
+      where('uid', '==', userProfile.uid),
+      orderBy('timestamp', 'desc'),
+      limit(10)
+    );
     const unsubscribeHistory = onSnapshot(historyQ, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      data.sort((a: any, b: any) => b.timestamp?.toDate().getTime() - a.timestamp?.toDate().getTime());
-      setLoginHistory(data.slice(0, 10));
+      setLoginHistory(data);
     }, (error) => {
-      console.error('Login history listener error (collection login_history):', error);
+      if (!error.message?.includes('quota')) {
+        console.error('Login history listener error (collection login_history):', error);
+      }
     });
 
     return () => {
@@ -465,14 +479,18 @@ Mobile-
     // Listen to active orders
     const qOrders = query(
       collection(db, 'orders'),
-      where('uid', '==', userProfile.uid)
+      where('uid', '==', userProfile.uid),
+      orderBy('createdAt', 'desc'),
+      limit(30)
     );
 
     // Listen to trashed orders
     const qTrash = query(
       collection(db, 'trash'),
       where('type', '==', 'order'),
-      where('data.uid', '==', userProfile.uid)
+      where('data.uid', '==', userProfile.uid),
+      orderBy('deletedAt', 'desc'),
+      limit(10)
     );
 
     let activeOrders: Order[] = [];
@@ -505,7 +523,12 @@ Mobile-
       });
       combineAndSetOrders();
     }, (error) => {
-      console.error('Orders listener error in UserPanel.tsx:', error);
+      if (error.message?.includes('quota')) {
+        console.error('Orders listener quota exceeded');
+        unsubscribeOrders();
+      } else {
+        console.error('Orders listener error (collection orders):', error);
+      }
     });
 
     const unsubscribeTrash = onSnapshot(qTrash, (snapshot) => {
@@ -518,7 +541,12 @@ Mobile-
       });
       combineAndSetOrders();
     }, (error) => {
-      console.error('Trash listener error in UserPanel.tsx:', error);
+      if (error.message?.includes('quota')) {
+        console.error('Trash listener quota exceeded');
+        unsubscribeTrash();
+      } else {
+        console.error('Trash listener error (collection trash):', error);
+      }
     });
 
     return () => {
@@ -611,6 +639,7 @@ Mobile-
     
     if (userProfile.balance < currentPrice) {
       alert('Insufficient balance. Please contact admin to recharge.');
+      setIsPlacingOrder(false); // Make sure to stop loading
       return;
     }
 
@@ -779,9 +808,10 @@ Mobile-
       setActiveTab('history');
       setShowSuccess(true);
       onOrderPlaced(newOrder);
-    } catch (error) {
-      console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
+    } catch (error: any) {
+      console.error('Full Error placing order:', error);
+      const errorMessage = typeof error === 'string' ? error : (error.message || (error.code ? `${error.code}: ${error.message}` : JSON.stringify(error)) || 'Failed to place order. Please try again.');
+      alert(errorMessage);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -1483,6 +1513,7 @@ Mobile-
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Files</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Admin Note</th>
                       </tr>
                     </thead>
@@ -1522,6 +1553,28 @@ Mobile-
                               </div>
                             </td>
                             <td className="px-6 py-4">
+                              {order.fileURLs && order.fileURLs.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {order.fileURLs.map((url, idx) => (
+                                    <button 
+                                      key={idx}
+                                      onClick={() => {
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.download = `file_${order.id}_${idx}.png`;
+                                        link.click();
+                                      }}
+                                      className="text-[10px] bg-indigo-50 px-2 py-1 rounded text-indigo-700 hover:bg-indigo-100"
+                                    >
+                                      File {idx + 1}
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">No files</span>
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
                               <p className="text-xs text-slate-400 italic">
                                 {order.adminNote || 'No notes yet'}
                               </p>
@@ -1530,7 +1583,7 @@ Mobile-
                         );
                       }) : (
                         <tr>
-                          <td colSpan={5} className="px-6 py-20 text-center">
+                          <td colSpan={6} className="px-6 py-20 text-center">
                             <div className="flex flex-col items-center gap-3 opacity-40">
                               <Package className="w-12 h-12 text-slate-700" />
                               <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No active orders</p>
@@ -3247,23 +3300,21 @@ Mobile-
                           <div className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden">
                             <input 
                               type="file" 
-                              className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" 
-                              onChange={(e) => {
+                              className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
+                              onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.size > 5 * 1024 * 1024) {
-                                    alert('File is too large. Please upload a file smaller than 5MB.');
-                                    return;
+                                  e.target.disabled = true;
+                                  try {
+                                    const base64 = await compressImageAsBase64(file, 700);
+                                    setOrderFiles([base64]);
+                                  } catch (err: any) {
+                                    console.error("Upload error", err);
+                                    alert(err.message || "Failed to process the file.");
+                                  } finally {
+                                    e.target.disabled = false;
+                                    e.target.value = '';
                                   }
-                                  if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
-                                    alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
-                                    return;
-                                  }
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    setOrderFiles([reader.result as string]);
-                                  };
-                                  reader.readAsDataURL(file);
                                 }
                               }}
                             />
@@ -3297,23 +3348,21 @@ Mobile-
                               <Plus className="w-8 h-8 text-white stroke-[3] pointer-events-none" />
                               <input 
                                 type="file" 
-                                className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer" 
-                                onChange={(e) => {
+                                className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
+                                onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    if (file.size > 5 * 1024 * 1024) {
-                                      alert('File is too large. Please upload a file smaller than 5MB.');
-                                      return;
+                                    e.target.disabled = true;
+                                    try {
+                                      const base64 = await compressImageAsBase64(file, 700);
+                                      setOrderFiles([...orderFiles, base64]);
+                                    } catch (err: any) {
+                                      console.error("Upload error", err);
+                                      alert("Upload failed: " + err.message);
+                                    } finally {
+                                      e.target.disabled = false;
+                                      e.target.value = '';
                                     }
-                                    if (!['image/jpeg', 'image/png', 'application/pdf', 'application/zip', 'application/x-zip-compressed'].includes(file.type)) {
-                                      alert('Invalid file type. Please upload an image, PDF, or ZIP file. Word files are not allowed directly.');
-                                      return;
-                                    }
-                                    const reader = new FileReader();
-                                    reader.onloadend = () => {
-                                      setOrderFiles([...orderFiles, reader.result as string]);
-                                    };
-                                    reader.readAsDataURL(file);
                                   }
                                 }}
                               />

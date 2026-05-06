@@ -63,11 +63,11 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { cn } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage } from '../firebase';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import ServiceControls from './ServiceControls';
 import { Logo } from './Logo';
 
@@ -703,15 +703,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { name: 'Sun', revenue: 3490 },
   ];
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 20 * 1024 * 1024) {
-        alert('File is too large. Please upload a file under 20MB.');
-        return;
+      setOrderResultUploadStatus('Uploading file...');
+      try {
+        const fileRef = ref(storage, `results/${Date.now()}_${file.name}`);
+        const uploadTask = uploadBytesResumable(fileRef, file);
+        
+        const downloadURL = await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed', null, reject, async () => resolve(await getDownloadURL(uploadTask.snapshot.ref)));
+        });
+        
+        setResultFile(downloadURL as string);
+        setOrderResultUploadStatus('Upload complete');
+      } catch (err: any) {
+        console.error("Upload error", err);
+        alert("Upload failed: " + err.message);
+        setOrderResultUploadStatus('');
       }
-      setOrderResultFileObj(file);
-      setResultFile(URL.createObjectURL(file));
     }
   };
 
@@ -719,34 +729,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!completingOrder) return;
     setIsProcessing(true);
     try {
-      let documentUrl = resultFile || undefined;
-
-      if (orderResultFileObj) {
-        setOrderResultUploadStatus('Uploading file...');
-        const fileRef = ref(storage, `results/${completingOrder.id}/${orderResultFileObj.name}`);
-        const uploadTask = uploadBytesResumable(fileRef, orderResultFileObj);
-        
-        documentUrl = (await new Promise((resolve, reject) => {
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setOrderResultUploadStatus(`Uploading: ${Math.round(progress)}%`);
-            },
-            (error) => {
-              console.error("Upload error", error);
-              reject(error);
-            },
-            async () => {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(downloadURL);
-            }
-          );
-        })) as string;
-      }
-
       setOrderResultUploadStatus('Completing order...');
-      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, documentUrl);
+      // Updated: Allow file input to be optional by defaulting to resultFile (or undefined if not set)
+      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, resultFile ?? undefined);
       
       setCompletingOrder(null);
       setResultFile(null);
@@ -755,9 +740,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setAdminNote('Order completed successfully');
       setSuccessMessage({ title: 'Success!', message: 'Order marked as completed.' });
       setShowSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
        console.error("Failed completing order", error);
-       alert("Failed to complete order. " + error);
+       alert("Failed to complete order: " + (error.message || error));
     } finally {
       setIsProcessing(false);
       setOrderResultUploadStatus('');
