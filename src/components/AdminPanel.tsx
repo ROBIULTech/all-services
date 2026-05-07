@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
+  User,
   Package, 
   ShoppingBag, 
   Settings, 
@@ -63,7 +64,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
-import { cn } from '../lib/utils';
+import { cn, compressImageAsBase64 } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase';
@@ -399,6 +400,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   
   const [rechargeSearchQuery, setRechargeSearchQuery] = useState('');
   const [premiumSearchQuery, setPremiumSearchQuery] = useState('');
+  const [showAdminsOnly, setShowAdminsOnly] = useState(false);
+  const [viewingUser, setViewingUser] = useState<any | null>(null);
   
   // Confirmation states
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'user' | 'order', id: string } | null>(null);
@@ -437,12 +440,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const [serviceCategoryFilter, setServiceCategoryFilter] = useState('All');
 
-  const filteredUsers = allUsers.filter(u => 
-    u.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-    u.userId?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
-    u.whatsapp?.toLowerCase().includes(userSearchQuery.toLowerCase())
-  );
+  const filteredUsers = allUsers.filter(u => {
+    const matchesSearch = u.displayName?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.userId?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+      u.whatsapp?.toLowerCase().includes(userSearchQuery.toLowerCase());
+    
+    if (showAdminsOnly) {
+      return matchesSearch && u.role?.toLowerCase() === 'admin';
+    }
+    return matchesSearch;
+  });
 
   const filteredReportUsers = allUsers.filter(u => 
     u.displayName?.toLowerCase().includes(reportUserSearchQuery.toLowerCase()) ||
@@ -722,32 +730,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setOrderResultUploadStatus('Uploading file...');
+      setOrderResultFileObj(file); // Store file object for UI display
+      setOrderResultUploadStatus('প্রসেসিং হচ্ছে...');
       try {
-        const fileRef = ref(storage, `results/${Date.now()}_${file.name}`);
-        const uploadTask = uploadBytesResumable(fileRef, file);
-        
-        // Listen for progress
-        uploadTask.on('state_changed', 
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setOrderResultUploadStatus(`Uploading: ${Math.round(progress)}%`);
-          },
-          (error) => {
-            console.error("Upload error listener:", error);
-            alert("Upload error: " + error.message);
-            setOrderResultUploadStatus('');
-          },
-          async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            setResultFile(downloadURL);
-            setOrderResultUploadStatus('Upload complete');
-          }
-        );
+        const base64 = await compressImageAsBase64(file, 600); // 600KB for safety
+        setResultFile(base64);
+        setOrderResultUploadStatus('ফাইল রেডি');
       } catch (err: any) {
-        console.error("Upload error", err);
-        alert("Upload failed: " + err.message);
-        setOrderResultUploadStatus('');
+        console.error("File processing error", err);
+        setOrderResultUploadStatus('Error: ' + (err.message || "প্রসেসিং ব্যর্থ"));
+        setOrderResultFileObj(null);
+      } finally {
+        e.target.value = ''; // Reset input to allow re-selection
       }
     }
   };
@@ -756,8 +750,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!completingOrder) return;
     setIsProcessing(true);
     try {
-      setOrderResultUploadStatus('Completing order...');
-      // Updated: Allow file input to be optional by defaulting to resultFile (or undefined if not set)
+      setOrderResultUploadStatus('অর্ডার সম্পন্ন হচ্ছে...');
       await updateOrderStatus(completingOrder.id!, 'completed', adminNote, resultFile ?? undefined);
       
       setCompletingOrder(null);
@@ -765,14 +758,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setOrderResultFileObj(null);
       setOrderResultUploadStatus('');
       setAdminNote('Order completed successfully');
-      setSuccessMessage({ title: 'Success!', message: 'Order marked as completed.' });
       setShowSuccess(true);
-    } catch (error: any) {
-       console.error("Failed completing order", error);
-       alert("Failed to complete order: " + (error.message || error));
+    } catch (error) {
+      console.error('Error completing order:', error);
+      setOrderResultUploadStatus('ব্যর্থ হয়েছে');
+      alert('Error completing order: ' + (error instanceof Error ? error.message : String(error)));
     } finally {
       setIsProcessing(false);
-      setOrderResultUploadStatus('');
     }
   };
 
@@ -1805,6 +1797,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Data</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Result</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
@@ -1822,6 +1815,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="px-6 py-4">
                               <p className="text-sm text-slate-600">{order.userEmail}</p>
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="space-y-2">
+                                {order.data && (
+                                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-48 md:w-64">
+                                    {order.data}
+                                    <button
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(order.data || '');
+                                      }}
+                                      className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                      title="Copy Data"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                                {(!order.data && (!order.fileURLs || order.fileURLs.length === 0)) && <span className="text-slate-400">-</span>}
+                                {order.fileURLs && order.fileURLs.length > 0 && (
+                                  <div className="grid gap-1 mt-2">
+                                    {order.fileURLs.map((url, urlIndex) => (
+                                      <a
+                                        key={`file-${urlIndex}`}
+                                        href={url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        Document {urlIndex + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4">
                               {order.resultFile ? (
@@ -2220,12 +2248,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User</th>
+                          <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors group"
+                            onClick={() => setShowAdminsOnly(!showAdminsOnly)}
+                          >
+                            <div className="flex items-center gap-1">
+                              Admin?
+                              {showAdminsOnly ? (
+                                <ShieldCheck className="w-3 h-3 text-purple-600" />
+                              ) : (
+                                <Filter className="w-3 h-3 text-slate-300 group-hover:text-slate-400" />
+                              )}
+                            </div>
+                          </th>
+                          <th 
+                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors group"
+                            onClick={() => {
+                              // Optional: Sorting logic
+                            }}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              User Info
+                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-0 group-hover:opacity-100 transition-all shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                            </div>
+                          </th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Password</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Role</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">API Key</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp / Password</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Balance</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
                         </tr>
@@ -2234,89 +2282,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {filteredUsers.map((u, i) => (
                           <tr key={u.uid || `full-user-${i}`} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full" referrerPolicy="no-referrer" />
+                              <button 
+                                onClick={() => {
+                                  const currentRole = u.role.toLowerCase();
+                                  const nextRole = currentRole === 'admin' ? 'user' : 'admin';
+                                  if (confirm(`Do you want to change ${u.displayName || u.email}'s role to ${nextRole.toUpperCase()}?`)) {
+                                    updateUser(u.uid, { role: nextRole });
+                                  }
+                                }}
+                                className={cn(
+                                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                                  u.role === 'admin' ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                )}
+                                title={u.role === 'admin' ? "Admin (Click to revoke)" : "Promote to Admin"}
+                              >
+                                {u.role === 'admin' ? (
+                                  <ShieldCheck className="w-5 h-5 animate-pulse" />
+                                ) : (
+                                  <User className="w-5 h-5" />
+                                )}
+                              </button>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div 
+                                className="flex items-center gap-3 cursor-pointer group/infohover"
+                                onClick={() => setViewingUser(u)}
+                              >
+                                <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full border-2 border-white shadow-sm group-hover/infohover:border-indigo-400 transition-all" referrerPolicy="no-referrer" />
                                 <div>
-                                  <p className="text-sm font-bold">{u.displayName || 'Unknown User'}</p>
-                                  <p className="text-xs text-slate-500">{u.email}</p>
+                                  <p className="text-sm font-bold text-slate-900 line-clamp-1 group-hover/infohover:text-indigo-600 transition-colors">{u.displayName || 'Unknown User'}</p>
+                                  <p className="text-[10px] text-slate-500 font-mono italic">{u.email}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-sm font-mono text-indigo-600 font-bold">{u.userId || 'N/A'}</span>
+                              <span className="text-sm font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{u.userId || 'N/A'}</span>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-sm text-slate-600">{u.whatsapp || 'N/A'}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-mono text-indigo-600 font-bold">{u.password || 'N/A'}</span>
-                                <button 
-                                  onClick={() => {
-                                    const newEmail = prompt("Edit Email:", u.email);
-                                    const newPassword = prompt("Edit Password:", u.password);
-                                    if (newEmail !== null && newPassword !== null) {
-                                      updateUser(u.uid, { email: newEmail, password: newPassword });
-                                    }
-                                  }}
-                                  className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
-                                >
-                                  <Settings className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="text-sm text-slate-600 capitalize">{u.role}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-mono text-slate-500 truncate max-w-[80px]" title={u.apiKey || 'No API Key'}>
-                                      {u.apiKey || 'N/A'}
-                                    </span>
-                                    <button 
-                                      onClick={() => {
-                                        const newKey = 'ak_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                                        if (confirm(`Generate new API Key for ${u.displayName}?`)) {
-                                          updateUser(u.uid, { apiKey: newKey, isApiEnabled: true });
-                                        }
-                                      }}
-                                      className="p-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"
-                                      title="Generate API Key"
-                                    >
-                                      <Zap className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                  
-                                  {u.apiKey && (
-                                    <div className="flex items-center gap-2">
-                                      <div 
-                                        className={cn(
-                                          "w-8 h-4 rounded-full transition-all relative cursor-pointer",
-                                          u.isApiEnabled ? "bg-emerald-500" : "bg-slate-300"
-                                        )} 
-                                        onClick={() => updateUser(u.uid, { isApiEnabled: !u.isApiEnabled })}
-                                        title={u.isApiEnabled ? "API Enabled" : "API Disabled"}
-                                      >
-                                        <div className={cn(
-                                          "absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all shadow-sm",
-                                          u.isApiEnabled ? "left-4.5" : "left-0.5"
-                                        )} />
-                                      </div>
-                                      <span className={cn(
-                                        "text-[10px] font-bold",
-                                        u.isApiEnabled ? "text-emerald-600" : "text-slate-400"
-                                      )}>
-                                        {u.isApiEnabled ? 'ON' : 'OFF'}
-                                      </span>
-                                    </div>
-                                  )}
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-bold text-slate-700">{u.whatsapp || 'No Number'}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 rounded">{u.password || 'N/A'}</span>
+                                  <button onClick={() => {
+                                    const newPass = prompt("Edit Password:", u.password);
+                                    if(newPass) updateUser(u.uid, { password: newPass });
+                                  }} className="p-0.5 hover:bg-slate-100 rounded">
+                                    <Settings className="w-3 h-3 text-slate-300" />
+                                  </button>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              {u.role.toLowerCase() !== 'admin' ? (
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-emerald-600">৳{u.balance.toLocaleString()}</span>
                                   <button 
@@ -2329,41 +2345,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <Plus className="w-3 h-3" />
                                   </button>
                                 </div>
-                              ) : (
-                                <span className="text-sm font-bold text-slate-400">৳0</span>
-                              )}
                             </td>
-                            <td className="px-6 py-4 text-right space-x-2">
-                              {u.role.toLowerCase() !== 'admin' && (
-                                <>
+                            <td className="px-6 py-4 text-right space-x-1">
                                   <button 
                                     onClick={() => setNotificationModalOpen(u)}
-                                    className="text-xs font-bold text-emerald-600 hover:underline"
-                                    title="Send Notification"
+                                    className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100 font-bold text-[10px]"
                                   >
                                     Notify
                                   </button>
                                   <button 
-                                    onClick={() => setUserReportModalOpen(u)}
-                                    className="text-xs font-bold text-indigo-600 hover:underline"
-                                    title="Download User Report"
-                                  >
-                                    Report
-                                  </button>
-                                  <button 
                                     onClick={() => handleBlockUser(u.uid, (u as any).isBlocked)}
-                                    className={cn("text-xs font-bold hover:underline", (u as any).isBlocked ? "text-emerald-600" : "text-orange-600")}
+                                    className={cn("p-1.5 rounded-lg transition-colors border border-transparent font-bold text-[10px]", (u as any).isBlocked ? "text-emerald-600 hover:bg-emerald-50 hover:border-emerald-100" : "text-orange-600 hover:bg-orange-50 hover:border-orange-100")}
                                   >
                                     {(u as any).isBlocked ? 'Unblock' : 'Block'}
                                   </button>
                                   <button 
                                     onClick={() => setDeleteConfirm({ type: 'user', id: u.uid })}
-                                    className="text-xs font-bold text-red-600 hover:underline"
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100 font-bold text-[10px]"
                                   >
                                     Delete
                                   </button>
-                                </>
-                              )}
                             </td>
                           </tr>
                         ))}
@@ -2371,6 +2372,102 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </table>
                   </div>
                 </div>
+
+                {/* Individual User Detail Modal */}
+                {viewingUser && (
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200"
+                    >
+                      <div className="relative h-32 bg-gradient-to-br from-indigo-600 via-indigo-500 to-purple-600">
+                        <button 
+                          onClick={() => setViewingUser(null)}
+                          className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/40 text-white rounded-full transition-all backdrop-blur-md border border-white/30"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                        <div className="absolute -bottom-14 left-8 p-1.5 bg-white rounded-3xl shadow-2xl border border-slate-100">
+                          <img 
+                            src={viewingUser.photoURL} 
+                            className="w-28 h-28 rounded-2xl object-cover ring-4 ring-indigo-50" 
+                            alt="" 
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-20 pb-10 px-10">
+                        <div className="flex items-start justify-between mb-8">
+                          <div>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{viewingUser.displayName || 'Unnamed User'}</h2>
+                            <p className="text-slate-500 text-sm font-medium mt-1">{viewingUser.email}</p>
+                          </div>
+                          <div className={cn(
+                            "px-4 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                            viewingUser.role === 'admin' ? "bg-purple-100 text-purple-600 border-purple-200" : "bg-indigo-50 text-indigo-600 border-indigo-100"
+                          )}>
+                            {viewingUser.role}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:border-indigo-100 transition-all group/card">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 group-hover/card:text-indigo-400 transition-colors">User ID</p>
+                            <p className="text-indigo-600 font-mono font-black text-lg tracking-tight">#{viewingUser.userId || 'N/A'}</p>
+                          </div>
+                          <div className="p-5 bg-emerald-50/30 rounded-3xl border border-emerald-100/50 hover:bg-white hover:border-emerald-200 transition-all group/card">
+                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2 group-hover/card:text-emerald-500 transition-colors">Balance</p>
+                            <p className="text-emerald-600 font-black text-2xl tracking-tighter">৳{viewingUser.balance.toLocaleString()}</p>
+                          </div>
+                          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:border-indigo-100 transition-all group/card">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 group-hover/card:text-indigo-400 transition-colors">WhatsApp</p>
+                            <p className="text-slate-700 font-black tracking-tight">{viewingUser.whatsapp || 'N/A'}</p>
+                          </div>
+                          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 hover:bg-white hover:border-indigo-100 transition-all group/card">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 group-hover/card:text-indigo-400 transition-colors">Password</p>
+                            <p className="text-indigo-600 font-mono font-black tracking-tight">{viewingUser.password || 'N/A'}</p>
+                          </div>
+                        </div>
+
+                        {viewingUser.apiKey && (
+                          <div className="mt-6 p-6 bg-slate-900 rounded-[2rem] border border-slate-800 shadow-xl overflow-hidden relative group/api">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover/api:opacity-20 transition-opacity">
+                              <Zap className="w-12 h-12 text-indigo-400" />
+                            </div>
+                            <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-[0.2em] mb-3">Integrator API Key</p>
+                            <code className="text-xs text-indigo-100 break-all font-mono line-clamp-2">
+                              {viewingUser.apiKey}
+                            </code>
+                          </div>
+                        )}
+
+                        <div className="mt-10 flex gap-4">
+                          <button 
+                            onClick={() => {
+                              const amount = prompt("Enter amount to add (৳):");
+                              if (amount && !isNaN(parseFloat(amount))) {
+                                updateUserBalance(viewingUser.uid, viewingUser.balance + parseFloat(amount));
+                                setViewingUser(prev => prev ? {...prev, balance: prev.balance + parseFloat(amount)} : null);
+                              }
+                            }}
+                            className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 active:scale-95"
+                          >
+                            <Plus className="w-5 h-5" />
+                            Add Balance
+                          </button>
+                          <button 
+                            onClick={() => setViewingUser(null)}
+                            className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black hover:bg-slate-200 transition-all active:scale-95"
+                          >
+                            Close Profile
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -4098,58 +4195,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900">Complete Order</h3>
+                <h3 className="text-xl font-bold text-slate-900">অর্ডার সম্পন্ন করুন</h3>
                 <button onClick={() => setCompletingOrder(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
                   <X className="w-5 h-5 text-slate-400" />
                 </button>
               </div>
               
               <div className="p-6 space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">Admin Note</label>
-                  <textarea 
-                    value={adminNote || ''}
-                    onChange={(e) => setAdminNote(e.target.value)}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
-                    rows={3}
-                  />
+                <div className="space-y-4">
+                  <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-2xl">
+                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Service Title</p>
+                    <p className="text-sm font-bold text-indigo-900">{completingOrder.serviceTitle}</p>
+                    <p className="text-[10px] text-slate-500 mt-1">User: {completingOrder.userEmail}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Admin Note (গোপন নোট)</label>
+                    <textarea 
+                      value={adminNote}
+                      onChange={(e) => setAdminNote(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[100px]"
+                      placeholder="Enter status update details..."
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-sm font-medium text-slate-700">Upload Result File (Optional)</span>
-                  <div className="relative group block w-full cursor-pointer">
-                    <input 
-                      type="file" 
-                      onChange={handleFileChange}
-                      className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
-                    />
+                  <label className="text-sm font-bold text-slate-700">ফলাফল ফাইল আপলোড (ঐচ্ছিক)</label>
+                  <div className="relative group block w-full">
                     <div className={cn(
-                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all relative overflow-hidden pointer-events-none",
-                      resultFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 group-hover:border-indigo-500 group-hover:bg-indigo-50"
+                      "border-2 border-dashed rounded-2xl p-8 text-center transition-all relative overflow-hidden",
+                      resultFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 group-hover:border-indigo-500 group-hover:bg-indigo-50",
+                      orderResultUploadStatus === 'প্রসেসিং হচ্ছে...' && "animate-pulse border-amber-300 bg-amber-50"
                     )}>
                       {resultFile ? (
                         <div className="flex flex-col items-center gap-2">
                           <CheckCircle className="w-10 h-10 text-emerald-500" />
-                          <p className="text-sm font-bold text-emerald-700">File Selected</p>
+                          <p className="text-sm font-bold text-emerald-700">ফাইল যোগ করা হয়েছে</p>
+                          <p className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border">
+                            {orderResultFileObj?.name || 'ফাইল প্রস্তুত'}
+                          </p>
                           <button 
                             type="button" 
                             onClick={(e) => { 
                               e.preventDefault(); 
                               setResultFile(null);
                               setOrderResultFileObj(null);
+                              setOrderResultUploadStatus('');
                             }} 
-                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative pointer-events-auto"
+                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative"
                           >
                             Remove File
                           </button>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-2">
-                          <FileUp className="w-10 h-10 text-slate-400 group-hover:text-indigo-500" />
-                          <p className="text-sm font-medium text-slate-600">Click to Select File</p>
-                          <p className="text-xs text-slate-400">PDF, Image or Document</p>
+                          <FileUp className={cn("w-10 h-10", orderResultUploadStatus.includes('Error') ? "text-red-400" : "text-slate-400 group-hover:text-indigo-500")} />
+                          <p className="text-sm font-bold text-slate-700">
+                            {orderResultUploadStatus || 'ফাইল নির্বাচন করুন'}
+                          </p>
+                          <p className="text-xs text-slate-400">PDF, JPG, PNG or Doc (Max 600KB)</p>
                         </div>
                       )}
+                      
+                      <input 
+                        type="file" 
+                        onChange={handleFileChange}
+                        className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
+                        accept="image/*,.pdf,.doc,.docx"
+                      />
                     </div>
                   </div>
                 </div>
@@ -4160,24 +4274,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       setCompletingOrder(null);
                       setResultFile(null);
                       setOrderResultFileObj(null);
+                      setOrderResultUploadStatus('');
                     }}
                     className="flex-1 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-50"
                     disabled={isProcessing}
                   >
-                    Cancel
+                    বাতিল করুন
                   </button>
                   <button 
                     onClick={handleCompleteOrder}
-                    disabled={isProcessing || orderResultUploadStatus === 'Uploading file...'}
-                    className="flex-1 px-6 py-3 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 disabled:opacity-75"
+                    disabled={isProcessing || orderResultUploadStatus === 'প্রসেসিং হচ্ছে...'}
+                    className="flex-1 px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-75"
                   >
-                    {isProcessing || orderResultUploadStatus === 'Uploading file...' ? (
+                    {isProcessing || orderResultUploadStatus === 'প্রসেসিং হচ্ছে...' ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {orderResultUploadStatus || 'Processing...'}
+                        {orderResultUploadStatus || 'একটু অপেক্ষা করুন...'}
                       </>
                     ) : (
-                      'Complete Order'
+                      'অর্ডার সম্পন্ন করুন'
                     )}
                   </button>
                 </div>
