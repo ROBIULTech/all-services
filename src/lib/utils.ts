@@ -8,9 +8,17 @@ export function cn(...inputs: ClassValue[]) {
 export async function compressImageAsBase64(file: File, maxSizeKb: number = 700): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
-      // If it's not an image, just convert to base64 directly
+      // If it's not an image, just convert to base64 directly but check size
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const sizeKb = (result.length * 3) / 4 / 1024;
+        if (sizeKb > maxSizeKb) {
+          reject(new Error(`File is too large (${Math.round(sizeKb)}KB). Maximum allowed size is ${maxSizeKb}KB for PDFs/Documents.`));
+        } else {
+          resolve(result);
+        }
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
       return;

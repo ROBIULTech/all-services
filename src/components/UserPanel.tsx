@@ -3376,20 +3376,32 @@ Mobile-
                   >
                     Cancel
                   </button>
-                  <button 
-                    onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder || userProfile.balance < currentPrice || !orderData || ((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0)}
-                    className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    {isPlacingOrder ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-5 h-5" />
-                        {selectedProduct.orderButtonText || 'অর্ডার করুন'}
-                      </>
+                  <div className="flex flex-col items-end gap-1">
+                    <button 
+                      onClick={handlePlaceOrder}
+                      disabled={isPlacingOrder || userProfile.balance < currentPrice || (!orderData && orderFiles.length === 0) || ((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0)}
+                      className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      {isPlacingOrder ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingCart className="w-5 h-5" />
+                          {selectedProduct.orderButtonText || 'অর্ডার করুন'}
+                        </>
+                      )}
+                    </button>
+                    {(!orderData && orderFiles.length === 0) && (
+                      <p className="text-[10px] text-amber-500 font-bold italic animate-pulse">
+                        * দয়া করে তথ্য দিন অথবা ফাইল আপলোড করুন
+                      </p>
                     )}
-                  </button>
+                    {((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0) && (
+                      <p className="text-[10px] text-red-500 font-bold italic animate-pulse">
+                        * এই সার্ভিসের জন্য ফাইল আপলোড করা বাধ্যতামূলক
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>
