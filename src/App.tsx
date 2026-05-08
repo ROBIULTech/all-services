@@ -256,6 +256,7 @@ NID Number:
 Reason for Cancellation:` },
   { id: 28, titleBn: 'TIN রিটার্ন ভেরিফিকেশন', titleEn: 'TIN Return Verification', category: 'Tax', icon: FileText, color: 'bg-emerald-600', price: 10, isActive: true, defaultData: `TIN নম্বর:
 Assessment Year:` },
+  { id: 29, titleBn: 'মৃত ব্যাক্তির এনআইডি কার্ড অর্ডার', titleEn: 'Deceased Person NID Order', category: 'NID', icon: FileText, color: 'bg-red-600', price: 150, isActive: true, defaultData: 'এনআইডি নম্বর:\nনাম:\nমৃত্যুর তারিখ:' },
   { id: 101, titleBn: 'Auto Sign Copy', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'NID Number:' },
   { id: 102, titleBn: 'Info Verification', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'Number:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
@@ -386,7 +387,8 @@ export default function App() {
   const initializationRef = useRef({
     products: false,
     admin: false,
-    settings: false
+    settings: false,
+    synced: false
   });
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ 
     premiumUnlockFee: 500, 
@@ -581,24 +583,10 @@ export default function App() {
 
   useEffect(() => {
     const initializeProducts = async () => {
-      if (initializationRef.current.products) return;
-      initializationRef.current.products = true;
-
+      // For admins, we allow re-running if not synced yet to ensure DB updates
+      if (initializationRef.current.products && (userProfile?.role !== 'admin' || initializationRef.current.synced)) return;
+      
       try {
-        // Check localStorage cache first
-        const cacheKey = 'cached_products';
-        const cacheTimeKey = 'cached_products_time';
-        const cachedProducts = localStorage.getItem(cacheKey);
-        const cachedTime = localStorage.getItem(cacheTimeKey);
-        const now = Date.now();
-
-        // Use cache if it's less than 30 minutes old
-        if (cachedProducts && cachedTime && (now - parseInt(cachedTime)) < 30 * 60 * 1000) {
-          console.log('Using cached products');
-          setProducts(JSON.parse(cachedProducts));
-          return;
-        }
-
         const q = query(collection(db, 'products'), limit(100));
         const snapshot = await getDocs(q);
         const productsData: Product[] = [];
@@ -608,33 +596,48 @@ export default function App() {
         
         if (productsData.length > 0) {
           setProducts(productsData);
-          localStorage.setItem(cacheKey, JSON.stringify(productsData));
-          localStorage.setItem(cacheTimeKey, now.toString());
+          if (!initializationRef.current.products) {
+            initializationRef.current.products = true;
+          }
         } else {
           // Fallback to initial products if DB is empty (only for early setup)
           setProducts(initialProducts);
+          initializationRef.current.products = true;
         }
 
-        // Only admins should sync initial products to save quota (and only if DB is empty)
-        if (userProfile?.role === 'admin' && productsData.length === 0) {
-          const batch = writeBatch(db);
-          initialProducts.forEach(p => {
-            const ref = doc(db, 'products', p.id.toString());
-            batch.set(ref, p);
-          });
-          await batch.commit();
+        if (userProfile?.role === 'admin' && !initializationRef.current.synced) {
+          const missingProducts = initialProducts.filter(ip => !productsData.some(p => p.id === ip.id));
+          if (missingProducts.length > 0) {
+            console.log('Syncing missing products to Firestore:', missingProducts.length);
+            const batch = writeBatch(db);
+            missingProducts.forEach(p => {
+              const ref = doc(db, 'products', p.id.toString());
+              
+              // Create a sanitized copy to save to Firestore
+              // We must omit 'icon' as it's a React Functional Component and causes
+              // FIRESTORE (12.11.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: 3029) CONTEXT: {"type":"symbol"}
+              const { icon, ...productToSave } = p;
+              
+              batch.set(ref, productToSave);
+            });
+            await batch.commit();
+            
+            // Re-fetch to get current state
+            const updatedSnapshot = await getDocs(q);
+            const updatedProducts: Product[] = [];
+            updatedSnapshot.forEach((doc) => {
+              updatedProducts.push(doc.data() as Product);
+            });
+            setProducts(updatedProducts);
+          }
+          initializationRef.current.synced = true;
+          initializationRef.current.products = true;
         }
       } catch (error: any) {
-        if (error.message?.includes('quota')) {
-          console.warn('Products fetch quota exceeded, using initial/cached products');
-          const cachedProducts = localStorage.getItem('cached_products');
-          if (cachedProducts) {
-            setProducts(JSON.parse(cachedProducts));
-          } else {
-            setProducts(initialProducts);
-          }
-        } else {
-          console.error('Error initializing products:', error);
+        console.error('Error initializing products:', error);
+        if (!initializationRef.current.products) {
+          setProducts(initialProducts);
+          initializationRef.current.products = true;
         }
       }
     };
@@ -715,6 +718,12 @@ export default function App() {
 
       console.log("cleanUpdates to save:", cleanUpdates);
       await updateDoc(productRef, cleanUpdates);
+      
+      // Update local state instantly
+      setProducts(prevProducts => 
+        prevProducts.map(p => p.id === id ? { ...p, ...updates } : p)
+      );
+      
       setShowSuccess(true);
     } catch (error) {
       console.error("updateProduct error:", error);
@@ -741,12 +750,22 @@ export default function App() {
         }
       });
       
-      await setDoc(productRef, {
+      const newProductDoc = {
         ...cleanProduct,
         id: newId,
         isActive: true,
         createdAt: serverTimestamp()
-      });
+      };
+      
+      await setDoc(productRef, newProductDoc);
+      
+      // Update local state instantly
+      setProducts(prevProducts => [...prevProducts, {
+        ...(productData as Product),
+        id: newId,
+        isActive: true
+      }]);
+      
       setShowSuccess(true);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'products');
