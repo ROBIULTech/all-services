@@ -1593,7 +1593,6 @@ Mobile-
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Data</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Result</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</th>
                       </tr>
@@ -1618,23 +1617,6 @@ Mobile-
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm font-bold text-emerald-600 tracking-tighter">৳{order.price}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                               {order.data && (
-                                 <div className="text-[10px] bg-slate-50 border border-slate-100 p-2 rounded-lg text-slate-500 line-clamp-2 hover:line-clamp-none transition-all cursor-help" title={order.data}>
-                                   {order.data}
-                                 </div>
-                                )}
-                                {order.fileURLs && order.fileURLs.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {order.fileURLs.map((url, idx) => (
-                                      <a key={idx} href={url} target="_blank" rel="noreferrer" className="text-[8px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
-                                        <Paperclip className="w-2 h-2" />
-                                        File {idx+1}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
@@ -1711,7 +1693,6 @@ Mobile-
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Service</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Date</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
-                        <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Data</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">Result</th>
                         <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Status</th>
                       </tr>
@@ -1736,23 +1717,6 @@ Mobile-
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm font-bold text-amber-600 tracking-tighter">৳{order.price}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                               {order.data && (
-                                 <div className="text-[10px] bg-slate-50 border border-slate-100 p-2 rounded-lg text-slate-500 line-clamp-2 hover:line-clamp-none transition-all cursor-help" title={order.data}>
-                                   {order.data}
-                                 </div>
-                                )}
-                                {order.fileURLs && order.fileURLs.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {order.fileURLs.map((url, idx) => (
-                                      <a key={idx} href={url} target="_blank" rel="noreferrer" className="text-[8px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1">
-                                        <Paperclip className="w-2 h-2" />
-                                        File {idx+1}
-                                      </a>
-                                    ))}
-                                  </div>
-                                )}
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (

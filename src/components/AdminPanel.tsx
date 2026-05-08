@@ -400,7 +400,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   
   const [rechargeSearchQuery, setRechargeSearchQuery] = useState('');
   const [premiumSearchQuery, setPremiumSearchQuery] = useState('');
-  const [showAdminsOnly, setShowAdminsOnly] = useState(false);
+  const [userTypeFilter, setUserTypeFilter] = useState<'All' | 'Admin' | 'User'>('All');
   const [viewingUser, setViewingUser] = useState<any | null>(null);
   
   // Confirmation states
@@ -446,8 +446,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       u.userId?.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
       u.whatsapp?.toLowerCase().includes(userSearchQuery.toLowerCase());
     
-    if (showAdminsOnly) {
+    if (userTypeFilter === 'Admin') {
       return matchesSearch && u.role?.toLowerCase() === 'admin';
+    }
+    if (userTypeFilter === 'User') {
+      return matchesSearch && u.role?.toLowerCase() !== 'admin';
     }
     return matchesSearch;
   });
@@ -2250,11 +2253,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th 
                             className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors group"
-                            onClick={() => setShowAdminsOnly(!showAdminsOnly)}
+                            onClick={() => setUserTypeFilter(userTypeFilter === 'Admin' ? 'All' : 'Admin')}
                           >
                             <div className="flex items-center gap-1">
                               Admin?
-                              {showAdminsOnly ? (
+                              {userTypeFilter === 'Admin' ? (
                                 <ShieldCheck className="w-3 h-3 text-purple-600" />
                               ) : (
                                 <Filter className="w-3 h-3 text-slate-300 group-hover:text-slate-400" />
@@ -2263,13 +2266,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </th>
                           <th 
                             className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors group"
-                            onClick={() => {
-                              // Optional: Sorting logic
-                            }}
+                            onClick={() => setUserTypeFilter(userTypeFilter === 'User' ? 'All' : 'User')}
                           >
                             <div className="flex items-center gap-1.5">
                               User Info
-                              <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 opacity-0 group-hover:opacity-100 transition-all shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full transition-all shadow-[0_0_8px_rgba(129,140,248,0.8)]",
+                                userTypeFilter === 'User' ? "bg-emerald-500 scale-125 opacity-100" : "bg-indigo-400 opacity-0 group-hover:opacity-100"
+                              )} />
                             </div>
                           </th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
