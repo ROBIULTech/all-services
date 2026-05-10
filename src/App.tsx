@@ -256,7 +256,6 @@ NID Number:
 Reason for Cancellation:` },
   { id: 28, titleBn: 'TIN রিটার্ন ভেরিফিকেশন', titleEn: 'TIN Return Verification', category: 'Tax', icon: FileText, color: 'bg-emerald-600', price: 10, isActive: true, defaultData: `TIN নম্বর:
 Assessment Year:` },
-  { id: 29, titleBn: 'মৃত ব্যাক্তির এনআইডি কার্ড অর্ডার', titleEn: 'Deceased Person NID Order', category: 'NID', icon: FileText, color: 'bg-red-600', price: 150, isActive: true, defaultData: 'এনআইডি নম্বর:\nনাম:\nমৃত্যুর তারিখ:' },
   { id: 101, titleBn: 'Auto Sign Copy', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'NID Number:' },
   { id: 102, titleBn: 'Info Verification', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'Number:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },
