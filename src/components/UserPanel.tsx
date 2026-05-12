@@ -1532,12 +1532,7 @@ Mobile-
                                   {order.fileURLs.map((url, idx) => (
                                     <button 
                                       key={idx}
-                                      onClick={() => {
-                                        const link = document.createElement('a');
-                                        link.href = url;
-                                        link.download = `file_${order.id}_${idx}.png`;
-                                        link.click();
-                                      }}
+                                      onClick={() => window.open(url, '_blank')}
                                       className="text-[10px] bg-indigo-50 px-2 py-1 rounded text-indigo-700 hover:bg-indigo-100"
                                     >
                                       File {idx + 1}
@@ -1621,14 +1616,9 @@ Mobile-
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
                                 <button 
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = order.resultFile!;
-                                    link.download = `result_${order.id}.jpg`;
-                                    link.click();
-                                  }}
+                                  onClick={() => window.open(order.resultFile!, '_blank')}
                                   className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
-                                  title="Download Result"
+                                  title="Download / View Result"
                                 >
                                   <Download className="w-5 h-5" />
                                 </button>
@@ -1721,14 +1711,9 @@ Mobile-
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
                                 <button 
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = order.resultFile!;
-                                    link.download = `result_${order.id}.jpg`;
-                                    link.click();
-                                  }}
+                                  onClick={() => window.open(order.resultFile!, '_blank')}
                                   className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
-                                  title="Download Result"
+                                  title="Download / View Result"
                                 >
                                   <Download className="w-5 h-5" />
                                 </button>

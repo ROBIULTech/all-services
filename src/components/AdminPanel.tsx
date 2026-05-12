@@ -1726,13 +1726,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
                                   <button 
-                                    onClick={() => {
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile!;
-                                      link.download = `result_${order.id}.jpg`;
-                                      link.click();
-                                    }}
+                                    onClick={() => window.open(order.resultFile!, '_blank')}
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                    title="View Result File"
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </button>
@@ -1887,13 +1883,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
                                   <button 
-                                    onClick={() => {
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile!;
-                                      link.download = `result_${order.id}.jpg`;
-                                      link.click();
-                                    }}
+                                    onClick={() => window.open(order.resultFile!, '_blank')}
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                    title="View Result File"
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                   </button>
