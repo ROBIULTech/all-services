@@ -1667,7 +1667,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Data</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Result</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
                         </tr>
@@ -1688,7 +1689,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             <td className="px-6 py-4">
                               <div className="space-y-2">
                                 {order.data && (
-                                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                  <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-48 md:w-64">
                                     {order.data}
                                     <button
                                       onClick={() => {
@@ -1719,6 +1720,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </div>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {order.resultFile ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
+                                  <button 
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile!;
+                                      link.download = `result_${order.id}.jpg`;
+                                      link.click();
+                                    }}
+                                    className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : order.successLink ? (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase inline-block w-max">Link Available</span>
+                                  <a href={order.successLink} target="_blank" rel="noreferrer" className="text-indigo-600 text-[10px] hover:underline flex items-center gap-1">
+                                    <FileText className="w-3 h-3" /> Open Link
+                                  </a>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">No file</span>
+                              )}
                             </td>
                             <td className="px-6 py-4">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${order.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : order.status === 'processing' ? 'bg-blue-100 text-blue-700' : order.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
