@@ -105,7 +105,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [orders, setOrders] = useState<Order[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showDemoModal, setShowDemoModal] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<{name: string, price: number, autoDeliveryLink?: string} | null>(null);
+  const [selectedOptions, setSelectedOptions] = useState<{name: string, price: number, autoDeliveryLink?: string}[]>([]);
+  const [quantity, setQuantity] = useState(1);
   const [orderData, setOrderData] = useState('');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -321,15 +322,16 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   }, [showSuccess, successLink]);
 
   useEffect(() => {
+    setQuantity(1);
     if (selectedProduct && selectedProduct.options) {
       const activeOptions = selectedProduct.options.filter(opt => opt.isActive !== false);
       if (activeOptions.length > 0) {
-        setSelectedOption(activeOptions[0]);
+        setSelectedOptions([activeOptions[0]]);
       } else {
-        setSelectedOption(null);
+        setSelectedOptions([]);
       }
     } else {
-      setSelectedOption(null);
+      setSelectedOptions([]);
     }
 
     // Set default text based on product ID or defaultData
@@ -470,7 +472,7 @@ Mobile-
     return basePrice;
   };
 
-  const currentPrice = calculatePrice(selectedOption ? selectedOption.price : (selectedProduct?.price || 0), selectedProduct || undefined);
+  const currentPrice = Object.keys(selectedProduct || {}).length ? calculatePrice(selectedOptions.length > 0 ? selectedOptions.reduce((sum, opt) => sum + opt.price, 0) : (selectedProduct?.price || 0), selectedProduct || undefined) * quantity : 0;
   const premiumProductIds = products.filter(p => p.category === 'PREMIUM').map(p => p.id);
   const isPremium = (order: Order) => premiumProductIds.includes(order.serviceId);
 
@@ -628,7 +630,7 @@ Mobile-
         uid: userProfile.uid,
         userEmail: userProfile.email,
         serviceId: selectedProduct.id,
-        serviceTitle: selectedProduct.titleBn + (selectedOption ? ` (${selectedOption.name})` : ''),
+        serviceTitle: selectedProduct.titleBn + (selectedOptions.length > 0 ? ` (${selectedOptions.map(o => o.name).join(', ')})` : '') + (quantity > 1 ? ` [Q: ${quantity}]` : ''),
         status: 'pending',
         data: orderData,
         fileURLs: orderFiles,
@@ -687,7 +689,7 @@ Mobile-
       } else if (selectedProduct.id === 102 && globalSettings?.isInfoVerifyApiActive) {
         try {
           const response = await axios.post('/api/service/info-verify', {
-            category: selectedOption?.name || 'NID',
+            category: selectedOptions.length > 0 ? selectedOptions.map(o => o.name).join(', ') : 'NID',
             number: orderData,
             apiKey: globalSettings.infoVerifyApiKey,
             isTokenBased: globalSettings.isInfoVerifyTokenBased,
@@ -753,9 +755,10 @@ Mobile-
       }
 
       // Check if it's Drive Link Mode first to bypass secure link generation
-      if (selectedOption?.autoDeliveryLink) {
+      const firstAutoOption = selectedOptions.find(opt => opt.autoDeliveryLink);
+      if (firstAutoOption?.autoDeliveryLink) {
         // Create secure link that expires in 5 minutes
-        const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedOption.autoDeliveryLink)}`;
+        const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(firstAutoOption.autoDeliveryLink)}`;
         setSuccessLink(secureUrl);
       } else if (selectedProduct.autoDeliveryLink) {
         const secureUrl = `${window.location.origin}/api/secure-link/${orderId}?url=${encodeURIComponent(selectedProduct.autoDeliveryLink)}`;
@@ -3197,31 +3200,53 @@ Mobile-
                           Select Option <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {selectedProduct.options.filter(opt => opt.isActive !== false).map((option) => (
+                          {selectedProduct.options.filter(opt => opt.isActive !== false).map((option) => {
+                            const isSelected = selectedOptions.some(o => o.name === option.name);
+                            return (
                             <button
                               key={option.name}
-                              onClick={() => setSelectedOption(option)}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedOptions(prev => prev.filter(o => o.name !== option.name));
+                                } else {
+                                  setSelectedOptions(prev => [...prev, option]);
+                                }
+                              }}
                               className={cn(
                                 "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",
-                                selectedOption?.name === option.name 
+                                isSelected 
                                   ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
                                   : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
                               )}
                             >
                               <span>{option.name}</span>
-                              <span className={cn("text-xs", selectedOption?.name === option.name ? "text-indigo-200" : "text-emerald-400")}>
+                              <span className={cn("text-xs", isSelected ? "text-indigo-200" : "text-emerald-400")}>
                                 ৳{calculatePrice(option.price, selectedProduct || undefined)}
                               </span>
                             </button>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
                     <div className="space-y-4">
-                      <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
-                        <Edit3 className="w-4 h-4" />
-                        {isDriveLinkMode ? "Google Drive Link (গুগল ড্রাইভ লিংক)" : "Order Details / Data"} <span className="text-red-500">*</span>
+                      <label className="text-sm font-bold text-slate-400 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Edit3 className="w-4 h-4" />
+                          {isDriveLinkMode ? "Google Drive Link (গুগল ড্রাইভ লিংক)" : "Order Details / Data"} <span className="text-red-500">*</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500">পরিমাণ (Quantity):</span>
+                          <input 
+                            type="number" 
+                            min="1" 
+                            max="100" 
+                            value={quantity} 
+                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 w-20 text-sm text-white text-center focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                        </div>
                       </label>
                       {isDriveLinkMode ? (
                         <div className="space-y-2">
@@ -3341,7 +3366,7 @@ Mobile-
                     <div className="flex items-center gap-2">
                       <p className="text-3xl font-black text-emerald-400">৳{currentPrice}</p>
                       {selectedProduct.discountPrice && (
-                        <span className="text-sm text-slate-500 line-through">৳{selectedProduct.price}</span>
+                        <span className="text-sm text-slate-500 line-through">৳{selectedProduct.price * quantity}</span>
                       )}
                     </div>
                   </div>
