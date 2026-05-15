@@ -3287,6 +3287,11 @@ Mobile-
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
+                                  if (file.name.toLowerCase().endsWith('.zip') || file.type.includes('zip') || file.name.toLowerCase().endsWith('.rar')) {
+                                    alert('ZIP/RAR files are not allowed.');
+                                    e.target.value = '';
+                                    return;
+                                  }
                                   e.target.disabled = true;
                                   try {
                                     const base64 = await compressImageAsBase64(file, 700);
@@ -3335,6 +3340,11 @@ Mobile-
                                 onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
+                                    if (file.name.toLowerCase().endsWith('.zip') || file.type.includes('zip') || file.name.toLowerCase().endsWith('.rar')) {
+                                      alert('ZIP/RAR files are not allowed.');
+                                      e.target.value = '';
+                                      return;
+                                    }
                                     e.target.disabled = true;
                                     try {
                                       const base64 = await compressImageAsBase64(file, 700);

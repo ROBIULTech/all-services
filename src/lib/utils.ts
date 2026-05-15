@@ -14,7 +14,7 @@ export async function compressImageAsBase64(file: File, maxSizeKb: number = 700)
         const result = reader.result as string;
         const sizeKb = (result.length * 3) / 4 / 1024;
         if (sizeKb > maxSizeKb) {
-          reject(new Error(`File is too large (${Math.round(sizeKb)}KB). Maximum allowed size is ${maxSizeKb}KB for PDFs/Documents.`));
+          reject(new Error(`ফাইল সাইজ অনেক বড় (${Math.round(sizeKb)}KB)। দয়া করে ${maxSizeKb}KB এর নিচের ফাইল দিন।`));
         } else {
           resolve(result);
         }

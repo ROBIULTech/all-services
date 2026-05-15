@@ -733,28 +733,79 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setOrderResultFileObj(file); // Store file object for UI display
-      setOrderResultUploadStatus('প্রসেসিং হচ্ছে...');
-      try {
-        const base64 = await compressImageAsBase64(file, 600); // 600KB for safety
-        setResultFile(base64);
-        setOrderResultUploadStatus('ফাইল রেডি');
-      } catch (err: any) {
-        console.error("File processing error", err);
-        setOrderResultUploadStatus('Error: ' + (err.message || "প্রসেসিং ব্যর্থ"));
-        setOrderResultFileObj(null);
-      } finally {
-        e.target.value = ''; // Reset input to allow re-selection
+      if (file.size > 202 * 1024 * 1024) {
+        setOrderResultUploadStatus('Error: Maximum file size limit is 201 MB.');
+        return;
       }
+      setOrderResultFileObj(file); // Store file object for UI display
+      setResultFile(null);
+      setOrderResultUploadStatus('ফাইল প্রস্তুত। অর্ডার সম্পূর্ন করতে ক্লিক করুন।');
+      e.target.value = ''; // Reset input to allow re-selection
     }
   };
 
   const handleCompleteOrder = async () => {
     if (!completingOrder) return;
     setIsProcessing(true);
+
     try {
+      let finalResultFile = resultFile;
+
+      if (orderResultFileObj && !finalResultFile) {
+        setOrderResultUploadStatus('আপলোড হচ্ছে... ০%');
+        const file = orderResultFileObj;
+        
+        const isImage = file.type.startsWith('image/');
+        const isSmallNonImage = !isImage && file.size <= 800 * 1024; // <= 800KB
+        
+        if (isImage || isSmallNonImage) {
+          // Images of any size (they get compressed by compressImageAsBase64) or small non-images
+          finalResultFile = await compressImageAsBase64(file, 800); // 800KB for safety
+        } else {
+          // Large non-images (PDFs, ZIPs, etc > 800KB)
+          setOrderResultUploadStatus('যোগাযোগ করা হচ্ছে... অপেক্ষা করুন...');
+          const storageRef = ref(storage, `results/${Date.now()}_${file.name}`);
+          const uploadTask = uploadBytesResumable(storageRef, file);
+          
+          await new Promise<void>((resolve, reject) => {
+            // Firebase storage timeout tracker (in case storage is disabled or rules reject silently)
+            const timeoutTimer = setTimeout(() => {
+                reject(new Error("Storage Timeout: Firebase Storage চালু নেই অথবা পারমিশিন নেই। Firebase Console থেকে Storage চালু করুন।"));
+                uploadTask.cancel();
+            }, 30000); // 30 seconds wait for any progress
+            
+            uploadTask.on('state_changed', 
+              (snapshot) => {
+                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                const mbTransferred = (snapshot.bytesTransferred / (1024 * 1024)).toFixed(1);
+                const totalMb = (snapshot.totalBytes / (1024 * 1024)).toFixed(1);
+                
+                if (snapshot.state === 'running' && progress > 0) {
+                    clearTimeout(timeoutTimer); // Clear timeout once actual upload starts
+                }
+
+                if (progress === 100) {
+                    setOrderResultUploadStatus(`ফাইল আপলোড সম্পন্ন, সংরক্ষণ হচ্ছে...`);
+                } else {
+                    setOrderResultUploadStatus(`আপলোড হচ্ছে... ${progress}% (${mbTransferred}MB / ${totalMb}MB)`);
+                }
+              },
+              (error) => {
+                clearTimeout(timeoutTimer);
+                reject(error);
+              },
+              async () => {
+                clearTimeout(timeoutTimer);
+                finalResultFile = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve();
+              }
+            );
+          });
+        }
+      }
+
       setOrderResultUploadStatus('অর্ডার সম্পন্ন হচ্ছে...');
-      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, resultFile ?? undefined);
+      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, finalResultFile ?? undefined);
       
       setCompletingOrder(null);
       setResultFile(null);
@@ -762,10 +813,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setOrderResultUploadStatus('');
       setAdminNote('Order completed successfully');
       setShowSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing order:', error);
-      setOrderResultUploadStatus('ব্যর্থ হয়েছে');
-      alert('Error completing order: ' + (error instanceof Error ? error.message : String(error)));
+      setOrderResultUploadStatus('Error: ' + (error.message || "ব্যর্থ হয়েছে"));
     } finally {
       setIsProcessing(false);
     }
@@ -1160,21 +1210,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         const startOfToday = new Date();
                         startOfToday.setHours(0, 0, 0, 0);
 
-                        const todayRevenue = orders.reduce((acc, o) => {
+                        const todaysOrders = orders.filter(o => {
+                          if (!o.createdAt) return false;
+                          const orderDate = o.createdAt.toDate ? o.createdAt.toDate() : new Date(o.createdAt as any);
+                          return orderDate >= startOfToday;
+                        });
+
+                        const todayRevenue = todaysOrders.reduce((acc, o) => {
                           if (o.status !== 'rejected') {
-                            const orderDate = o.createdAt?.toDate ? o.createdAt.toDate() : new Date(o.createdAt as any);
-                            if (orderDate >= startOfToday) {
                               return acc + o.price;
-                            }
                           }
                           return acc;
                         }, 0);
 
-                        const activeOrders = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
-                        const totalOrders = orders.length;
-                        const pendingOrders = orders.filter(o => o.status === 'pending').length;
-                        const canceledOrders = orders.filter(o => o.status === 'rejected').length;
-                        const completedOrders = orders.filter(o => o.status === 'completed').length;
+                        const totalOrders = todaysOrders.length;
+                        const pendingOrders = todaysOrders.filter(o => o.status === 'pending').length;
+                        const canceledOrders = todaysOrders.filter(o => o.status === 'rejected').length;
+                        const completedOrders = todaysOrders.filter(o => o.status === 'completed').length;
 
                         return [
                           { label: 'Total Revenue', value: `৳${todayRevenue.toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'dashboard' },
@@ -4250,9 +4302,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div className={cn(
                       "border-2 border-dashed rounded-2xl p-8 text-center transition-all relative overflow-hidden",
                       resultFile ? "border-emerald-500 bg-emerald-50" : "border-slate-200 group-hover:border-indigo-500 group-hover:bg-indigo-50",
-                      orderResultUploadStatus === 'প্রসেসিং হচ্ছে...' && "animate-pulse border-amber-300 bg-amber-50"
+                      orderResultUploadStatus.includes('হচ্ছে...') && "animate-pulse border-amber-300 bg-amber-50"
                     )}>
-                      {resultFile ? (
+                      {resultFile || orderResultFileObj ? (
                         <div className="flex flex-col items-center gap-2">
                           <CheckCircle className="w-10 h-10 text-emerald-500" />
                           <p className="text-sm font-bold text-emerald-700">ফাইল যোগ করা হয়েছে</p>
@@ -4278,7 +4330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <p className="text-sm font-bold text-slate-700">
                             {orderResultUploadStatus || 'ফাইল নির্বাচন করুন'}
                           </p>
-                          <p className="text-xs text-slate-400">PDF, JPG, PNG or Doc (Max 600KB)</p>
+                          <p className="text-xs text-slate-400">PDF, JPG, PNG, Doc or ZIP (Max 900KB)</p>
                         </div>
                       )}
                       
@@ -4286,7 +4338,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="file" 
                         onChange={handleFileChange}
                         className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
-                        accept="image/*,.pdf,.doc,.docx"
+                        accept="image/*,.pdf,.doc,.docx,.zip,.rar,application/zip,application/x-zip-compressed"
                       />
                     </div>
                   </div>
@@ -4307,10 +4359,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                   <button 
                     onClick={handleCompleteOrder}
-                    disabled={isProcessing || orderResultUploadStatus === 'প্রসেসিং হচ্ছে...'}
+                    disabled={isProcessing || orderResultUploadStatus.includes('হচ্ছে...')}
                     className="flex-1 px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 disabled:opacity-75"
                   >
-                    {isProcessing || orderResultUploadStatus === 'প্রসেসিং হচ্ছে...' ? (
+                    {isProcessing || orderResultUploadStatus.includes('হচ্ছে...') ? (
                       <>
                         <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         {orderResultUploadStatus || 'একটু অপেক্ষা করুন...'}
