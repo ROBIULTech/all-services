@@ -1730,7 +1730,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                                     title="View Result File"
                                   >
-                                    <Download className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : order.successLink ? (
@@ -1887,7 +1887,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                                     title="View Result File"
                                   >
-                                    <Download className="w-3.5 h-3.5" />
+                                    <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : (
@@ -4830,7 +4830,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
     });
   };
 
-  const updateOption = (index: number, field: 'name' | 'price' | 'autoDeliveryLink', value: string | number) => {
+  const updateOption = (index: number, field: 'name' | 'price' | 'autoDeliveryLink' | 'isActive', value: string | number | boolean | undefined) => {
     const currentOptions = formData.options || [];
     const newOptions = [...currentOptions];
     newOptions[index] = { ...newOptions[index], [field]: value };
@@ -5230,12 +5230,21 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ isOpen, onClose, service, o
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                         />
                       </div>
-                      <button 
-                        onClick={() => removeOption(index)}
-                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex flex-col gap-2">
+                        <button 
+                          onClick={() => updateOption(index, 'isActive', option.isActive === undefined ? false : !option.isActive)}
+                          className={cn("p-2 rounded-lg transition-all", (option.isActive === false) ? "text-slate-400 bg-slate-100 hover:bg-slate-200" : "text-emerald-500 hover:bg-emerald-50")}
+                          title={(option.isActive === false) ? "Option Hidden" : "Option Visible"}
+                        >
+                          {(option.isActive === false) ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                        <button 
+                          onClick={() => removeOption(index)}
+                          className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {(formData.options || []).length === 0 && (

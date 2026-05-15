@@ -321,8 +321,13 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   }, [showSuccess, successLink]);
 
   useEffect(() => {
-    if (selectedProduct && selectedProduct.options && selectedProduct.options.length > 0) {
-      setSelectedOption(selectedProduct.options[0]);
+    if (selectedProduct && selectedProduct.options) {
+      const activeOptions = selectedProduct.options.filter(opt => opt.isActive !== false);
+      if (activeOptions.length > 0) {
+        setSelectedOption(activeOptions[0]);
+      } else {
+        setSelectedOption(null);
+      }
     } else {
       setSelectedOption(null);
     }
@@ -1312,13 +1317,7 @@ Mobile-
                   </div>
                 </div>
                 <button 
-                  onClick={() => {
-                    const link = document.createElement('a');
-                    link.href = globalSettings?.apkLink || '/app.apk';
-                    link.download = 'app.apk';
-                    link.target = '_blank';
-                    link.click();
-                  }}
+                  onClick={() => window.open(globalSettings?.apkLink || '/app.apk', '_blank')}
                   className="px-6 py-2 border border-amber-500 text-amber-500 rounded-lg font-medium hover:bg-amber-500 hover:text-slate-900 transition-colors flex-shrink-0"
                 >
                   Install
@@ -1618,9 +1617,9 @@ Mobile-
                                 <button 
                                   onClick={() => window.open(order.resultFile!, '_blank')}
                                   className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
-                                  title="Download / View Result"
+                                  title="View Result"
                                 >
-                                  <Download className="w-5 h-5" />
+                                  <Eye className="w-5 h-5" />
                                 </button>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
@@ -1713,9 +1712,9 @@ Mobile-
                                 <button 
                                   onClick={() => window.open(order.resultFile!, '_blank')}
                                   className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
-                                  title="Download / View Result"
+                                  title="View Result"
                                 >
-                                  <Download className="w-5 h-5" />
+                                  <Eye className="w-5 h-5" />
                                 </button>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
@@ -3191,14 +3190,14 @@ Mobile-
 
                   {/* Right Side: Form */}
                   <div className="p-8 space-y-6">
-                    {selectedProduct.options && selectedProduct.options.length > 0 && (
+                    {selectedProduct.options && selectedProduct.options.filter(opt => opt.isActive !== false).length > 0 && (
                       <div className="space-y-4">
                         <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
                           <LayoutGrid className="w-4 h-4" />
                           Select Option <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {selectedProduct.options.map((option) => (
+                          {selectedProduct.options.filter(opt => opt.isActive !== false).map((option) => (
                             <button
                               key={option.name}
                               onClick={() => setSelectedOption(option)}

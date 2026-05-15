@@ -1,0 +1,79 @@
+319-      return () => clearTimeout(timer);
+320-    }
+321-  }, [showSuccess, successLink]);
+322-
+323-  useEffect(() => {
+324:    if (selectedProduct && selectedProduct.options && selectedProduct.options.length > 0) {
+325:      setSelectedOption(selectedProduct.options[0]);
+326-    } else {
+327-      setSelectedOption(null);
+328-    }
+329-
+330-    // Set default text based on product ID or defaultData
+--
+2126-                              <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+2127-                                <span className="text-xs font-bold italic">i</span>
+2128-                              </div>
+2129-                              <div>
+2130-                                <p className="text-sm font-bold text-slate-700">
+2131:                                  প্রতিটি যাচাইয়ের জন্য ৳{calculatePrice(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0, products.find(p => p.id === 102)).toFixed(2)} কাটা হবে।
+2132-                                </p>
+2133-                              </div>
+2134-                            </div>
+2135-
+2136-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+--
+2139-                                <select 
+2140-                                  value={infoCategory || ''}
+2141-                                  onChange={(e) => setInfoCategory(e.target.value)}
+2142-                                  className="w-full border border-emerald-500 rounded-lg px-4 py-3 text-slate-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all bg-white"
+2143-                                >
+2144:                                  {products.find(p => p.id === 102)?.options?.map((opt: any) => (
+2145-                                    <option key={opt.name} value={opt.name}>{opt.name}</option>
+2146-                                  )) || (
+2147-                                    <>
+2148-                                      <option>NID/PIN</option>
+2149-                                      <option>Birth (BRN)</option>
+--
+2170-                                if (globalSettings?.isInfoVerifyApiActive) {
+2171-                                  // API Mode
+2172-                                  setIsPlacingOrder(true);
+2173-                                  try {
+2174-                                    const p102 = products.find(p => p.id === 102);
+2175:                                    const price = calculatePrice(p102?.options?.find((opt: any) => opt.name === infoCategory)?.price || p102?.price || 0, p102);
+2176-                                    if (userProfile.balance < price) {
+2177-                                      alert('Insufficient balance!');
+2178-                                      setIsPlacingOrder(false);
+2179-                                      return;
+2180-                                    }
+--
+2210-                              }}
+2211-                              disabled={!infoNumber || isPlacingOrder || !(products.find(p => p.id === 102)?.isActive ?? true) || globalSettings?.isInfoVerifyMaintenance}
+2212-                              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+2213-                            >
+2214-                              <Search className="w-5 h-5" />
+2215:                              তথ্য যাচাই করুন (৳{(products.find(p => p.id === 102)?.options?.find((opt: any) => opt.name === infoCategory)?.price || products.find(p => p.id === 102)?.price || 0).toFixed(2)})
+2216-                            </button>
+2217-                          </>
+2218-                        );
+2219-                      })()}
+2220-                    </div>
+--
+3189-                    )}
+3190-                  </div>
+3191-
+3192-                  {/* Right Side: Form */}
+3193-                  <div className="p-8 space-y-6">
+3194:                    {selectedProduct.options && selectedProduct.options.length > 0 && (
+3195-                      <div className="space-y-4">
+3196-                        <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+3197-                          <LayoutGrid className="w-4 h-4" />
+3198-                          Select Option <span className="text-red-500">*</span>
+3199-                        </label>
+3200-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+3201:                          {selectedProduct.options.map((option) => (
+3202-                            <button
+3203-                              key={option.name}
+3204-                              onClick={() => setSelectedOption(option)}
+3205-                              className={cn(
+3206-                                "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",

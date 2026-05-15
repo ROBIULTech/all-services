@@ -61,6 +61,7 @@ export interface Product {
     name: string;
     price: number;
     autoDeliveryLink?: string;
+    isActive?: boolean;
   }[];
   defaultData?: string;
   markupType?: 'flat' | 'percentage' | null;
