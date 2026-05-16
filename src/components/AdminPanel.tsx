@@ -733,8 +733,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 202 * 1024 * 1024) {
-        setOrderResultUploadStatus('Error: Maximum file size limit is 201 MB.');
+      if (file.size > 302 * 1024 * 1024) {
+        setOrderResultUploadStatus('Error: Maximum file size limit is 300 MB.');
         return;
       }
       setOrderResultFileObj(file); // Store file object for UI display
@@ -1871,6 +1871,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   >
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (!order.resultFile) return;
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile;
+                                      let ext = 'file';
+                                      if (order.resultFile.startsWith('data:')) {
+                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
+                                        if (mime) {
+                                          if (mime.includes('image/png')) ext = 'png';
+                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
+                                          else if (mime.includes('application/pdf')) ext = 'pdf';
+                                          else if (mime.includes('word')) ext = 'doc';
+                                          else if (mime.includes('excel')) ext = 'xls';
+                                          else if (mime.includes('zip')) ext = 'zip';
+                                        }
+                                      } else {
+                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
+                                      }
+                                      link.download = `result_${order.id}.${ext}`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    title="Download Result File"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               ) : order.successLink ? (
                                 <div className="flex flex-col gap-1">
@@ -2114,6 +2143,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     title="View Result File"
                                   >
                                     <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (!order.resultFile) return;
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile;
+                                      let ext = 'file';
+                                      if (order.resultFile.startsWith('data:')) {
+                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
+                                        if (mime) {
+                                          if (mime.includes('image/png')) ext = 'png';
+                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
+                                          else if (mime.includes('application/pdf')) ext = 'pdf';
+                                          else if (mime.includes('word')) ext = 'doc';
+                                          else if (mime.includes('excel')) ext = 'xls';
+                                          else if (mime.includes('zip')) ext = 'zip';
+                                        }
+                                      } else {
+                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
+                                      }
+                                      link.download = `result_${order.id}.${ext}`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                    title="Download Result File"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : (
@@ -4504,7 +4562,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <p className="text-sm font-bold text-slate-700">
                             {orderResultUploadStatus || 'ফাইল নির্বাচন করুন'}
                           </p>
-                          <p className="text-xs text-slate-400">PDF, JPG, PNG, Doc or ZIP (Max 900KB)</p>
+                          <p className="text-xs text-slate-400">PDF, JPG, PNG, Doc, Docx, Xls, Xlsx or ZIP (Max 300MB)</p>
                         </div>
                       )}
                       
@@ -4512,7 +4570,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="file" 
                         onChange={handleFileChange}
                         className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer"
-                        accept="image/*,.pdf,.doc,.docx,.zip,.rar,application/zip,application/x-zip-compressed"
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,application/zip,application/x-zip-compressed,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       />
                     </div>
                   </div>

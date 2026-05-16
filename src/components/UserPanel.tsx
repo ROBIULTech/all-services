@@ -616,7 +616,7 @@ Mobile-
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedProduct || !orderData.trim() || !userProfile) return;
+    if (!selectedProduct || (!orderData.trim() && orderFiles.length === 0) || !userProfile) return;
     
     if (userProfile.balance < currentPrice) {
       alert('Insufficient balance. Please contact admin to recharge.');
@@ -1631,6 +1631,7 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
+                                <div className="flex items-center justify-center gap-2">
                                   <button 
                                     onClick={() => {
                                       if (order.resultFile?.startsWith('data:')) {
@@ -1720,11 +1721,41 @@ Mobile-
                                         link.click();
                                       }
                                     }}
-                                    className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+                                    className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
                                     title="View Result"
                                   >
                                     <Eye className="w-5 h-5" />
                                   </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (!order.resultFile) return;
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile;
+                                      let ext = 'file';
+                                      if (order.resultFile.startsWith('data:')) {
+                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
+                                        if (mime) {
+                                          if (mime.includes('image/png')) ext = 'png';
+                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
+                                          else if (mime.includes('application/pdf')) ext = 'pdf';
+                                          else if (mime.includes('word')) ext = 'doc';
+                                          else if (mime.includes('excel')) ext = 'xls';
+                                          else if (mime.includes('zip')) ext = 'zip';
+                                        }
+                                      } else {
+                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
+                                      }
+                                      link.download = `result_${order.id}.${ext}`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
+                                    title="Download Result"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </button>
+                                </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
@@ -1813,6 +1844,7 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
+                                <div className="flex items-center justify-center gap-2">
                                   <button 
                                     onClick={() => {
                                       if (order.resultFile?.startsWith('data:')) {
@@ -1902,11 +1934,41 @@ Mobile-
                                         link.click();
                                       }
                                     }}
-                                    className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
+                                    className="w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
                                     title="View Result"
                                   >
                                     <Eye className="w-5 h-5" />
                                   </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (!order.resultFile) return;
+                                      const link = document.createElement('a');
+                                      link.href = order.resultFile;
+                                      let ext = 'file';
+                                      if (order.resultFile.startsWith('data:')) {
+                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
+                                        if (mime) {
+                                          if (mime.includes('image/png')) ext = 'png';
+                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
+                                          else if (mime.includes('application/pdf')) ext = 'pdf';
+                                          else if (mime.includes('word')) ext = 'doc';
+                                          else if (mime.includes('excel')) ext = 'xls';
+                                          else if (mime.includes('zip')) ext = 'zip';
+                                        }
+                                      } else {
+                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
+                                      }
+                                      link.download = `result_${order.id}.${ext}`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                    }}
+                                    className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 text-center"
+                                    title="Download Result"
+                                  >
+                                    <Download className="w-5 h-5 mx-auto" />
+                                  </button>
+                                </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
@@ -3472,21 +3534,45 @@ Mobile-
                             <input 
                               type="file" 
                               className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
+                              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,application/zip,application/x-zip-compressed,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                               onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (file) {
-                                  if (file.name.toLowerCase().endsWith('.zip') || file.type.includes('zip') || file.name.toLowerCase().endsWith('.rar')) {
-                                    alert('ZIP/RAR files are not allowed.');
+                                  if (file.size > 302 * 1024 * 1024) {
+                                    alert('File is too large. Max 300MB allowed.');
                                     e.target.value = '';
                                     return;
                                   }
                                   e.target.disabled = true;
                                   try {
-                                    const base64 = await compressImageAsBase64(file, 700);
-                                    setOrderFiles([base64]);
+                                    if (file.size <= 800 * 1024) {
+                                      // Small files - use base64 for speed
+                                      const base64 = await compressImageAsBase64(file, 1000);
+                                      setOrderFiles([base64]);
+                                    } else {
+                                      // Large files - use Firebase Storage
+                                      const fileName = `${Date.now()}_${file.name}`;
+                                      const storageRef = ref(storage, `orders/${userProfile.uid}/${fileName}`);
+                                      const uploadTask = uploadBytesResumable(storageRef, file);
+                                      
+                                      await new Promise<void>((resolve, reject) => {
+                                        uploadTask.on('state_changed', 
+                                          (snapshot) => {
+                                            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                                            // Optional: Could add a progress indicator here if needed
+                                          }, 
+                                          (error) => reject(error), 
+                                          async () => {
+                                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                            setOrderFiles([downloadURL]);
+                                            resolve();
+                                          }
+                                        );
+                                      });
+                                    }
                                   } catch (err: any) {
                                     console.error("Upload error", err);
-                                    alert(err.message || "Failed to process the file.");
+                                    alert(err.message || "Failed to upload the file.");
                                   } finally {
                                     e.target.disabled = false;
                                     e.target.value = '';
@@ -3496,7 +3582,7 @@ Mobile-
                             />
                             <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none z-0 relative">
                               <Plus className="w-6 h-6 text-slate-500 mb-2" />
-                              <p className="text-xs text-slate-500">Click to upload document</p>
+                              <p className="text-xs text-slate-500 text-center px-4">Click to upload document<br/><span className="text-[10px] text-slate-600">(JPG, PNG, PDF, Doc, Xls, ZIP - Max 300MB)</span></p>
                             </div>
                           </div>
                         ) : (
@@ -3525,18 +3611,33 @@ Mobile-
                               <input 
                                 type="file" 
                                 className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,application/zip,application/x-zip-compressed,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                 onChange={async (e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
-                                    if (file.name.toLowerCase().endsWith('.zip') || file.type.includes('zip') || file.name.toLowerCase().endsWith('.rar')) {
-                                      alert('ZIP/RAR files are not allowed.');
+                                    if (file.size > 302 * 1024 * 1024) {
+                                      alert('File is too large. Max 300MB allowed.');
                                       e.target.value = '';
                                       return;
                                     }
                                     e.target.disabled = true;
                                     try {
-                                      const base64 = await compressImageAsBase64(file, 700);
-                                      setOrderFiles([...orderFiles, base64]);
+                                      if (file.size <= 800 * 1024) {
+                                        const base64 = await compressImageAsBase64(file, 1000);
+                                        setOrderFiles([...orderFiles, base64]);
+                                      } else {
+                                        const fileName = `${Date.now()}_${file.name}`;
+                                        const storageRef = ref(storage, `orders/${userProfile.uid}/${fileName}`);
+                                        const uploadTask = uploadBytesResumable(storageRef, file);
+                                        
+                                        await new Promise<void>((resolve, reject) => {
+                                          uploadTask.on('state_changed', null, (error) => reject(error), async () => {
+                                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                                            setOrderFiles([...orderFiles, downloadURL]);
+                                            resolve();
+                                          });
+                                        });
+                                      }
                                     } catch (err: any) {
                                       console.error("Upload error", err);
                                       alert("Upload failed: " + err.message);
