@@ -19,6 +19,7 @@ import {
   Trash2,
   CheckCircle,
   Copy,
+  ExternalLink,
   Download,
   Eye,
   EyeOff,
@@ -58,7 +59,7 @@ import {
   Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, compressImageAsBase64 } from '../lib/utils';
+import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
 import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage, getDocs } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -1630,8 +1631,10 @@ Mobile-
                               <span className="text-sm font-bold text-emerald-600 tracking-tighter">৳{order.price}</span>
                             </td>
                             <td className="px-6 py-4 text-center">
-                              {order.resultFile ? (
+                              {(order.resultFile || order.successLink) ? (
                                 <div className="flex items-center justify-center gap-2">
+                                  {order.resultFile && (
+                                    <>
                                   <button 
                                     onClick={() => {
                                       if (order.resultFile?.startsWith('data:')) {
@@ -1729,32 +1732,39 @@ Mobile-
                                   <button 
                                     onClick={() => {
                                       if (!order.resultFile) return;
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile;
-                                      let ext = 'file';
-                                      if (order.resultFile.startsWith('data:')) {
-                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
-                                        if (mime) {
-                                          if (mime.includes('image/png')) ext = 'png';
-                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
-                                          else if (mime.includes('application/pdf')) ext = 'pdf';
-                                          else if (mime.includes('word')) ext = 'doc';
-                                          else if (mime.includes('excel')) ext = 'xls';
-                                          else if (mime.includes('zip')) ext = 'zip';
-                                        }
-                                      } else {
-                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
-                                      }
-                                      link.download = `result_${order.id}.${ext}`;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      const ext = getExtensionFromUrl(order.resultFile);
+                                      const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                      downloadFile(order.resultFile, `${safeTitle}_${order.id}.${ext}`);
                                     }}
                                     className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
                                     title="Download Result"
                                   >
                                     <Download className="w-5 h-5" />
                                   </button>
+                                  </>
+                                  )}
+
+                                  {order.successLink && (
+                                    <>
+                                  <button 
+                                    onClick={() => window.open(order.successLink, '_blank')}
+                                    className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
+                                    title="Download File"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.successLink || '');
+                                      alert('Download link copied!');
+                                    }}
+                                    className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20"
+                                    title="Copy Link"
+                                  >
+                                    <Copy className="w-5 h-5" />
+                                  </button>
+                                  </>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
@@ -1843,8 +1853,10 @@ Mobile-
                               <span className="text-sm font-bold text-amber-600 tracking-tighter">৳{order.price}</span>
                             </td>
                             <td className="px-6 py-4 text-center">
-                              {order.resultFile ? (
+                              {(order.resultFile || order.successLink) ? (
                                 <div className="flex items-center justify-center gap-2">
+                                  {order.resultFile && (
+                                    <>
                                   <button 
                                     onClick={() => {
                                       if (order.resultFile?.startsWith('data:')) {
@@ -1942,32 +1954,39 @@ Mobile-
                                   <button 
                                     onClick={() => {
                                       if (!order.resultFile) return;
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile;
-                                      let ext = 'file';
-                                      if (order.resultFile.startsWith('data:')) {
-                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
-                                        if (mime) {
-                                          if (mime.includes('image/png')) ext = 'png';
-                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
-                                          else if (mime.includes('application/pdf')) ext = 'pdf';
-                                          else if (mime.includes('word')) ext = 'doc';
-                                          else if (mime.includes('excel')) ext = 'xls';
-                                          else if (mime.includes('zip')) ext = 'zip';
-                                        }
-                                      } else {
-                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
-                                      }
-                                      link.download = `result_${order.id}.${ext}`;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      const ext = getExtensionFromUrl(order.resultFile);
+                                      const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                      downloadFile(order.resultFile, `${safeTitle}_${order.id}.${ext}`);
                                     }}
                                     className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 text-center"
                                     title="Download Result"
                                   >
                                     <Download className="w-5 h-5 mx-auto" />
                                   </button>
+                                  </>
+                                  )}
+
+                                  {order.successLink && (
+                                    <>
+                                  <button 
+                                    onClick={() => window.open(order.successLink, '_blank')}
+                                    className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
+                                    title="Download File"
+                                  >
+                                    <Download className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.successLink || '');
+                                      alert('Download link copied!');
+                                    }}
+                                    className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20"
+                                    title="Copy Link"
+                                  >
+                                    <Copy className="w-5 h-5" />
+                                  </button>
+                                  </>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
@@ -2353,15 +2372,38 @@ Mobile-
                                   </div>
                                 )}
                                 {order.resultFile && (
-                                  <a 
-                                    href={order.resultFile} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                    ফাইল দেখুন
-                                  </a>
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <a 
+                                      href={order.resultFile} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ফাইল দেখুন
+                                    </a>
+                                  </div>
+                                )}
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => window.open(order.successLink, '_blank')}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ডাউনলোড করুন
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(order.successLink || '');
+                                        alert('লিঙ্ক কপি করা হয়েছে!');
+                                      }}
+                                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                      title="Copy Link"
+                                    >
+                                      <Copy className="w-5 h-5" />
+                                    </button>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 102])}
@@ -2529,15 +2571,38 @@ Mobile-
                                   <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
                                 {order.resultFile && (
-                                  <a 
-                                    href={order.resultFile} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                    ফাইল ডাউনলোড করুন
-                                  </a>
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <a 
+                                      href={order.resultFile} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ফাইল ডাউনলোড করুন
+                                    </a>
+                                  </div>
+                                )}
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => window.open(order.successLink, '_blank')}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ডাউনলোড করুন
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(order.successLink || '');
+                                        alert('লিঙ্ক কপি করা হয়েছে!');
+                                      }}
+                                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                      title="Copy Link"
+                                    >
+                                      <Copy className="w-5 h-5" />
+                                    </button>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 103])}
@@ -2689,15 +2754,38 @@ Mobile-
                                   <p className="text-xs text-slate-500 font-medium">আপনার এনআইডি ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
                                 {order.resultFile && (
-                                  <a 
-                                    href={order.resultFile} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-purple-500/20"
-                                  >
-                                    <Download className="w-5 h-5" />
-                                    ডাউনলোড করুন
-                                  </a>
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <a 
+                                      href={order.resultFile} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-purple-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ডাউনলোড করুন
+                                    </a>
+                                  </div>
+                                )}
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => window.open(order.successLink, '_blank')}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                                    >
+                                      <Download className="w-5 h-5" />
+                                      ডাউনলোড করুন
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(order.successLink || '');
+                                        alert('লিঙ্ক কপি করা হয়েছে!');
+                                      }}
+                                      className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                      title="Copy Link"
+                                    >
+                                      <Copy className="w-5 h-5" />
+                                    </button>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 104])}
@@ -4009,15 +4097,38 @@ Mobile-
                           <p className="text-xs text-slate-500 font-medium">আপনার ভোটার তথ্যটি এখন দেখার জন্য প্রস্তুত।</p>
                         </div>
                         {order.resultFile && (
-                          <a 
-                            href={order.resultFile} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20"
-                          >
-                            <Download className="w-5 h-5" />
-                            ফাইল ডাউনলোড করুন
-                          </a>
+                          <div className="flex flex-col w-full gap-2 mt-2">
+                            <a 
+                              href={order.resultFile} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20"
+                            >
+                              <Download className="w-5 h-5" />
+                              ফাইল ডাউনলোড করুন
+                            </a>
+                          </div>
+                        )}
+                        {order.successLink && (
+                          <div className="flex w-full gap-2 mt-2">
+                            <button 
+                              onClick={() => window.open(order.successLink, '_blank')}
+                              className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
+                            >
+                              <Download className="w-5 h-5" />
+                              ডাউনলোড করুন
+                            </button>
+                            <button 
+                              onClick={() => {
+                                navigator.clipboard.writeText(order.successLink || '');
+                                alert('লিঙ্ক কপি করা হয়েছে!');
+                              }}
+                              className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                              title="Copy Link"
+                            >
+                              <Copy className="w-5 h-5" />
+                            </button>
+                          </div>
                         )}
                         <button 
                           onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
@@ -4116,10 +4227,21 @@ Mobile-
                 )}
               </div>
 
-              <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end">
+              <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
+                <button 
+                  onClick={() => {
+                    const safeTitle = (selectedProduct.titleEn || selectedProduct.titleBn).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                    const ext = selectedProduct.demoUrl.split('.').pop()?.split('?')[0] || 'file';
+                    downloadFile(selectedProduct.demoUrl, `${safeTitle}_demo.${ext}`);
+                  }}
+                  className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95 flex items-center gap-2"
+                >
+                  <Download className="w-5 h-5" />
+                  Download / ডাউনলোড
+                </button>
                 <button 
                   onClick={() => setShowDemoModal(false)}
-                  className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                  className="px-8 py-3 bg-slate-800 text-white rounded-xl font-bold hover:bg-slate-700 transition-all active:scale-95"
                 >
                   Close / বন্ধ করুন
                 </button>

@@ -840,7 +840,7 @@ export default function App() {
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
 
-  const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       const orderSnap = await getDoc(orderRef);
@@ -853,6 +853,7 @@ export default function App() {
       
       const updates: any = { status, note, updatedAt: serverTimestamp() };
       if (resultFile) updates.resultFile = resultFile;
+      if (successLink) updates.successLink = successLink;
       
       await updateDoc(orderRef, updates);
       

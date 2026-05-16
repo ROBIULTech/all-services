@@ -19,6 +19,8 @@ import {
   CheckCircle, 
   XCircle, 
   Plus, 
+  Copy,
+  ExternalLink,
   ChevronLeft,
   ChevronRight,
   UserCheck, 
@@ -64,7 +66,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
-import { cn, compressImageAsBase64 } from '../lib/utils';
+import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime } from '../lib/utils';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase';
@@ -130,7 +132,7 @@ interface AdminPanelProps {
   trashItems: TrashItem[];
   globalSettings: GlobalSettings;
   updateGlobalSettings: (updates: Partial<GlobalSettings>) => Promise<void>;
-  updateOrderStatus: (orderId: string, status: Order['status'], note: string, resultFile?: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   restoreItem: (item: TrashItem) => Promise<void>;
@@ -535,6 +537,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [orderResultFileObj, setOrderResultFileObj] = useState<File | null>(null);
   const [orderResultUploadStatus, setOrderResultUploadStatus] = useState<string>('');
   const [adminNote, setAdminNote] = useState('Order completed successfully');
+  const [successLinkInput, setSuccessLinkInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleDownloadTrashFile = (item: TrashItem) => {
@@ -805,13 +808,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
 
       setOrderResultUploadStatus('অর্ডার সম্পন্ন হচ্ছে...');
-      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, finalResultFile ?? undefined);
+      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, finalResultFile ?? undefined, successLinkInput || undefined);
       
       setCompletingOrder(null);
       setResultFile(null);
       setOrderResultFileObj(null);
       setOrderResultUploadStatus('');
       setAdminNote('Order completed successfully');
+      setSuccessLinkInput('');
       setShowSuccess(true);
     } catch (error: any) {
       console.error('Error completing order:', error);
@@ -1583,16 +1587,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {order.fileURLs && order.fileURLs.length > 0 && (
                                   <div className="grid gap-1 mt-2">
                                     {order.fileURLs.map((url, urlIndex) => (
-                                      <a
+                                      <button
                                         key={`file-${urlIndex}`}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        onClick={() => {
+                                          const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                          const ext = getExtensionFromUrl(url);
+                                          downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                        }}
                                         className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
                                       >
                                         <Download className="w-3 h-3" />
                                         Document {urlIndex + 1}
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
                                 )}
@@ -1758,16 +1764,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {order.fileURLs && order.fileURLs.length > 0 && (
                                   <div className="grid gap-1 mt-2">
                                     {order.fileURLs.map((url, urlIndex) => (
-                                      <a
-                                        key={`file-${urlIndex}`}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <button
+                                        key={`file-premium-${urlIndex}`}
+                                        onClick={() => {
+                                          const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                          const ext = getExtensionFromUrl(url);
+                                          downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                        }}
                                         className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
                                       >
                                         <Download className="w-3 h-3" />
                                         Document {urlIndex + 1}
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
                                 )}
@@ -1874,26 +1882,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <button 
                                     onClick={() => {
                                       if (!order.resultFile) return;
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile;
-                                      let ext = 'file';
-                                      if (order.resultFile.startsWith('data:')) {
-                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
-                                        if (mime) {
-                                          if (mime.includes('image/png')) ext = 'png';
-                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
-                                          else if (mime.includes('application/pdf')) ext = 'pdf';
-                                          else if (mime.includes('word')) ext = 'doc';
-                                          else if (mime.includes('excel')) ext = 'xls';
-                                          else if (mime.includes('zip')) ext = 'zip';
-                                        }
-                                      } else {
-                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
-                                      }
-                                      link.download = `result_${order.id}.${ext}`;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      const ext = getExtensionFromUrl(order.resultFile);
+                                      const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                      downloadFile(order.resultFile, `${safeTitle}_${order.id}.${ext}`);
                                     }}
                                     className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                     title="Download Result File"
@@ -1902,11 +1893,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </button>
                                 </div>
                               ) : order.successLink ? (
-                                <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
                                   <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase inline-block w-max">Link Available</span>
-                                  <a href={order.successLink} target="_blank" rel="noreferrer" className="text-indigo-600 text-[10px] hover:underline flex items-center gap-1">
-                                    <FileText className="w-3 h-3" /> Open Link
+                                  <a href={order.successLink} target="_blank" rel="noreferrer" className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors" title="Open Link">
+                                    <ExternalLink className="w-3.5 h-3.5" />
                                   </a>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.successLink || '');
+                                      alert('Link copied!');
+                                    }}
+                                    className="p-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                                    title="Copy Link"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                  </button>
                                 </div>
                               ) : (
                                 <span className="text-xs text-slate-400 italic">No file</span>
@@ -2031,16 +2032,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {order.fileURLs && order.fileURLs.length > 0 && (
                                   <div className="grid gap-1 mt-2">
                                     {order.fileURLs.map((url, urlIndex) => (
-                                      <a
-                                        key={`file-${urlIndex}`}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <button
+                                        key={`file-completed-${urlIndex}`}
+                                        onClick={() => {
+                                          const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                          const ext = getExtensionFromUrl(url);
+                                          downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                        }}
                                         className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
                                       >
                                         <Download className="w-3 h-3" />
                                         Document {urlIndex + 1}
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
                                 )}
@@ -2147,31 +2150,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <button 
                                     onClick={() => {
                                       if (!order.resultFile) return;
-                                      const link = document.createElement('a');
-                                      link.href = order.resultFile;
-                                      let ext = 'file';
-                                      if (order.resultFile.startsWith('data:')) {
-                                        const mime = order.resultFile.match(/data:([^;]+);/)?.[1];
-                                        if (mime) {
-                                          if (mime.includes('image/png')) ext = 'png';
-                                          else if (mime.includes('image/jpeg')) ext = 'jpg';
-                                          else if (mime.includes('application/pdf')) ext = 'pdf';
-                                          else if (mime.includes('word')) ext = 'doc';
-                                          else if (mime.includes('excel')) ext = 'xls';
-                                          else if (mime.includes('zip')) ext = 'zip';
-                                        }
-                                      } else {
-                                        ext = order.resultFile.split('.').pop()?.split('?')[0] || 'file';
-                                      }
-                                      link.download = `result_${order.id}.${ext}`;
-                                      document.body.appendChild(link);
-                                      link.click();
-                                      document.body.removeChild(link);
+                                      const ext = getExtensionFromUrl(order.resultFile);
+                                      const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                      downloadFile(order.resultFile, `${safeTitle}_${order.id}.${ext}`);
                                     }}
                                     className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                     title="Download Result File"
                                   >
                                     <Download className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              ) : order.successLink ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase inline-block w-max">Link Available</span>
+                                  <a href={order.successLink} target="_blank" rel="noreferrer" className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors" title="Open Link">
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(order.successLink || '');
+                                      alert('Link copied!');
+                                    }}
+                                    className="p-1.5 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                                    title="Copy Link"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
                                   </button>
                                 </div>
                               ) : (
@@ -2270,16 +2273,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 {order.fileURLs && order.fileURLs.length > 0 && (
                                   <div className="grid gap-1 mt-2">
                                     {order.fileURLs.map((url, urlIndex) => (
-                                      <a
-                                        key={`file-${urlIndex}`}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <button
+                                        key={`file-rejected-${urlIndex}`}
+                                        onClick={() => {
+                                          const safeTitle = order.serviceTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                          const ext = getExtensionFromUrl(url);
+                                          downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                        }}
                                         className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
                                       >
                                         <Download className="w-3 h-3" />
                                         Document {urlIndex + 1}
-                                      </a>
+                                      </button>
                                     ))}
                                   </div>
                                 )}
@@ -4522,8 +4527,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <textarea 
                       value={adminNote}
                       onChange={(e) => setAdminNote(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[100px]"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[80px]"
                       placeholder="Enter status update details..."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">Success Link (ফলাফল লিঙ্ক - ঐচ্ছিক)</label>
+                    <input 
+                      type="url"
+                      value={successLinkInput}
+                      onChange={(e) => setSuccessLinkInput(e.target.value)}
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      placeholder="https://drive.google.com/..."
                     />
                   </div>
                 </div>

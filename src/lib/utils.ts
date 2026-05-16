@@ -81,3 +81,48 @@ export async function compressImageAsBase64(file: File, maxSizeKb: number = 700)
     reader.readAsDataURL(file);
   });
 }
+
+export function getExtensionFromUrl(url: string): string {
+  if (url.startsWith('data:')) {
+    const mime = url.match(/data:([^;]+);/)?.[1];
+    return mime ? getExtensionFromMime(mime) : 'file';
+  }
+  return url.split('.').pop()?.split('?')[0] || 'file';
+}
+
+export function getExtensionFromMime(mime: string): string {
+  if (mime.includes('image/png')) return 'png';
+  if (mime.includes('image/jpeg')) return 'jpg';
+  if (mime.includes('image/webp')) return 'webp';
+  if (mime.includes('application/pdf')) return 'pdf';
+  if (mime.includes('spreadsheetml')) return 'xlsx';
+  if (mime.includes('wordprocessingml')) return 'docx';
+  if (mime.includes('excel')) return 'xls';
+  if (mime.includes('word')) return 'doc';
+  if (mime.includes('zip') || mime.includes('compressed')) return 'zip';
+  if (mime.includes('text/plain')) return 'txt';
+  return 'file';
+}
+
+export async function downloadFile(url: string, filename: string) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download failed:', error);
+    // Fallback: Open in new window if fetch fails
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
+  }
+}
