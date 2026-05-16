@@ -1004,7 +1004,7 @@ Mobile-
             {isSidebarOpen && (
               <div className="flex flex-col items-start leading-tight">
                 <span>স্মার্ট ভোটার অনুসন্ধান</span>
-                <span className="text-[10px] font-bold text-teal-500">৳{calculatePrice(products.find(p => p.id === 105)?.price || 0, products.find(p => p.id === 105)).toFixed(2)}</span>
+                <span className="text-[10px] font-bold text-teal-500">৳{calculatePrice(products.find(p => p.id === 105)?.price || 300, products.find(p => p.id === 105)).toFixed(2)}</span>
               </div>
             )}
           </button>
@@ -1969,7 +1969,7 @@ Mobile-
                                 <span className="text-xs font-bold">i</span>
                               </div>
                               <div>
-                                <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{calculatePrice(products.find(p => p.id === 101)?.price || 0, products.find(p => p.id === 101)).toFixed(2)} কাটা হবে।</p>
+                                <p className="text-sm font-bold text-slate-800">নতুন সার্চে ৳{calculatePrice(products.find(p => p.id === 101)?.price || 300, products.find(p => p.id === 101)).toFixed(2)} কাটা হবে।</p>
                                 <p className="text-xs text-slate-600">হিস্ট্রি থেকে পুনরায় দেখা সম্পূর্ণ ফ্রি!</p>
                               </div>
                             </div>
@@ -2373,7 +2373,7 @@ Mobile-
                               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg shadow-blue-500/20"
                             >
                               <Edit3 className="w-5 h-5" />
-                              ছবি বের করুন (চার্জ ৳{calculatePrice(products.find(p => p.id === 103)?.price || 85, products.find(p => p.id === 103))})
+                              ছবি বের করুন (চার্জ ৳{calculatePrice(products.find(p => p.id === 103)?.price || 300, products.find(p => p.id === 103))})
                             </button>
                           </>
                         );
@@ -2529,7 +2529,7 @@ Mobile-
                               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                               <CreditCard className="w-5 h-5" />
-                              অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 100, products.find(p => p.id === 104))})
+                              অর্ডার করুন (৳{calculatePrice(products.find(p => p.id === 104)?.price || 300, products.find(p => p.id === 104))})
                             </button>
                           </>
                         );
@@ -2614,7 +2614,7 @@ Mobile-
                               className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                               <Search className="w-5 h-5" />
-                              অনুসন্ধান করুন (৳{calculatePrice(products.find(p => p.id === 105)?.price || 50, products.find(p => p.id === 105))})
+                              অনুসন্ধান করুন (৳{calculatePrice(products.find(p => p.id === 105)?.price || 300, products.find(p => p.id === 105))})
                             </button>
                           </div>
                         );
@@ -3758,7 +3758,7 @@ Mobile-
                       <button 
                         onClick={async () => {
                           const p105 = products.find(p => p.id === 105);
-                          const price = calculatePrice(p105?.price || 50, p105);
+                          const price = calculatePrice(p105?.price || 300, p105);
                           if (userProfile.balance < price) {
                             alert('ইনসাফিসিয়েন্ট ব্যালেন্স!');
                             return;
@@ -3772,7 +3772,7 @@ Mobile-
                         disabled={isPlacingOrder || !smartVoterData.name || !smartVoterData.dob}
                         className="flex-1 py-3 bg-teal-600 text-white rounded-xl font-bold hover:bg-teal-700 shadow-lg shadow-teal-500/20 transition-all disabled:opacity-50 active:scale-95"
                       >
-                        {isPlacingOrder ? 'অর্ডার হচ্ছে...' : `অনুসন্ধান করুন (৳${calculatePrice(products.find(p => p.id === 105)?.price || 50, products.find(p => p.id === 105))})`}
+                        {isPlacingOrder ? 'অর্ডার হচ্ছে...' : `অনুসন্ধান করুন (৳${calculatePrice(products.find(p => p.id === 105)?.price || 300, products.find(p => p.id === 105))})`}
                       </button>
                     </div>
                   </>
