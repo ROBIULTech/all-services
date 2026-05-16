@@ -1778,7 +1778,94 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
                                   <button 
-                                    onClick={() => window.open(order.resultFile!, '_blank')}
+                                    onClick={() => {
+                                      if (order.resultFile?.startsWith('data:')) {
+                                        const win = window.open();
+                                        if (win) {
+                                          const isImage = order.resultFile?.startsWith('data:image/');
+                                          win.document.write(`
+                                            <html>
+                                              <head>
+                                                <title>Result Preview - A4</title>
+                                                <style>
+                                                  @page { size: A4; margin: 0; }
+                                                  body { 
+                                                    margin: 0; 
+                                                    background: #515559; 
+                                                    display: flex; 
+                                                    flex-direction: column; 
+                                                    align-items: center; 
+                                                    padding: 40px 0;
+                                                    min-height: 100vh;
+                                                    font-family: sans-serif;
+                                                  }
+                                                  .a4-page {
+                                                    background: white;
+                                                    width: 210mm;
+                                                    min-height: 297mm;
+                                                    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+                                                    display: flex;
+                                                    flex-direction: column;
+                                                    justify-content: flex-start;
+                                                    align-items: center;
+                                                    position: relative;
+                                                  }
+                                                  .content {
+                                                    width: 100%;
+                                                    display: block;
+                                                    border: none;
+                                                  }
+                                                  iframe.content {
+                                                    height: 297mm;
+                                                  }
+                                                  .toolbar {
+                                                    margin-bottom: 20px;
+                                                    display: flex;
+                                                    gap: 15px;
+                                                    position: sticky;
+                                                    top: 20px;
+                                                    z-index: 100;
+                                                  }
+                                                  button {
+                                                    padding: 8px 16px;
+                                                    background: #1a73e8;
+                                                    color: white;
+                                                    border: none;
+                                                    border-radius: 4px;
+                                                    cursor: pointer;
+                                                    font-weight: bold;
+                                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                                  }
+                                                  button:hover { background: #1557b0; }
+                                                  @media print {
+                                                    body { background: white; padding: 0; }
+                                                    .a4-page { box-shadow: none; width: 210mm; height: 297mm; }
+                                                    .toolbar { display: none; }
+                                                  }
+                                                </style>
+                                              </head>
+                                              <body>
+                                                <div class="toolbar">
+                                                  <button onclick="window.print()">Print / Download</button>
+                                                  <button onclick="window.close()">Close</button>
+                                                </div>
+                                                <div class="a4-page">
+                                                  ${isImage ? `<img src="${order.resultFile}" class="content">` : `<iframe src="${order.resultFile}" class="content"></iframe>`}
+                                                </div>
+                                              </body>
+                                            </html>
+                                          `);
+                                          win.document.close();
+                                        } else {
+                                          alert("Popup blocked! Please allow popups for this site.");
+                                        }
+                                      } else {
+                                        const link = document.createElement('a');
+                                        link.href = order.resultFile!;
+                                        link.target = '_blank';
+                                        link.click();
+                                      }
+                                    }}
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                                     title="View Result File"
                                   >
@@ -1935,7 +2022,94 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase">File attached</span>
                                   <button 
-                                    onClick={() => window.open(order.resultFile!, '_blank')}
+                                    onClick={() => {
+                                      if (order.resultFile?.startsWith('data:')) {
+                                        const win = window.open();
+                                        if (win) {
+                                          const isImage = order.resultFile?.startsWith('data:image/');
+                                          win.document.write(`
+                                            <html>
+                                              <head>
+                                                <title>Result Preview - A4</title>
+                                                <style>
+                                                  @page { size: A4; margin: 0; }
+                                                  body { 
+                                                    margin: 0; 
+                                                    background: #515559; 
+                                                    display: flex; 
+                                                    flex-direction: column; 
+                                                    align-items: center; 
+                                                    padding: 40px 0;
+                                                    min-height: 100vh;
+                                                    font-family: sans-serif;
+                                                  }
+                                                  .a4-page {
+                                                    background: white;
+                                                    width: 210mm;
+                                                    min-height: 297mm;
+                                                    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+                                                    display: flex;
+                                                    flex-direction: column;
+                                                    justify-content: flex-start;
+                                                    align-items: center;
+                                                    position: relative;
+                                                  }
+                                                  .content {
+                                                    width: 100%;
+                                                    display: block;
+                                                    border: none;
+                                                  }
+                                                  iframe.content {
+                                                    height: 297mm;
+                                                  }
+                                                  .toolbar {
+                                                    margin-bottom: 20px;
+                                                    display: flex;
+                                                    gap: 15px;
+                                                    position: sticky;
+                                                    top: 20px;
+                                                    z-index: 100;
+                                                  }
+                                                  button {
+                                                    padding: 8px 16px;
+                                                    background: #1a73e8;
+                                                    color: white;
+                                                    border: none;
+                                                    border-radius: 4px;
+                                                    cursor: pointer;
+                                                    font-weight: bold;
+                                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                                  }
+                                                  button:hover { background: #1557b0; }
+                                                  @media print {
+                                                    body { background: white; padding: 0; }
+                                                    .a4-page { box-shadow: none; width: 210mm; height: 297mm; }
+                                                    .toolbar { display: none; }
+                                                  }
+                                                </style>
+                                              </head>
+                                              <body>
+                                                <div class="toolbar">
+                                                  <button onclick="window.print()">Print / Download</button>
+                                                  <button onclick="window.close()">Close</button>
+                                                </div>
+                                                <div class="a4-page">
+                                                  ${isImage ? `<img src="${order.resultFile}" class="content">` : `<iframe src="${order.resultFile}" class="content"></iframe>`}
+                                                </div>
+                                              </body>
+                                            </html>
+                                          `);
+                                          win.document.close();
+                                        } else {
+                                          alert("Popup blocked! Please allow popups for this site.");
+                                        }
+                                      } else {
+                                        const link = document.createElement('a');
+                                        link.href = order.resultFile!;
+                                        link.target = '_blank';
+                                        link.click();
+                                      }
+                                    }}
                                     className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
                                     title="View Result File"
                                   >

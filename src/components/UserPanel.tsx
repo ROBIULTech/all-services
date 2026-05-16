@@ -1328,59 +1328,73 @@ Mobile-
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div 
-                  onClick={() => setActiveTab('history')}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-orange-100 text-orange-600 rounded-xl">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-medium px-2 py-1 bg-orange-50 text-orange-600 rounded-full">
-                      Action Required
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-medium text-slate-500 mb-1">Pending Orders</h3>
-                  <p className="text-3xl font-bold text-slate-900">
-                    {orders.filter(o => o.status === 'pending' || o.status === 'processing').length}
-                  </p>
-                </div>
+                {(() => {
+                  const startOfToday = new Date();
+                  startOfToday.setHours(0, 0, 0, 0);
+                  const todaysOrders = orders.filter(o => {
+                    if (!o.createdAt) return false;
+                    const orderDate = o.createdAt.toDate ? o.createdAt.toDate() : new Date(o.createdAt as any);
+                    return orderDate >= startOfToday;
+                  });
 
-                <div 
-                  onClick={() => setShowCompletedOrdersPicker(true)}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
-                      <CheckCircle className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full">
-                      Completed
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-medium text-slate-500 mb-1">Completed Orders</h3>
-                  <p className="text-3xl font-bold text-slate-900">
-                    {orders.filter(o => o.status === 'completed').length}
-                  </p>
-                </div>
+                  return (
+                    <>
+                      <div 
+                        onClick={() => setActiveTab('history')}
+                        className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-3 bg-orange-100 text-orange-600 rounded-xl">
+                            <Clock className="w-6 h-6" />
+                          </div>
+                          <span className="text-xs font-medium px-2 py-1 bg-orange-50 text-orange-600 rounded-full">
+                            Today's Activity
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium text-slate-500 mb-1">Pending Orders</h3>
+                        <p className="text-3xl font-bold text-slate-900">
+                          {todaysOrders.filter(o => o.status === 'pending' || o.status === 'processing').length}
+                        </p>
+                      </div>
 
-                <div 
-                  onClick={() => setActiveTab('rejected')}
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-3 bg-red-100 text-red-600 rounded-xl">
-                      <XCircle className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-medium px-2 py-1 bg-red-50 text-red-600 rounded-full">
-                      Canceled
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-medium text-slate-500 mb-1">Canceled Orders</h3>
-                  <p className="text-3xl font-bold text-slate-900">
-                    {orders.filter(o => o.status === 'rejected').length}
-                  </p>
-                </div>
+                      <div 
+                        onClick={() => setShowCompletedOrdersPicker(true)}
+                        className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                            <CheckCircle className="w-6 h-6" />
+                          </div>
+                          <span className="text-xs font-medium px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full">
+                            Today's Done
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium text-slate-500 mb-1">Completed Orders</h3>
+                        <p className="text-3xl font-bold text-slate-900">
+                          {todaysOrders.filter(o => o.status === 'completed').length}
+                        </p>
+                      </div>
+
+                      <div 
+                        onClick={() => setActiveTab('rejected')}
+                        className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="p-3 bg-red-100 text-red-600 rounded-xl">
+                            <XCircle className="w-6 h-6" />
+                          </div>
+                          <span className="text-xs font-medium px-2 py-1 bg-red-50 text-red-600 rounded-full">
+                            Today's Canceled
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium text-slate-500 mb-1">Canceled Orders</h3>
+                        <p className="text-3xl font-bold text-slate-900">
+                          {todaysOrders.filter(o => o.status === 'rejected').length}
+                        </p>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1617,13 +1631,100 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
-                                <button 
-                                  onClick={() => window.open(order.resultFile!, '_blank')}
-                                  className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
-                                  title="View Result"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (order.resultFile?.startsWith('data:')) {
+                                        const win = window.open();
+                                        if (win) {
+                                          const isImage = order.resultFile?.startsWith('data:image/');
+                                          win.document.write(`
+                                            <html>
+                                              <head>
+                                                <title>Result Preview - A4</title>
+                                                <style>
+                                                  @page { size: A4; margin: 0; }
+                                                  body { 
+                                                    margin: 0; 
+                                                    background: #515559; 
+                                                    display: flex; 
+                                                    flex-direction: column; 
+                                                    align-items: center; 
+                                                    padding: 40px 0;
+                                                    min-height: 100vh;
+                                                    font-family: sans-serif;
+                                                  }
+                                                  .a4-page {
+                                                    background: white;
+                                                    width: 210mm;
+                                                    min-height: 297mm;
+                                                    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+                                                    display: flex;
+                                                    flex-direction: column;
+                                                    justify-content: flex-start;
+                                                    align-items: center;
+                                                    position: relative;
+                                                  }
+                                                  .content {
+                                                    width: 100%;
+                                                    display: block;
+                                                    border: none;
+                                                  }
+                                                  iframe.content {
+                                                    height: 297mm;
+                                                  }
+                                                  .toolbar {
+                                                    margin-bottom: 20px;
+                                                    display: flex;
+                                                    gap: 15px;
+                                                    position: sticky;
+                                                    top: 20px;
+                                                    z-index: 100;
+                                                  }
+                                                  button {
+                                                    padding: 8px 16px;
+                                                    background: #1a73e8;
+                                                    color: white;
+                                                    border: none;
+                                                    border-radius: 4px;
+                                                    cursor: pointer;
+                                                    font-weight: bold;
+                                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                                  }
+                                                  button:hover { background: #1557b0; }
+                                                  @media print {
+                                                    body { background: white; padding: 0; }
+                                                    .a4-page { box-shadow: none; width: 210mm; height: 297mm; }
+                                                    .toolbar { display: none; }
+                                                  }
+                                                </style>
+                                              </head>
+                                              <body>
+                                                <div class="toolbar">
+                                                  <button onclick="window.print()">Print / Download</button>
+                                                  <button onclick="window.close()">Close</button>
+                                                </div>
+                                                <div class="a4-page">
+                                                  ${isImage ? `<img src="${order.resultFile}" class="content">` : `<iframe src="${order.resultFile}" class="content"></iframe>`}
+                                                </div>
+                                              </body>
+                                            </html>
+                                          `);
+                                          win.document.close();
+                                        } else {
+                                          alert("Popup blocked! Please allow popups for this site.");
+                                        }
+                                      } else {
+                                        const link = document.createElement('a');
+                                        link.href = order.resultFile!;
+                                        link.target = '_blank';
+                                        link.click();
+                                      }
+                                    }}
+                                    className="mx-auto w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+                                    title="View Result"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </button>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
@@ -1712,13 +1813,100 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {order.resultFile ? (
-                                <button 
-                                  onClick={() => window.open(order.resultFile!, '_blank')}
-                                  className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
-                                  title="View Result"
-                                >
-                                  <Eye className="w-5 h-5" />
-                                </button>
+                                  <button 
+                                    onClick={() => {
+                                      if (order.resultFile?.startsWith('data:')) {
+                                        const win = window.open();
+                                        if (win) {
+                                          const isImage = order.resultFile?.startsWith('data:image/');
+                                          win.document.write(`
+                                            <html>
+                                              <head>
+                                                <title>Result Preview - A4</title>
+                                                <style>
+                                                  @page { size: A4; margin: 0; }
+                                                  body { 
+                                                    margin: 0; 
+                                                    background: #515559; 
+                                                    display: flex; 
+                                                    flex-direction: column; 
+                                                    align-items: center; 
+                                                    padding: 40px 0;
+                                                    min-height: 100vh;
+                                                    font-family: sans-serif;
+                                                  }
+                                                  .a4-page {
+                                                    background: white;
+                                                    width: 210mm;
+                                                    min-height: 297mm;
+                                                    box-shadow: 0 0 20px rgba(0,0,0,0.4);
+                                                    display: flex;
+                                                    flex-direction: column;
+                                                    justify-content: flex-start;
+                                                    align-items: center;
+                                                    position: relative;
+                                                  }
+                                                  .content {
+                                                    width: 100%;
+                                                    display: block;
+                                                    border: none;
+                                                  }
+                                                  iframe.content {
+                                                    height: 297mm;
+                                                  }
+                                                  .toolbar {
+                                                    margin-bottom: 20px;
+                                                    display: flex;
+                                                    gap: 15px;
+                                                    position: sticky;
+                                                    top: 20px;
+                                                    z-index: 100;
+                                                  }
+                                                  button {
+                                                    padding: 8px 16px;
+                                                    background: #1a73e8;
+                                                    color: white;
+                                                    border: none;
+                                                    border-radius: 4px;
+                                                    cursor: pointer;
+                                                    font-weight: bold;
+                                                    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                                  }
+                                                  button:hover { background: #1557b0; }
+                                                  @media print {
+                                                    body { background: white; padding: 0; }
+                                                    .a4-page { box-shadow: none; width: 210mm; height: 297mm; }
+                                                    .toolbar { display: none; }
+                                                  }
+                                                </style>
+                                              </head>
+                                              <body>
+                                                <div class="toolbar">
+                                                  <button onclick="window.print()">Print / Download</button>
+                                                  <button onclick="window.close()">Close</button>
+                                                </div>
+                                                <div class="a4-page">
+                                                  ${isImage ? `<img src="${order.resultFile}" class="content">` : `<iframe src="${order.resultFile}" class="content"></iframe>`}
+                                                </div>
+                                              </body>
+                                            </html>
+                                          `);
+                                          win.document.close();
+                                        } else {
+                                          alert("Popup blocked! Please allow popups for this site.");
+                                        }
+                                      } else {
+                                        const link = document.createElement('a');
+                                        link.href = order.resultFile!;
+                                        link.target = '_blank';
+                                        link.click();
+                                      }
+                                    }}
+                                    className="mx-auto w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
+                                    title="View Result"
+                                  >
+                                    <Eye className="w-5 h-5" />
+                                  </button>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
