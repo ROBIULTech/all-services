@@ -398,7 +398,10 @@ export default function App() {
     rocketNumber: '',
     whatsappGroupLink: '',
     isTelegramNotifyActive: false,
-    isWhatsappNotifyActive: false
+    isWhatsappNotifyActive: false,
+    siteName: 'All Services',
+    siteDescription: 'PLATFORM',
+    logoUrl: ''
   });
 
   const updateGlobalSettings = async (updates: Partial<GlobalSettings>) => {
@@ -424,6 +427,24 @@ export default function App() {
       console.error('Sign out error:', error);
     }
   };
+
+  useEffect(() => {
+    // Update Document Title
+    const siteTitle = globalSettings.siteName || 'All Services';
+    const siteDesc = globalSettings.siteDescription || 'PLATFORM';
+    document.title = `${siteTitle} | ${siteDesc}`;
+
+    // Update Favicon
+    if (globalSettings.logoUrl) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = globalSettings.logoUrl;
+    }
+  }, [globalSettings.siteName, globalSettings.siteDescription, globalSettings.logoUrl]);
 
   useEffect(() => {
     // 1. Fetch global settings once on load
@@ -1073,11 +1094,14 @@ export default function App() {
   }
 
   if (!user) {
-    return <Login onLogin={(userData, profileData) => {
-      setUser(userData);
-      setUserProfile(profileData);
-      localStorage.setItem('demo_session', JSON.stringify({ user: userData, profile: profileData }));
-    }} />;
+    return <Login 
+      globalSettings={globalSettings}
+      onLogin={(userData, profileData) => {
+        setUser(userData);
+        setUserProfile(profileData);
+        localStorage.setItem('demo_session', JSON.stringify({ user: userData, profile: profileData }));
+      }} 
+    />;
   }
 
   if (userProfile?.role === 'user' || isAdminViewingUserPanel) {

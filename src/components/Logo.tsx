@@ -1,7 +1,20 @@
 import React from 'react';
+import { cn } from '../lib/utils';
 
-export const Logo = ({ className = "w-10 h-10" }: { className?: string }) => (
-  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+export const Logo = ({ className = "w-10 h-10", src }: { className?: string, src?: string }) => {
+  if (src) {
+    return (
+      <img 
+        src={src} 
+        alt="Logo" 
+        className={cn(className, "object-contain")} 
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
     <defs>
       <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#0ea5e9" />
@@ -29,4 +42,5 @@ export const Logo = ({ className = "w-10 h-10" }: { className?: string }) => (
     {/* Star */}
     <path d="M 85 15 L 88 22 L 95 25 L 88 28 L 85 35 L 82 28 L 75 25 L 82 22 Z" fill="#0ea5e9" />
   </svg>
-);
+  );
+};

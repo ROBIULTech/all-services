@@ -3,12 +3,14 @@ import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff } from '
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, auth, db, doc, getDoc, setDoc, serverTimestamp, query, where, collection, getDocs, signInAnonymously } from '../firebase';
 import { motion } from 'motion/react';
 import { Logo } from './Logo';
+import { GlobalSettings } from '../types';
 
 interface LoginProps {
   onLogin: (user: any, profile: any) => void;
+  globalSettings: GlobalSettings;
 }
 
-export const Login: React.FC<LoginProps> = ({ onLogin }) => {
+export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -116,10 +118,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         <div className="p-8 space-y-6">
           <div className="text-center space-y-2">
             <div className="flex flex-col items-center justify-center mx-auto mb-6">
-              <Logo className="w-16 h-16 mb-2" />
-              <div className="flex flex-col items-center">
-                <span className="text-2xl font-black tracking-tight text-slate-900 leading-none mt-1">ALL SERVICES</span>
-                <span className="text-xs font-bold tracking-widest text-slate-500 uppercase mt-1">PLATFORM</span>
+              <Logo className="w-16 h-16 mb-2" src={globalSettings.logoUrl} />
+              <div className="flex flex-col items-center text-center">
+                <span className="text-2xl font-black tracking-tight text-slate-900 leading-none mt-1">{globalSettings.siteName || 'ALL SERVICES'}</span>
+                <span className="text-xs font-bold tracking-widest text-slate-500 uppercase mt-1">{globalSettings.siteDescription || 'PLATFORM'}</span>
               </div>
             </div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">

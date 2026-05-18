@@ -617,7 +617,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     isWhatsappNotifyActive: globalSettings?.isWhatsappNotifyActive ?? false,
     marqueeText: globalSettings?.marqueeText || 'যেকোনো অভিযোগ বা মূল্যবান পরামর্শ থাকলে আমাদের জানাতে ভুলবেন না। আপনাদের আস্থাই আমাদের মূল লক্ষ্য। ধন্যবাদ।',
     categories: globalSettings?.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'],
-    apkLink: globalSettings?.apkLink || ''
+    apkLink: globalSettings?.apkLink || '',
+    siteName: globalSettings?.siteName || 'All Services',
+    siteDescription: globalSettings?.siteDescription || 'PLATFORM',
+    logoUrl: globalSettings?.logoUrl || ''
   });
 
   useEffect(() => {
@@ -681,7 +684,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         isTelegramNotifyActive: globalSettings.isTelegramNotifyActive ?? false,
         isWhatsappNotifyActive: globalSettings.isWhatsappNotifyActive ?? false,
         categories: globalSettings.categories || ['NID', 'Certificate', 'Biometric', 'Location', 'Passport', 'Server', 'Tax', 'Government', 'Social', 'Premium'],
-        apkLink: globalSettings.apkLink || ''
+        apkLink: globalSettings.apkLink || '',
+        siteName: globalSettings.siteName || 'All Services',
+        siteDescription: globalSettings.siteDescription || 'PLATFORM',
+        logoUrl: globalSettings.logoUrl || ''
       });
     }
   }, [globalSettings]);
@@ -873,10 +879,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="h-full flex flex-col">
           <div className="p-6 flex items-center justify-between gap-3">
             <div className={cn("flex items-center gap-3", !isSidebarOpen && "hidden")}>
-              <Logo className="w-8 h-8 flex-shrink-0" />
+              <Logo className="w-8 h-8 flex-shrink-0" src={globalSettings.logoUrl} />
               <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">All Services</span>
-                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">Platform</span>
+                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">{globalSettings.siteName || 'All Services'}</span>
+                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">{globalSettings.siteDescription || 'PLATFORM'}</span>
               </div>
             </div>
             <button 
@@ -3312,6 +3318,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </h3>
                   </div>
                   <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Site Name</label>
+                        <input 
+                          type="text"
+                          value={premiumSettingsForm.siteName || ''}
+                          onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, siteName: e.target.value })}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          placeholder="Application Name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Site Description</label>
+                        <input 
+                          type="text"
+                          value={premiumSettingsForm.siteDescription || ''}
+                          onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, siteDescription: e.target.value })}
+                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          placeholder="Subheadline / Platform"
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <label className="text-sm font-medium text-slate-700">Logo (URL or Upload)</label>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <input 
+                            type="text"
+                            value={premiumSettingsForm.logoUrl || ''}
+                            onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, logoUrl: e.target.value })}
+                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                            placeholder="Logo URL"
+                          />
+                          <label className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-bold cursor-pointer hover:bg-indigo-100 transition-all border border-indigo-200">
+                            <Upload className="w-4 h-4" />
+                            Upload Logo
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.size > 1024 * 1024) {
+                                    alert('Logo size should be less than 1MB');
+                                    return;
+                                  }
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    setPremiumSettingsForm({ ...premiumSettingsForm, logoUrl: reader.result as string });
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
                       <div>
                         <h4 className="font-bold text-slate-900">Enable Service Management</h4>
@@ -4242,7 +4306,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             isWhatsappNotifyActive: premiumSettingsForm.isWhatsappNotifyActive,
                             marqueeText: premiumSettingsForm.marqueeText || '',
                             categories: premiumSettingsForm.categories || [],
-                            apkLink: premiumSettingsForm.apkLink || ''
+                            apkLink: premiumSettingsForm.apkLink || '',
+                            siteName: premiumSettingsForm.siteName || 'All Services',
+                            siteDescription: premiumSettingsForm.siteDescription || 'PLATFORM',
+                            logoUrl: premiumSettingsForm.logoUrl || ''
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);

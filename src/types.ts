@@ -130,6 +130,9 @@ export interface GlobalSettings {
   marqueeText?: string;
   categories?: string[];
   apkLink?: string;
+  siteName?: string;
+  siteDescription?: string;
+  logoUrl?: string;
 }
 
 export interface TrashItem {

@@ -888,11 +888,11 @@ Mobile-
       )}>
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
-            <Logo className="w-10 h-10 flex-shrink-0" />
+            <Logo className="w-10 h-10 flex-shrink-0" src={globalSettings.logoUrl} />
             {isSidebarOpen && (
               <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">All Services</span>
-                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">Platform</span>
+                <span className="text-xl font-black tracking-tight text-slate-900 leading-none mt-1">{globalSettings.siteName || 'All Services'}</span>
+                <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase mt-0.5">{globalSettings.siteDescription || 'PLATFORM'}</span>
               </div>
             )}
           </div>
