@@ -3899,99 +3899,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </p>
                     </div>
 
-                    {/* API Reselling Settings */}
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-4">
-                      <h4 className="font-bold text-blue-900 flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        API Reselling & Automation
-                      </h4>
-                      
-                      <div className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200">
-                        <div>
-                          <h4 className="font-bold text-slate-900">Enable API Reselling</h4>
-                          <p className="text-sm text-slate-500">Forward orders to another provider via API.</p>
-                        </div>
-                        <div 
-                          className={cn(
-                            "w-12 h-6 rounded-full transition-all relative cursor-pointer",
-                            premiumSettingsForm.isApiResellingActive ? "bg-blue-500" : "bg-slate-300"
-                          )} 
-                          onClick={() => setPremiumSettingsForm(prev => ({ ...prev, isApiResellingActive: !prev.isApiResellingActive }))}
-                        >
-                          <div className={cn(
-                            "absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm",
-                            premiumSettingsForm.isApiResellingActive ? "left-7" : "left-1"
-                          )} />
-                        </div>
-                      </div>
-
-                      {premiumSettingsForm.isApiResellingActive && (
-                        <div className="space-y-4 bg-white p-4 rounded-xl border border-slate-200">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-700">Provider API URL</label>
-                              <input 
-                                type="text"
-                                value={premiumSettingsForm.providerApiUrl || ''}
-                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, providerApiUrl: e.target.value })}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="https://provider.com/api/v2"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-700">Provider API Key</label>
-                              <input 
-                                type="password"
-                                value={premiumSettingsForm.providerApiKey || ''}
-                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, providerApiKey: e.target.value })}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="Enter API Key"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-700">Profit Markup Type</label>
-                              <select 
-                                value={premiumSettingsForm.markupType || 'flat'}
-                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, markupType: e.target.value as 'flat' | 'percentage' })}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                              >
-                                <option value="flat">Flat Amount (৳)</option>
-                                <option value="percentage">Percentage (%)</option>
-                              </select>
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium text-slate-700">Markup Value</label>
-                              <input 
-                                type="number"
-                                value={premiumSettingsForm.markupValue || 0}
-                                onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, markupValue: Number(e.target.value) })}
-                                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="e.g. 20"
-                              />
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-blue-600 font-medium italic">
-                            * This markup will be added to the provider's price automatically on your site.
-                          </p>
-                          <div className="pt-4 border-t border-slate-100">
-                            <button
-                              onClick={bulkUpdateToGlobalMarkup}
-                              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 transition-all border border-indigo-200 group"
-                            >
-                              <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
-                              Apply Global Markup to All {products.length} Services
-                            </button>
-                            <p className="text-[10px] text-slate-500 mt-2 text-center">
-                              * এটি ক্লিক করলে সব ড্রাইভ সার্ভিস থেকে মাউকাপ মুছে যাবে এবং গ্লোবাল মাউকাপ কার্যকর হবে।
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
                     {/* Specific Service API Toggles */}
                     <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-4">
                       <h4 className="font-bold text-indigo-900 flex items-center gap-2">
@@ -4065,6 +3972,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* Global Settings Card */}
 
                       {/* Notification Settings (Telegram & WhatsApp) */}
                       <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 space-y-4">
