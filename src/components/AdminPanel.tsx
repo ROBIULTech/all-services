@@ -2653,6 +2653,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                             </td>
                             <td className="px-6 py-4">
+                              {u.email === 'secure.node.admin@gmail.com' ? (
+                                <span className="text-slate-400 font-mono">-</span>
+                              ) : (
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-emerald-600">৳{u.balance.toLocaleString()}</span>
                                   <button 
@@ -2665,8 +2668,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <Plus className="w-3 h-3" />
                                   </button>
                                 </div>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-right space-x-1">
+                              {u.email === 'secure.node.admin@gmail.com' ? (
+                                <span className="text-slate-400 font-mono">-</span>
+                              ) : (
+                                <>
                                   <button 
                                     onClick={() => setNotificationModalOpen(u)}
                                     className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100 font-bold text-[10px]"
@@ -2685,6 +2693,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   >
                                     Delete
                                   </button>
+                                </>
+                              )}
                             </td>
                           </tr>
                         ))}
