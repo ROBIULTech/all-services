@@ -81,6 +81,7 @@ export interface GlobalSettings {
   nagadNumber?: string;
   rocketNumber?: string;
   whatsappGroupLink?: string;
+  whatsappSupportNumber?: string;
   smsGatewayToken?: string;
   adminPhoneNumber?: string;
   porichoyApiKey?: string;

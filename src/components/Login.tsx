@@ -22,6 +22,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const [pendingProfile, setPendingProfile] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  const getAdminVerificationPhone = () => {
+    const rawNumber = globalSettings?.whatsappSupportNumber || globalSettings?.adminPhoneNumber || globalSettings?.whatsappNotifyNumber || '8801811152997';
+    let clean = rawNumber.replace(/\D/g, '');
+    if (clean.length === 11 && clean.startsWith('0')) {
+      clean = '88' + clean;
+    }
+    return clean || '8801811152997';
+  };
+
   useEffect(() => {
     const checkPath = () => {
       const path = window.location.pathname;
@@ -145,7 +154,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
                 <p className="text-sm mt-1">Please verify your WhatsApp number to activate your account.</p>
               </div>
               <a
-                href={`https://wa.me/8801811152997?text=${encodeURIComponent(`Hello, I want to activate my account. My email: ${pendingProfile.email}`)}`}
+                href={`https://wa.me/${getAdminVerificationPhone()}?text=${encodeURIComponent(`Hello, I want to activate my account. My email: ${pendingProfile.email}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={async () => {

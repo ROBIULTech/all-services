@@ -393,10 +393,11 @@ export default function App() {
     premiumUnlockFee: 500, 
     isPremiumFeatureActive: true, 
     isServiceManagementActive: true,
-    bkashNumber: '01811152997',
+    bkashNumber: '',
     nagadNumber: '',
     rocketNumber: '',
     whatsappGroupLink: '',
+    whatsappSupportNumber: '',
     isTelegramNotifyActive: false,
     isWhatsappNotifyActive: false,
     siteName: 'All Services',
@@ -470,7 +471,10 @@ export default function App() {
             bkashNumber: data.bkashNumber || '',
             nagadNumber: data.nagadNumber || '',
             rocketNumber: data.rocketNumber || '',
-            whatsappGroupLink: data.whatsappGroupLink || ''
+            whatsappGroupLink: data.whatsappGroupLink || '',
+            whatsappSupportNumber: data.whatsappSupportNumber || '',
+            adminPhoneNumber: (data.adminPhoneNumber === '01811152997' ? '' : data.adminPhoneNumber) || '',
+            smsGatewayToken: ''
           };
           setGlobalSettings(settings);
           localStorage.setItem('global_settings', JSON.stringify(settings));
@@ -481,10 +485,11 @@ export default function App() {
             premiumUnlockFee: 500, 
             isPremiumFeatureActive: true, 
             isServiceManagementActive: true,
-            bkashNumber: '01811152997',
+            bkashNumber: '',
             nagadNumber: '',
             rocketNumber: '',
             whatsappGroupLink: '',
+            whatsappSupportNumber: '',
             isTelegramNotifyActive: false,
             isWhatsappNotifyActive: false
           };

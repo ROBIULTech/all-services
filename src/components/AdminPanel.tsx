@@ -61,8 +61,7 @@ import {
   Server,
   Sun,
   Moon,
-  ArrowLeft,
-  Copy
+  ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -572,9 +571,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     nagadNumber: globalSettings?.nagadNumber || '',
     rocketNumber: globalSettings?.rocketNumber || '',
     whatsappGroupLink: globalSettings?.whatsappGroupLink || '',
-    smsGatewayToken: globalSettings?.smsGatewayToken || '',
+    whatsappSupportNumber: globalSettings?.whatsappSupportNumber || '',
+    smsGatewayToken: '',
     isSmsNotifyActive: globalSettings?.isSmsNotifyActive ?? true,
-    adminPhoneNumber: globalSettings?.adminPhoneNumber || '01811152997',
+    adminPhoneNumber: (globalSettings?.adminPhoneNumber === '01811152997' ? '' : globalSettings?.adminPhoneNumber) || '',
     porichoyApiKey: globalSettings?.porichoyApiKey || '',
     enkimaaApiKey: globalSettings?.enkimaaApiKey || '',
     isAutoSignApiActive: globalSettings?.isAutoSignApiActive ?? false,
@@ -640,9 +640,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         nagadNumber: globalSettings.nagadNumber || '',
         rocketNumber: globalSettings.rocketNumber || '',
         whatsappGroupLink: globalSettings.whatsappGroupLink || '',
-        smsGatewayToken: globalSettings.smsGatewayToken || '',
+        whatsappSupportNumber: globalSettings.whatsappSupportNumber || '',
+        smsGatewayToken: '',
         isSmsNotifyActive: globalSettings.isSmsNotifyActive ?? true,
-        adminPhoneNumber: globalSettings.adminPhoneNumber || '01811152997',
+        adminPhoneNumber: (globalSettings.adminPhoneNumber === '01811152997' ? '' : globalSettings.adminPhoneNumber) || '',
         porichoyApiKey: globalSettings.porichoyApiKey || '',
         enkimaaApiKey: globalSettings.enkimaaApiKey || '',
         isAutoSignApiActive: globalSettings.isAutoSignApiActive ?? false,
@@ -3459,23 +3460,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-700">WhatsApp Group Link</label>
-                      <input 
-                        type="text"
-                        value={premiumSettingsForm.whatsappGroupLink || ''}
-                        onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, whatsappGroupLink: e.target.value })}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                        placeholder="https://chat.whatsapp.com/..."
-                      />
-                      <p className="text-xs text-slate-500">Leave empty to hide the group join button from users.</p>
+                    {/* WhatsApp & Support Settings */}
+                    <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 space-y-4">
+                      <h4 className="font-bold text-emerald-900 flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" />
+                        WhatsApp & Support Settings (হোয়াটসঅ্যাপ ও সাপোর্ট সেটিংস)
+                      </h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Account Activation WhatsApp Number</label>
+                          <input 
+                            type="text"
+                            value={premiumSettingsForm.whatsappSupportNumber || ''}
+                            onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, whatsappSupportNumber: e.target.value })}
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-slate-800"
+                            placeholder=""
+                          />
+                          <p className="text-[10px] text-emerald-700 font-bold">
+                            * নতুন ইউজাররা সাইন-আপ করার পর অ্যাকাউন্ট অ্যাক্টিভেট করার জন্য এই হোয়াটসঅ্যাপ নম্বরে মেসেজ পাঠাবে। (ফাঁকা রাখলে নিচের এডমিন ফোন নম্বরে যাবে)
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">WhatsApp Group Link</label>
+                          <input 
+                            type="text"
+                            value={premiumSettingsForm.whatsappGroupLink || ''}
+                            onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, whatsappGroupLink: e.target.value })}
+                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-slate-800"
+                            placeholder="https://chat.whatsapp.com/..."
+                          />
+                          <p className="text-xs text-slate-500">Leave empty to hide the group join button from users.</p>
+                        </div>
+                      </div>
                     </div>
 
+                    {/* SMS Notification Settings */}
                     <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-bold text-indigo-900 flex items-center gap-2">
                           <Smartphone className="w-4 h-4" />
-                          SMS Notification Settings
+                          SMS Notification Settings (অর্ডার এলার্ট এসএমএস সেটিংস)
                         </h4>
                         <button
                           onClick={() => setPremiumSettingsForm({ ...premiumSettingsForm, isSmsNotifyActive: !premiumSettingsForm.isSmsNotifyActive })}
@@ -3493,14 +3519,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-700">Admin Phone Number</label>
+                          <label className="text-sm font-medium text-slate-700">SMS Notification Receiver Number</label>
                           <input 
                             type="text"
                             value={premiumSettingsForm.adminPhoneNumber || ''}
                             onChange={(e) => setPremiumSettingsForm({ ...premiumSettingsForm, adminPhoneNumber: e.target.value })}
                             className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                            placeholder="01811152997"
+                            placeholder=""
                           />
+                          <p className="text-[10px] text-indigo-700">
+                            * নতুন অর্ডার পেমেন্ট হলে এই নম্বরে এসএমএস এলার্ট যাবে।
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-slate-700">SMS Gateway Token (GreenWeb)</label>
@@ -4170,6 +4199,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                             nagadNumber: premiumSettingsForm.nagadNumber,
                             rocketNumber: premiumSettingsForm.rocketNumber,
                             whatsappGroupLink: premiumSettingsForm.whatsappGroupLink,
+                            whatsappSupportNumber: premiumSettingsForm.whatsappSupportNumber,
                             smsGatewayToken: premiumSettingsForm.smsGatewayToken,
                             isSmsNotifyActive: premiumSettingsForm.isSmsNotifyActive,
                             adminPhoneNumber: premiumSettingsForm.adminPhoneNumber,
