@@ -1356,7 +1356,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">User</th>
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Role</th>
                           <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Balance</th>
-                          <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                          <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right font-bangla">Joined At / জয়েনিং সময়</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1378,9 +1378,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <span className="text-sm font-bold text-emerald-600">৳{u.balance.toLocaleString()}</span>
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <button className="p-2 hover:bg-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                <MoreVertical className="w-4 h-4 text-slate-400" />
-                              </button>
+                              {(() => {
+                                if (!u.createdAt) {
+                                  return <span className="text-xs text-slate-400 font-medium">Unknown</span>;
+                                }
+                                const dateVal = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+                                
+                                const daysInBengali = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+                                const dayNameBn = daysInBengali[dateVal.getDay()];
+                                
+                                const dayNameEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dateVal.getDay()];
+                                const dateStrEn = dateVal.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                const timeStrEn = dateVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                
+                                return (
+                                  <div className="flex flex-col items-end text-right">
+                                    <div className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md inline-block text-right mb-0.5">
+                                      {dayNameBn} • {dayNameEn}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-700">{dateStrEn}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono">{timeStrEn}</span>
+                                  </div>
+                                );
+                              })()}
                             </td>
                           </tr>
                         ))}
@@ -2595,6 +2615,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp / Password</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Balance</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right font-bangla">Joined At / জয়েনিং সময়</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
                         </tr>
                       </thead>
@@ -2669,6 +2690,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   </button>
                                 </div>
                               )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              {(() => {
+                                if (!u.createdAt) {
+                                  return <span className="text-xs text-slate-400 font-medium">Unknown</span>;
+                                }
+                                const dateVal = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+                                
+                                const daysInBengali = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+                                const dayNameBn = daysInBengali[dateVal.getDay()];
+                                
+                                const dayNameEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dateVal.getDay()];
+                                const dateStrEn = dateVal.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                const timeStrEn = dateVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                
+                                return (
+                                  <div className="flex flex-col items-end text-right">
+                                    <div className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md inline-block text-right mb-0.5">
+                                      {dayNameBn} • {dayNameEn}
+                                    </div>
+                                    <span className="text-xs font-semibold text-slate-700">{dateStrEn}</span>
+                                    <span className="text-[10px] text-slate-500 font-mono">{timeStrEn}</span>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="px-6 py-4 text-right space-x-1">
                               {u.email === 'secure.node.admin@gmail.com' ? (
