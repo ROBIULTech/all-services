@@ -2653,7 +2653,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              {u.email === 'secure.node.admin@gmail.com' ? (
+                              {u.role === 'admin' ? (
                                 <span className="text-slate-400 font-mono">-</span>
                               ) : (
                                 <div className="flex items-center gap-2">
