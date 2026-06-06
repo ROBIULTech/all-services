@@ -839,30 +839,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleForwardPremiumOrder = async (order: Order) => {
-    // Immediately set to processing
-    await updateOrderStatus(order.id!, 'processing', 'Processing your request');
-
     try {
-      const response = await axios.post('/api/reseller/forward', {
-        providerUrl: globalSettings.providerApiUrl || 'https://cyber71bd.xyz/api/v2/',
-        apiKey: globalSettings.providerApiKey || 'sk_2da8c6f13265200f415e473b194f4e52',
-        orderData: {
-          ...order,
-          providerServiceId: products.find(p => p.id === order.serviceId)?.providerServiceId
-        }
-      });
-      if (response.data.success) {
-        alert('Order forwarded successfully!');
-      } else {
-        alert('API Error: ' + response.data.error);
-        // Optionally revert if failed
-        await updateOrderStatus(order.id!, 'pending', 'Forwarding failed');
-      }
+      await updateOrderStatus(order.id!, 'processing', 'Processing your request');
+      setSuccessMessage({ title: 'Success!', message: 'Order marked as processing.' });
+      setShowSuccess(true);
     } catch (error) {
-      console.error('API Forwarding Error:', error);
-      alert('Failed to forward order to API: ' + error);
-      // Optionally revert if failed
-      await updateOrderStatus(order.id!, 'pending', 'Forwarding failed');
+      console.error('Error updating order:', error);
+      alert('Failed to update order status: ' + error);
     }
   };
 
@@ -1645,33 +1628,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               <div className="flex items-center gap-2">
                                 <button 
                                   onClick={async () => {
-                                    alert('Clicked! Forwarding order...');
                                     try {
-                                      const response = await fetch('/api/reseller/forward', {
-                                        method: 'POST',
-                                        headers: {
-                                          'Content-Type': 'application/json'
-                                        },
-                                        body: JSON.stringify({
-                                          providerUrl: globalSettings.providerApiUrl || 'https://cyber71bd.xyz/api/v2/',
-                                          apiKey: globalSettings.providerApiKey || 'sk_2da8c6f13265200f415e473b194f4e52',
-                                          orderData: {
-                                            ...order,
-                                            providerServiceId: products.find(p => p.id === order.serviceId)?.providerServiceId
-                                          }
-                                        })
-                                      });
-                                      const result = await response.json();
-                                      console.log('API Response:', result);
-                                      if (result.success) {
-                                        await updateOrderStatus(order.id!, 'processing', 'Processing your request');
-                                        alert('Order forwarded successfully!');
-                                      } else {
-                                        alert('API Error: ' + result.error);
-                                      }
+                                      await updateOrderStatus(order.id!, 'processing', 'Processing your request');
+                                      setSuccessMessage({ title: 'Success!', message: 'Order marked as processing.' });
+                                      setShowSuccess(true);
                                     } catch (error) {
-                                      console.error('API Forwarding Error:', error);
-                                      alert('Failed to forward order to API: ' + error);
+                                      console.error('Error updating status:', error);
+                                      alert('Failed to mark order as processing: ' + error);
                                     }
                                   }}
                                   className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
