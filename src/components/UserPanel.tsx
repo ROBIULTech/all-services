@@ -3333,7 +3333,7 @@ Mobile-
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowCompletedOrdersPicker(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -3412,7 +3412,7 @@ Mobile-
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setSelectedProduct(null)}
-                className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+                className="absolute inset-0 bg-slate-950/70"
               />
               <motion.div 
                 initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -3897,7 +3897,7 @@ Mobile-
       {/* Success Notification */}
       <AnimatePresence>
         {showSuccess && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60">
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -3938,7 +3938,7 @@ Mobile-
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowRechargeModal(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -4181,7 +4181,7 @@ Mobile-
       {/* Demo View Modal */}
       <AnimatePresence>
         {showDemoModal && selectedProduct?.demoUrl && (
-          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/80">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
