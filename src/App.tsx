@@ -256,6 +256,10 @@ NID Number:
 Reason for Cancellation:` },
   { id: 28, titleBn: 'TIN রিটার্ন ভেরিফিকেশন', titleEn: 'TIN Return Verification', category: 'Tax', icon: FileText, color: 'bg-emerald-600', price: 10, isActive: true, defaultData: `TIN নম্বর:
 Assessment Year:` },
+  { id: 29, titleBn: 'কম্পিউটার সার্টিফিকেট', titleEn: 'Computer Certificate', category: 'Certificate', icon: GraduationCap, iconName: 'GraduationCap', color: 'bg-emerald-700', price: 1500, isActive: true, options: [{ name: 'অফিসিয়াল (Official)', price: 3000 }, { name: 'আন অফিসিয়াল (Unofficial)', price: 1500 }], requiresFileUpload: true, instructions: 'ছবি আপলোড করতে হবে (বাধ্যতামূলক) / Photo upload is mandatory', defaultData: `ভোটার আইডি বা জন্ম নিবন্ধন নম্বর (Voter ID or Birth Certificate No):
+পুরো নাম (English Full Name):
+পিতার নাম (Father's Name):
+মাতার নাম (Mother's Name):` },
   { id: 101, titleBn: 'Auto Sign Copy', titleEn: 'Auto Sign Copy', category: 'PREMIUM', icon: FileText, color: 'bg-orange-500', price: 60, isActive: true, defaultData: 'NID Number:' },
   { id: 102, titleBn: 'Info Verification', titleEn: 'Info Verification', category: 'PREMIUM', icon: Search, color: 'bg-emerald-500', price: 5, isActive: true, options: [{ name: 'NID/PIN', price: 5 }, { name: 'Birth (BRN)', price: 5 }, { name: 'Mobile Number', price: 5 }, { name: 'Form Number', price: 5 }], defaultData: 'Number:' },
   { id: 103, titleBn: 'ছবি বের করুন', titleEn: 'Photo Extraction', category: 'PREMIUM', icon: User, color: 'bg-blue-600', price: 85, isActive: true, defaultData: 'এনআইডি নম্বর:\nজন্ম তারিখ (YYYY-MM-DD):' },

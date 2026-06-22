@@ -3544,11 +3544,7 @@ Mobile-
                             <button
                               key={option.name}
                               onClick={() => {
-                                if (isSelected) {
-                                  setSelectedOptions(prev => prev.filter(o => o.name !== option.name));
-                                } else {
-                                  setSelectedOptions(prev => [...prev, option]);
-                                }
+                                setSelectedOptions([option]);
                               }}
                               className={cn(
                                 "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",
