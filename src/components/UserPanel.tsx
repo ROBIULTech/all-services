@@ -118,6 +118,8 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [isVerifying, setIsVerifying] = useState(false);
   const [rechargeData, setRechargeData] = useState({ amount: '', senderNumber: '', trxID: '' });
   const [orderFiles, setOrderFiles] = useState<string[]>([]);
+  const [isFileUploading, setIsFileUploading] = useState(false);
+  const [uploadProgressMsg, setUploadProgressMsg] = useState('');
   const [profileForm, setProfileForm] = useState({ 
     displayName: userProfile?.displayName || '', 
     photoURL: userProfile?.photoURL || '',
@@ -883,7 +885,7 @@ Mobile-
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       {/* Sidebar */}
       <aside className={cn(
-        "fixed left-0 top-0 bottom-0 bg-white border-r border-slate-200 transition-all duration-300 z-50 hidden lg:flex flex-col",
+        "fixed left-0 top-0 bottom-0 bg-white border-r border-slate-200 transition-[width] duration-300 z-50 hidden lg:flex flex-col",
         isSidebarOpen ? "w-64" : "w-20"
       )}>
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
@@ -1102,7 +1104,7 @@ Mobile-
 
       {/* Main Content */}
       <main className={cn(
-        "min-h-screen transition-all duration-300",
+        "min-h-screen transition-[padding] duration-300",
         isSidebarOpen ? "lg:pl-64" : "lg:pl-20"
       )}>
         {/* Header */}
@@ -3544,11 +3546,7 @@ Mobile-
                             <button
                               key={option.name}
                               onClick={() => {
-                                if (isSelected) {
-                                  setSelectedOptions(prev => prev.filter(o => o.name !== option.name));
-                                } else {
-                                  setSelectedOptions(prev => [...prev, option]);
-                                }
+                                setSelectedOptions([option]);
                               }}
                               className={cn(
                                 "px-4 py-3 rounded-xl border text-sm font-bold transition-all text-left flex flex-col gap-1",
@@ -3616,53 +3614,69 @@ Mobile-
                           {selectedProduct.requiresFileUpload ? "Upload Document (Required)" : "Upload Document (Optional)"}
                           {selectedProduct.requiresFileUpload && <span className="text-red-500">*</span>}
                         </label>
+                        
+                        {isFileUploading && (
+                          <div className="w-full bg-slate-800/80 border border-indigo-500/30 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+                            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs font-semibold text-indigo-400">{uploadProgressMsg}</span>
+                          </div>
+                        )}
+
                         <div className="flex flex-wrap items-center justify-start w-full gap-4">
                           {orderFiles.length === 0 ? (
                           <div className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden">
                             <input 
                               type="file" 
+                              multiple
                               className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
                               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,application/zip,application/x-zip-compressed,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                               onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  if (file.size > 302 * 1024 * 1024) {
-                                    alert('File is too large. Max 300MB allowed.');
-                                    e.target.value = '';
-                                    return;
-                                  }
-                                  e.target.disabled = true;
+                                const files = e.target.files;
+                                if (files && files.length > 0) {
+                                  setIsFileUploading(true);
+                                  setUploadProgressMsg('Uploading files...');
+                                  const newUploadedFiles: string[] = [];
                                   try {
-                                    if (file.size <= 800 * 1024) {
-                                      // Small files - use base64 for speed
-                                      const base64 = await compressImageAsBase64(file, 1000);
-                                      setOrderFiles([base64]);
-                                    } else {
-                                      // Large files - use Firebase Storage
-                                      const fileName = `${Date.now()}_${file.name}`;
-                                      const storageRef = ref(storage, `orders/${userProfile.uid}/${fileName}`);
-                                      const uploadTask = uploadBytesResumable(storageRef, file);
-                                      
-                                      await new Promise<void>((resolve, reject) => {
-                                        uploadTask.on('state_changed', 
-                                          (snapshot) => {
-                                            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                                            // Optional: Could add a progress indicator here if needed
-                                          }, 
-                                          (error) => reject(error), 
-                                          async () => {
-                                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                            setOrderFiles([downloadURL]);
-                                            resolve();
-                                          }
-                                        );
-                                      });
+                                    for (let i = 0; i < files.length; i++) {
+                                      const file = files[i];
+                                      if (file.size > 302 * 1024 * 1024) {
+                                        alert(`File "${file.name}" is too large. Max 300MB allowed.`);
+                                        continue;
+                                      }
+                                      setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + ')...');
+                                      if (file.size <= 800 * 1024) {
+                                        const base64 = await compressImageAsBase64(file, 1000);
+                                        newUploadedFiles.push(base64);
+                                      } else {
+                                        const fileName = Date.now() + '_' + file.name;
+                                        const storageRef = ref(storage, 'orders/' + userProfile.uid + '/' + fileName);
+                                        const uploadTask = uploadBytesResumable(storageRef, file);
+                                        
+                                        const downloadURL = await new Promise<string>((resolve, reject) => {
+                                          uploadTask.on('state_changed', 
+                                            (snapshot) => {
+                                              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                                              setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + '): ' + progress + '%');
+                                            }, 
+                                            (error) => reject(error), 
+                                            async () => {
+                                              const url = await getDownloadURL(uploadTask.snapshot.ref);
+                                              resolve(url);
+                                            }
+                                          );
+                                        });
+                                        newUploadedFiles.push(downloadURL);
+                                      }
+                                    }
+                                    if (newUploadedFiles.length > 0) {
+                                      setOrderFiles(prev => [...prev, ...newUploadedFiles]);
                                     }
                                   } catch (err: any) {
                                     console.error("Upload error", err);
-                                    alert(err.message || "Failed to upload the file.");
+                                    alert(err.message || "Failed to upload the files.");
                                   } finally {
-                                    e.target.disabled = false;
+                                    setIsFileUploading(false);
+                                    setUploadProgressMsg('');
                                     e.target.value = '';
                                   }
                                 }
@@ -3670,10 +3684,10 @@ Mobile-
                             />
                             <div className="flex flex-col items-center justify-center pt-5 pb-6 pointer-events-none z-0 relative">
                               <Plus className="w-6 h-6 text-slate-500 mb-2" />
-                              <p className="text-xs text-slate-500 text-center px-4">Click to upload document<br/><span className="text-[10px] text-slate-600">(JPG, PNG, PDF, Doc, Xls, ZIP - Max 300MB)</span></p>
+                              <p className="text-xs text-slate-500 text-center px-4">Click to upload document(s)<br/><span className="text-[10px] text-slate-600">(You can select multiple files • Max 300MB)</span></p>
                             </div>
                           </div>
-                        ) : (
+                          ) : (
                           <div className="flex flex-wrap items-center gap-4 w-full">
                             {orderFiles.map((file, index) => (
                               <div key={index} className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-emerald-500/30 bg-slate-800 flex flex-col items-center justify-center group">
@@ -3682,13 +3696,13 @@ Mobile-
                                 ) : (
                                   <>
                                     <CheckCircle className="w-8 h-8 text-emerald-400 mb-1" />
-                                    <span className="text-[10px] font-bold text-slate-300 break-words px-1 cursor-pointer" onClick={() => window.open(file, '_blank')}>Document {index + 1}</span>
+                                    <span className="text-[10px] font-bold text-slate-300 break-words px-1 cursor-pointer text-center truncate w-full" onClick={() => window.open(file, '_blank')}>Doc {index + 1}</span>
                                   </>
                                 )}
                                 <button
                                   type="button"
                                   onClick={(e) => { e.preventDefault(); setOrderFiles(orderFiles.filter((_, i) => i !== index)); }}
-                                  className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all z-10"
+                                  className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all z-10"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>
@@ -3698,39 +3712,56 @@ Mobile-
                               <Plus className="w-8 h-8 text-white stroke-[3] pointer-events-none" />
                               <input 
                                 type="file" 
+                                multiple
                                 className="absolute inset-0 w-full h-full opacity-0 z-10 cursor-pointer disabled:opacity-0 disabled:cursor-not-allowed" 
                                 accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar,application/zip,application/x-zip-compressed,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                 onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    if (file.size > 302 * 1024 * 1024) {
-                                      alert('File is too large. Max 300MB allowed.');
-                                      e.target.value = '';
-                                      return;
-                                    }
-                                    e.target.disabled = true;
+                                  const files = e.target.files;
+                                  if (files && files.length > 0) {
+                                    setIsFileUploading(true);
+                                    setUploadProgressMsg('Uploading files...');
+                                    const newUploadedFiles: string[] = [];
                                     try {
-                                      if (file.size <= 800 * 1024) {
-                                        const base64 = await compressImageAsBase64(file, 1000);
-                                        setOrderFiles([...orderFiles, base64]);
-                                      } else {
-                                        const fileName = `${Date.now()}_${file.name}`;
-                                        const storageRef = ref(storage, `orders/${userProfile.uid}/${fileName}`);
-                                        const uploadTask = uploadBytesResumable(storageRef, file);
-                                        
-                                        await new Promise<void>((resolve, reject) => {
-                                          uploadTask.on('state_changed', null, (error) => reject(error), async () => {
-                                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                                            setOrderFiles([...orderFiles, downloadURL]);
-                                            resolve();
+                                      for (let i = 0; i < files.length; i++) {
+                                        const file = files[i];
+                                        if (file.size > 302 * 1024 * 1024) {
+                                          alert(`File "${file.name}" is too large. Max 300MB allowed.`);
+                                          continue;
+                                        }
+                                        setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + ')...');
+                                        if (file.size <= 800 * 1024) {
+                                          const base64 = await compressImageAsBase64(file, 1000);
+                                          newUploadedFiles.push(base64);
+                                        } else {
+                                          const fileName = Date.now() + '_' + file.name;
+                                          const storageRef = ref(storage, 'orders/' + userProfile.uid + '/' + fileName);
+                                          const uploadTask = uploadBytesResumable(storageRef, file);
+                                          
+                                          const downloadURL = await new Promise<string>((resolve, reject) => {
+                                            uploadTask.on('state_changed', 
+                                              (snapshot) => {
+                                                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                                                setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + '): ' + progress + '%');
+                                              }, 
+                                              (error) => reject(error), 
+                                              async () => {
+                                                const url = await getDownloadURL(uploadTask.snapshot.ref);
+                                                resolve(url);
+                                              }
+                                            );
                                           });
-                                        });
+                                          newUploadedFiles.push(downloadURL);
+                                        }
+                                      }
+                                      if (newUploadedFiles.length > 0) {
+                                        setOrderFiles(prev => [...prev, ...newUploadedFiles]);
                                       }
                                     } catch (err: any) {
                                       console.error("Upload error", err);
                                       alert("Upload failed: " + err.message);
                                     } finally {
-                                      e.target.disabled = false;
+                                      setIsFileUploading(false);
+                                      setUploadProgressMsg('');
                                       e.target.value = '';
                                     }
                                   }
@@ -3776,11 +3807,16 @@ Mobile-
                   <div className="flex flex-col items-end gap-1">
                     <button 
                       onClick={handlePlaceOrder}
-                      disabled={isPlacingOrder || userProfile.balance < currentPrice || (!orderData && orderFiles.length === 0) || ((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0)}
+                      disabled={isPlacingOrder || isFileUploading || userProfile.balance < currentPrice || (!orderData && orderFiles.length === 0) || ((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0)}
                       className="flex-[2] sm:flex-none px-10 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                     >
                       {isPlacingOrder ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 border-2 border-white/60 border-t-white rounded-full animate-spin" />
+                          <span className="animate-pulse">Processing / প্রসেসিং হচ্ছে...</span>
+                        </div>
+                      ) : isFileUploading ? (
+                        <span>Uploading...</span>
                       ) : (
                         <>
                           <ShoppingCart className="w-5 h-5" />
