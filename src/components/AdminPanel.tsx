@@ -2826,6 +2826,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Data</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
                         </tr>
@@ -2833,7 +2834,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <tbody className="divide-y divide-slate-100">
                         {trashItems.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
+                            <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
                               <Trash2 className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                               <p className="font-medium">Trash is empty</p>
                               <p className="text-xs">Deleted items will appear here.</p>
@@ -2880,6 +2881,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     </>
                                   ) : `Product ID: ${item.id}`}
                                 </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {item.type === 'order' ? (
+                                  <div className="space-y-2">
+                                    {item.data.data && (
+                                      <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                        {item.data.data}
+                                        <button
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(item.data.data || '');
+                                          }}
+                                          className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                          title="Copy Data"
+                                        >
+                                          <Copy className="w-3.5 h-3.5" />
+                                        </button>
+                                      </div>
+                                    )}
+                                    {(!item.data.data && (!item.data.fileURLs || item.data.fileURLs.length === 0)) && '-'}
+                                    {item.data.fileURLs && item.data.fileURLs.length > 0 && (
+                                      <div className="grid gap-1 mt-2">
+                                        {item.data.fileURLs.map((url: string, urlIndex: number) => (
+                                          <button
+                                            key={`trash-file-${urlIndex}`}
+                                            onClick={() => {
+                                              const safeTitle = (item.data.serviceTitle || 'order').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                              const ext = getExtensionFromUrl(url);
+                                              downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                            }}
+                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
+                                          >
+                                            <Download className="w-3 h-3" />
+                                            Document {urlIndex + 1}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">N/A</span>
+                                )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                                 {item.deletedAt?.toDate?.().toLocaleString() || 'Unknown'}
