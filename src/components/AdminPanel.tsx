@@ -190,6 +190,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   onRefreshData
 }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [reportStartDate, setReportStartDate] = useState('');
+  const [reportEndDate, setReportEndDate] = useState('');
+  const [isCopiedUserUrl, setIsCopiedUserUrl] = useState(false);
+
+  const handleCopyUserUrl = () => {
+    try {
+      const url = "https://all-services-roan.vercel.app/";
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      setIsCopiedUserUrl(true);
+      setTimeout(() => setIsCopiedUserUrl(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
 
   const handleManualRefresh = async () => {
     if (onRefreshData && !isRefreshing) {
@@ -208,12 +231,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     let csvContent = "data:text/csv;charset=utf-8,";
     let fileName = "report.csv";
 
+    // Convert inputs to dates for filtering
+    const start = reportStartDate ? new Date(reportStartDate) : null;
+    const end = reportEndDate ? new Date(reportEndDate) : null;
+    if (end) end.setHours(23, 59, 59, 999); // Include full end day
+
+    const filterByDate = (date: any) => {
+      if (!start && !end) return true;
+      const d = date?.toDate?.();
+      if (!d) return false;
+      if (start && d < start) return false;
+      if (end && d > end) return false;
+      return true;
+    };
+
     if (reportType === '1') {
       // Products Statement (Who ordered what)
       fileName = "products_statement.csv";
       csvContent += "Product Name,Category,Total Orders,Total Revenue\n";
       products.forEach(p => {
-        const productOrders = orders.filter(o => o.serviceId === p.id);
+        const productOrders = orders.filter(o => o.serviceId === p.id && filterByDate(o.createdAt));
         const revenue = productOrders.reduce((sum, o) => sum + (o.status === 'completed' ? o.price : 0), 0);
         csvContent += `"${p.titleEn}","${p.category}",${productOrders.length},${revenue}\n`;
       });
@@ -221,21 +258,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       // Users Statement
       fileName = "users_statement.csv";
       csvContent += "Name,Email,Role,Balance,Joined At\n";
-      allUsers.forEach(u => {
+      allUsers.filter(u => filterByDate(u.createdAt)).forEach(u => {
         csvContent += `"${u.displayName}","${u.email}","${u.role}",${u.balance},"${u.createdAt?.toDate?.()?.toLocaleString() || ''}"\n`;
       });
     } else if (reportType === '3') {
       // Orders Statement
       fileName = "orders_statement.csv";
       csvContent += "Order ID,Service,User,Data,Price,Status,Date\n";
-      orders.forEach(o => {
+      orders.filter(o => filterByDate(o.createdAt)).forEach(o => {
         csvContent += `"${o.id}","${o.serviceTitle}","${o.userEmail}","${o.data || ''}",${o.price},"${o.status}","${o.createdAt?.toDate?.()?.toLocaleString() || ''}"\n`;
+      });
+    } else if (reportType === 'all_users') {
+      fileName = "all_users_report.csv";
+      csvContent += "Name,Email,Role,Balance,Phone,Password,Joined At\n";
+      allUsers.forEach(u => {
+        csvContent += `"${u.displayName || ''}","${u.email}","${u.role}",${u.balance},"${u.whatsapp || ''}","${u.password || ''}","${u.createdAt?.toDate?.()?.toLocaleString() || ''}"\n`;
       });
     } else {
       alert('Invalid report type.');
       return;
     }
-
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -901,13 +943,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             ))}
           </nav>
 
-          <div className="p-4 border-t border-slate-200">
+          <div className="p-4 border-t border-slate-200 space-y-2">
+            <button 
+              onClick={handleCopyUserUrl}
+              title={isSidebarOpen ? undefined : "ইউজার লিংক কপি (https://all-services-roan.vercel.app/)"}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 group relative",
+                isCopiedUserUrl 
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm" 
+                  : "bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100/90 border border-indigo-100 hover:border-indigo-200"
+              )}
+            >
+              {isCopiedUserUrl ? (
+                <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 animate-bounce" />
+              ) : (
+                <Copy className="w-5 h-5 text-indigo-600 flex-shrink-0 group-hover:scale-110 transition-transform" />
+              )}
+              {isSidebarOpen && (
+                <div className="flex flex-col items-start text-left min-w-0 flex-1">
+                  <span className="text-xs font-bold leading-tight font-bangla truncate">
+                    {isCopiedUserUrl ? 'লিংক কপি হয়েছে!' : 'ইউজার লিংক কপি'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium truncate font-mono">
+                    {isCopiedUserUrl ? 'Copied to Clipboard' : 'all-services-roan.vercel.app'}
+                  </span>
+                </div>
+              )}
+            </button>
+
             <button 
               onClick={onSignOut}
+              title={isSidebarOpen ? undefined : "Logout"}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
             >
-              <LogOut className="w-5 h-5" />
-              Logout
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              {isSidebarOpen && <span>Logout</span>}
             </button>
           </div>
         </div>
@@ -2875,7 +2945,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     </>
                                   ) : item.type === 'order' ? (
                                     <>
-                                      Order ID: {item.id} <br/>
+                                      Order ID: A{item.id.slice(0, 3)} <br/>
                                       User: {item.data.userEmail} <br/>
                                       <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</span>
                                     </>
@@ -4848,6 +4918,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             >
               <h3 className="text-xl font-bold mb-4">Download Report</h3>
               <p className="text-slate-500 mb-6 text-sm">Select the type of report you want to download as a CSV file.</p>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">From</label>
+                  <input type="date" value={reportStartDate} onChange={(e) => setReportStartDate(e.target.value)} className="w-full text-xs p-2 border border-slate-200 rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">To</label>
+                  <input type="date" value={reportEndDate} onChange={(e) => setReportEndDate(e.target.value)} className="w-full text-xs p-2 border border-slate-200 rounded-lg" />
+                </div>
+              </div>
               <div className="space-y-3">
                 <button 
                   onClick={() => { handleDownloadReport('1'); setReportModalOpen(false); }}
@@ -4860,12 +4940,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <Download className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
                 </button>
                 <button 
-                  onClick={() => { setReportUserSearchModalOpen(true); setReportModalOpen(false); }}
+                  onClick={() => { handleDownloadReport('2'); setReportModalOpen(false); }}
                   className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-2xl transition-all group"
                 >
                   <div className="text-left">
                     <p className="font-bold text-slate-900 group-hover:text-indigo-700">Users Statement</p>
                     <p className="text-xs text-slate-500">Search and download specific user statement</p>
+                  </div>
+                  <Download className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
+                </button>
+                <button 
+                  onClick={() => { handleDownloadReport('all_users'); setReportModalOpen(false); }}
+                  className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-2xl transition-all group"
+                >
+                  <div className="text-left">
+                    <p className="font-bold text-slate-900 group-hover:text-indigo-700">All Users</p>
+                    <p className="text-xs text-slate-500">Download all users with full details</p>
                   </div>
                   <Download className="w-5 h-5 text-slate-400 group-hover:text-indigo-500" />
                 </button>
