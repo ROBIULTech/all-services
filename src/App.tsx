@@ -508,16 +508,35 @@ export default function App() {
     fetchSettings();
 
     // 2. Auth State Listener (Real Firebase Auth)
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+        try {
+          const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (docSnap.exists()) {
+            setUserProfile(docSnap.data() as UserProfile);
+          } else {
+            const demoSession = localStorage.getItem('demo_session');
+            if (demoSession) {
+              const session = JSON.parse(demoSession);
+              if (session.profile) setUserProfile(session.profile);
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching user profile:", e);
+        }
       } else {
         // If not authenticated via Firebase, check for demo session
         const demoSession = localStorage.getItem('demo_session');
         if (demoSession) {
-          const session = JSON.parse(demoSession);
-          setUser(session.user);
-          setUserProfile(session.profile);
+          try {
+            const session = JSON.parse(demoSession);
+            setUser(session.user);
+            setUserProfile(session.profile);
+          } catch (e) {
+            setUser(null);
+            setUserProfile(null);
+          }
         } else {
           setUser(null);
           setUserProfile(null);
@@ -1094,7 +1113,7 @@ export default function App() {
     }
   }, [showSuccess]);
 
-  if (loading) {
+  if (loading || (user && !userProfile)) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -1102,7 +1121,7 @@ export default function App() {
     );
   }
 
-  if (!user) {
+  if (!user || !userProfile) {
     return <Login 
       globalSettings={globalSettings}
       onLogin={(userData, profileData) => {
@@ -1113,66 +1132,67 @@ export default function App() {
     />;
   }
 
-  if (userProfile?.role === 'user' || isAdminViewingUserPanel) {
+  // Only open AdminPanel if the profile explicitly has 'admin' role and is not previewing the user panel
+  if (userProfile.role === 'admin' && !isAdminViewingUserPanel) {
     return (
-      <div className="relative">
-        {isAdminViewingUserPanel && (
-          <button 
-            onClick={() => setIsAdminViewingUserPanel(false)}
-            className="fixed top-4 right-4 z-[100] bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Back to Admin
-          </button>
-        )}
-        <UserPanel 
-          userProfile={userProfile!} 
-          setUserProfile={setUserProfile}
-          products={products} 
-          globalSettings={globalSettings}
-          onOrderPlaced={(order) => {
-            // UserPanel handles its own success notification
-          }} 
-          onSignOut={handleSignOut}
-          updateUserProfile={updateUserProfile}
-          isSidebarOpen={isSidebarOpen}
-          setIsSidebarOpen={setIsSidebarOpen}
-          isDarkMode={isDarkMode}
-          toggleDarkMode={toggleDarkMode}
-        />
-      </div>
+      <AdminPanel 
+        userProfile={userProfile}
+        orders={orders}
+        allUsers={allUsers}
+        products={products}
+        trashItems={trashItems}
+        globalSettings={globalSettings}
+        updateGlobalSettings={updateGlobalSettings}
+        updateOrderStatus={updateOrderStatus}
+        deleteOrder={deleteOrder}
+        deleteUser={deleteUser}
+        restoreItem={restoreItem}
+        permanentDeleteItem={permanentDeleteItem}
+        updateUserBalance={updateUserBalance}
+        updateUser={updateUser}
+        updateProduct={updateProduct}
+        addProduct={addProduct}
+        deleteProduct={deleteProduct}
+        bulkUpdateToGlobalMarkup={bulkUpdateToGlobalMarkup}
+        onSignOut={handleSignOut}
+        isAdminViewingUserPanel={isAdminViewingUserPanel}
+        setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}
+        updateAdminProfile={updateUserProfile}
+        onRefreshData={fetchAdminData}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+      />
     );
   }
 
   return (
-    <AdminPanel 
-      userProfile={userProfile!}
-      orders={orders}
-      allUsers={allUsers}
-      products={products}
-      trashItems={trashItems}
-      globalSettings={globalSettings}
-      updateGlobalSettings={updateGlobalSettings}
-      updateOrderStatus={updateOrderStatus}
-      deleteOrder={deleteOrder}
-      deleteUser={deleteUser}
-      restoreItem={restoreItem}
-      permanentDeleteItem={permanentDeleteItem}
-      updateUserBalance={updateUserBalance}
-      updateUser={updateUser}
-      updateProduct={updateProduct}
-      addProduct={addProduct}
-      deleteProduct={deleteProduct}
-      bulkUpdateToGlobalMarkup={bulkUpdateToGlobalMarkup}
-      onSignOut={handleSignOut}
-      isAdminViewingUserPanel={isAdminViewingUserPanel}
-      setIsAdminViewingUserPanel={setIsAdminViewingUserPanel}
-      updateAdminProfile={updateUserProfile}
-      onRefreshData={fetchAdminData}
-      isSidebarOpen={isSidebarOpen}
-      setIsSidebarOpen={setIsSidebarOpen}
-      isDarkMode={isDarkMode}
-      toggleDarkMode={toggleDarkMode}
-    />
+    <div className="relative">
+      {isAdminViewingUserPanel && (
+        <button 
+          onClick={() => setIsAdminViewingUserPanel(false)}
+          className="fixed top-4 right-4 z-[100] bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
+        >
+          <ShieldCheck className="w-4 h-4" />
+          Back to Admin
+        </button>
+      )}
+      <UserPanel 
+        userProfile={userProfile} 
+        setUserProfile={setUserProfile}
+        products={products} 
+        globalSettings={globalSettings}
+        onOrderPlaced={(order) => {
+          // UserPanel handles its own success notification
+        }} 
+        onSignOut={handleSignOut}
+        updateUserProfile={updateUserProfile}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+      />
+    </div>
   );
 }
