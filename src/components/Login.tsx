@@ -71,10 +71,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
         if (isAdminRoute && profileData.role !== 'admin') {
           throw new Error('Access Denied! Only admins can login.');
         }
-        
-        if (!isAdminRoute && profileData.role === 'admin') {
-          throw new Error('Admin login is only possible through the admin panel.');
-        }
 
         localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
         onLogin(profileData, profileData);

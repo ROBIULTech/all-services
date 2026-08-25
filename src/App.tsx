@@ -515,15 +515,56 @@ export default function App() {
           const docSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (docSnap.exists()) {
             setUserProfile(docSnap.data() as UserProfile);
+          } else if (firebaseUser.email) {
+            const q = query(collection(db, 'users'), where('email', '==', firebaseUser.email));
+            const querySnap = await getDocs(q);
+            if (!querySnap.empty) {
+              setUserProfile(querySnap.docs[0].data() as UserProfile);
+            } else {
+              const demoSession = localStorage.getItem('demo_session');
+              if (demoSession) {
+                try {
+                  const session = JSON.parse(demoSession);
+                  if (session.profile) setUserProfile(session.profile);
+                } catch {
+                  setUser(null);
+                  setUserProfile(null);
+                }
+              } else {
+                setUser(null);
+                setUserProfile(null);
+              }
+            }
           } else {
             const demoSession = localStorage.getItem('demo_session');
             if (demoSession) {
-              const session = JSON.parse(demoSession);
-              if (session.profile) setUserProfile(session.profile);
+              try {
+                const session = JSON.parse(demoSession);
+                if (session.profile) setUserProfile(session.profile);
+              } catch {
+                setUser(null);
+                setUserProfile(null);
+              }
+            } else {
+              setUser(null);
+              setUserProfile(null);
             }
           }
         } catch (e) {
           console.error("Error fetching user profile:", e);
+          const demoSession = localStorage.getItem('demo_session');
+          if (demoSession) {
+            try {
+              const session = JSON.parse(demoSession);
+              if (session.profile) setUserProfile(session.profile);
+            } catch {
+              setUser(null);
+              setUserProfile(null);
+            }
+          } else {
+            setUser(null);
+            setUserProfile(null);
+          }
         }
       } else {
         // If not authenticated via Firebase, check for demo session
@@ -1113,7 +1154,7 @@ export default function App() {
     }
   }, [showSuccess]);
 
-  if (loading || (user && !userProfile)) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
