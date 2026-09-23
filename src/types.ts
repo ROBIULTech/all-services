@@ -15,6 +15,8 @@ export interface UserProfile {
   password?: string;
   apiKey?: string;
   isBlocked?: boolean;
+  isApproved?: boolean;
+  approvedAt?: any;
   isApiEnabled?: boolean;
   themeColor?: string;
 }

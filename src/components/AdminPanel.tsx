@@ -505,6 +505,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     u.whatsapp?.toLowerCase().includes(reportUserSearchQuery.toLowerCase())
   );
 
+  // User Approvals States
+  const [approvalSearchQuery, setApprovalSearchQuery] = useState('');
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<'pending' | 'approved' | 'all'>('pending');
+
+  const pendingApprovalsCount = allUsers.filter(u => u.role === 'user' && u.isApproved === false).length;
+
+  const filteredApprovalUsers = allUsers.filter(u => {
+    if (u.role === 'admin') return false;
+    
+    // Status filter
+    if (approvalStatusFilter === 'pending' && u.isApproved !== false) return false;
+    if (approvalStatusFilter === 'approved' && u.isApproved === false) return false;
+
+    const q = approvalSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+
+    return (
+      (u.displayName || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.userId || '').toLowerCase().includes(q) ||
+      (u.whatsapp || '').toLowerCase().includes(q)
+    );
+  });
+
+  const handleApproveUser = async (targetUser: UserProfile) => {
+    try {
+      // 1. Update user to approved in Firestore & local state
+      await updateUser(targetUser.uid, {
+        isApproved: true,
+        isVerified: true,
+        approvedAt: new Date()
+      });
+
+      // 2. Prepare WhatsApp confirmation message to user's phone
+      let rawPhone = (targetUser.whatsapp || '').trim().replace(/\D/g, '');
+      if (rawPhone.length === 11 && rawPhone.startsWith('0')) {
+        rawPhone = '88' + rawPhone;
+      }
+
+      const msg = `অভিনন্দন! আপনার অ্যাকাউন্ট কনফার্ম ও অ্যাপ্রুভ (Approved) করা হয়েছে।
+
+ইউজার আইডি: ${targetUser.userId || 'N/A'}
+ইমেইল: ${targetUser.email}
+${targetUser.password ? `পাসওয়ার্ড: ${targetUser.password}\n` : ''}
+এখন আপনি সরাসরি লগইন করতে পারবেন:
+https://all-services-roan.vercel.app/`;
+
+      if (rawPhone) {
+        const waUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(msg)}`;
+        try {
+          window.open(waUrl, '_blank');
+        } catch (e) {
+          console.error('Popup blocked:', e);
+        }
+      }
+
+      setShowSuccess(true);
+      setSuccessMessage({
+        title: 'Account Approved!',
+        message: `${targetUser.displayName || targetUser.email} এর অ্যাকাউন্ট অ্যাপ্রুভ করা হয়েছে এবং ব্যবহারকারীর হোয়াটসঅ্যাপে কনফার্মেশন পাঠানো হয়েছে।`
+      });
+    } catch (err: any) {
+      console.error('Error approving user:', err);
+      alert('ব্যবহারকারী অনুমোদন করতে ব্যর্থ হয়েছে: ' + (err.message || String(err)));
+    }
+  };
+
   const handleBlockUser = async (uid: string, isBlocked: boolean) => {
     try {
       const userRef = doc(db, 'users', uid);
@@ -739,6 +806,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isSpecial: false },
     { id: 'services', label: 'Services', icon: LayoutGrid, isSpecial: false },
     { id: 'users', label: 'Users', icon: Users, isSpecial: false },
+    { id: 'user-approvals', label: 'ইউজার অ্যাপ্রুভ', icon: UserCheck, isSpecial: false },
     { id: 'premium-stats', label: 'Premium Stats', icon: Crown, isSpecial: false },
     { id: 'orders', label: 'Order Management', icon: ShoppingBag, isSpecial: false },
     { id: 'completed-orders', label: 'Completed Orders', icon: CheckCircle, isSpecial: false },
@@ -931,14 +999,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   }
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
                   activeTab === item.id || (item.id === 'completed-orders' && activeTab === 'premium-orders')
-                    ? "bg-indigo-50 text-indigo-600" 
+                    ? "bg-indigo-50 text-indigo-600 font-bold" 
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 )}
               >
-                <item.icon className="w-5 h-5" />
-                {isSidebarOpen && <span>{item.label}</span>}
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                {isSidebarOpen && <span className="flex-1 text-left">{item.label}</span>}
+                {item.id === 'user-approvals' && pendingApprovalsCount > 0 && (
+                  <span className={cn(
+                    "bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse",
+                    isSidebarOpen ? "px-2 py-0.5 ml-auto" : "absolute top-1.5 right-1.5 w-4 h-4 text-[9px]"
+                  )}>
+                    {pendingApprovalsCount}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -2877,6 +2953,270 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </motion.div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {activeTab === 'user-approvals' && (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2 font-bangla">
+                      <UserCheck className="w-7 h-7 text-indigo-600" />
+                      ইউজার অ্যাপ্রুভ (User Approvals)
+                    </h1>
+                    <p className="text-sm text-slate-500 mt-0.5 font-bangla">
+                      নতুন রেজিস্টার হওয়া গ্রাহকদের একাউন্ট পর্যালোচনা ও অনুমোদন করুন। অ্যাপ্রুভ করার সাথে সাথে গ্রাহকের হোয়াটসঅ্যাপে অ্যাক্টিভেশন মেসেজ পাঠানো হবে।
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                      পেন্ডিং একাউন্ট: {pendingApprovalsCount} জন
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 w-full md:w-auto">
+                    <button
+                      onClick={() => setApprovalStatusFilter('pending')}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                        approvalStatusFilter === 'pending'
+                          ? "bg-amber-500 text-white shadow-md shadow-amber-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      <span>পেন্ডিং রিকোয়েস্ট</span>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[10px]",
+                        approvalStatusFilter === 'pending' ? "bg-amber-600 text-white" : "bg-slate-200 text-slate-700"
+                      )}>
+                        {pendingApprovalsCount}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setApprovalStatusFilter('approved')}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2",
+                        approvalStatusFilter === 'approved'
+                          ? "bg-emerald-600 text-white shadow-md shadow-emerald-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      <span>অনুমোদিত (Approved)</span>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-full text-[10px]",
+                        approvalStatusFilter === 'approved' ? "bg-emerald-700 text-white" : "bg-slate-200 text-slate-700"
+                      )}>
+                        {allUsers.filter(u => u.role === 'user' && u.isApproved !== false).length}
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setApprovalStatusFilter('all')}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                        approvalStatusFilter === 'all'
+                          ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      )}
+                    >
+                      সকল ({allUsers.filter(u => u.role === 'user').length})
+                    </button>
+                  </div>
+
+                  <div className="relative w-full md:w-80">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="নাম, ইমেইল, আইডি বা হোয়াটসঅ্যাপ দিয়ে খুঁজুন..."
+                      value={approvalSearchQuery}
+                      onChange={(e) => setApprovalSearchQuery(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ইউজার তথ্য</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ইউজার আইডি</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">হোয়াটসঅ্যাপ নম্বর</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">পাসওয়ার্ড</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">রেজিস্ট্রেশন তারিখ ও সময়</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">স্ট্যাটাস</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">অ্যাকশন</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredApprovalUsers.length > 0 ? (
+                          filteredApprovalUsers.map((u, i) => {
+                            const isPending = u.isApproved === false;
+                            let userPhone = (u.whatsapp || '').trim().replace(/\D/g, '');
+                            if (userPhone.length === 11 && userPhone.startsWith('0')) {
+                              userPhone = '88' + userPhone;
+                            }
+                            return (
+                              <tr key={u.uid || `approval-user-${i}`} className={cn(
+                                "hover:bg-slate-50/80 transition-colors",
+                                isPending && "bg-amber-50/20"
+                              )}>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-3">
+                                    <img
+                                      src={u.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.displayName || 'User')}&background=random`}
+                                      alt=""
+                                      className="w-10 h-10 rounded-full border border-slate-200 object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div>
+                                      <p className="text-sm font-bold text-slate-900">{u.displayName || 'Unknown User'}</p>
+                                      <p className="text-xs text-slate-500 font-mono">{u.email}</p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                                    {u.userId || 'N/A'}
+                                    {u.userId && (
+                                      <button
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(u.userId || '');
+                                          setShowSuccess(true);
+                                          setSuccessMessage({ title: 'Copied', message: 'User ID copied to clipboard' });
+                                        }}
+                                        className="text-indigo-400 hover:text-indigo-600"
+                                        title="Copy User ID"
+                                      >
+                                        <Copy className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-800 font-mono">{u.whatsapp || 'No Number'}</span>
+                                    {userPhone && (
+                                      <a
+                                        href={`https://wa.me/${userPhone}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors"
+                                        title="Chat on WhatsApp"
+                                      >
+                                        <MessageSquare className="w-3.5 h-3.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <span className="text-xs font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                                    {u.password || 'N/A'}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4">
+                                  {(() => {
+                                    if (!u.createdAt) {
+                                      return <span className="text-xs text-slate-400">N/A</span>;
+                                    }
+                                    const dateVal = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
+                                    const daysInBengali = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+                                    const dayNameBn = daysInBengali[dateVal.getDay()];
+                                    const dateStr = dateVal.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                    const timeStr = dateVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+                                    return (
+                                      <div className="text-xs">
+                                        <div className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-0.5">
+                                          {dayNameBn}
+                                        </div>
+                                        <p className="font-medium text-slate-700">{dateStr}</p>
+                                        <p className="text-[10px] text-slate-400 font-mono">{timeStr}</p>
+                                      </div>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="px-6 py-4">
+                                  {isPending ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                                      <Clock className="w-3 h-3 animate-spin" />
+                                      পেন্ডিং অনুমোদন
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle className="w-3 h-3" />
+                                      অনুমোদিত
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isPending ? (
+                                      <button
+                                        onClick={() => handleApproveUser(u)}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95"
+                                        title="এপ্রুভ করুন এবং গ্রাহকের হোয়াটসঅ্যাপে মেসেজ পাঠান"
+                                      >
+                                        <CheckCircle className="w-3.5 h-3.5" />
+                                        <span>এপ্রুভ করুন</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => {
+                                          let raw = (u.whatsapp || '').trim().replace(/\D/g, '');
+                                          if (raw.length === 11 && raw.startsWith('0')) raw = '88' + raw;
+                                          const msg = `অভিনন্দন! আপনার অ্যাকাউন্ট কনফার্ম ও অ্যাপ্রুভ করা হয়েছে।\n\nইউজার আইডি: ${u.userId || 'N/A'}\nইমেইল: ${u.email}\n\nলগইন লিংক:\nhttps://all-services-roan.vercel.app/`;
+                                          if (raw) window.open(`https://wa.me/${raw}?text=${encodeURIComponent(msg)}`, '_blank');
+                                        }}
+                                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                                        title="কনফার্মেশন মেসেজ পুনরায় পাঠান"
+                                      >
+                                        <MessageSquare className="w-3 h-3" />
+                                        <span>মেসেজ পাঠান</span>
+                                      </button>
+                                    )}
+
+                                    <button
+                                      onClick={() => setDeleteConfirm({ type: 'user', id: u.uid })}
+                                      className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors"
+                                      title="ডিলিট / বাতিল করুন"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                              <div className="flex flex-col items-center justify-center space-y-2">
+                                <UserCheck className="w-10 h-10 text-slate-300" />
+                                <p className="text-sm font-semibold text-slate-600">
+                                  {approvalStatusFilter === 'pending'
+                                    ? 'বর্তমানে কোনো পেন্ডিং ইউজার রিকোয়েস্ট নেই!'
+                                    : 'কোনো ব্যবহারকারী পাওয়া যায়নি।'}
+                                </p>
+                                <p className="text-xs text-slate-400">
+                                  {approvalStatusFilter === 'pending'
+                                    ? 'নতুন কোনো ইউজার রেজিস্টার করলে তা স্বয়ংক্রিয়ভাবে এখানে চলে আসবে।'
+                                    : 'অনুসন্ধানের মানদণ্ড পরিবর্তন করে আবার চেষ্টা করুন।'}
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 

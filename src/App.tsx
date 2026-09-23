@@ -1126,6 +1126,7 @@ export default function App() {
     try {
       const userRef = doc(db, 'users', uid);
       await updateDoc(userRef, updates);
+      setAllUsers(prev => prev.map(u => u.uid === uid ? { ...u, ...updates } : u));
       setShowSuccess(true);
     } catch (error) {
       console.error('Error updating user:', error);

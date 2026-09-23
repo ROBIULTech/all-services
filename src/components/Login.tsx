@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff, CheckCircle, MessageSquare, Clock, Monitor, Smartphone, Download, Bookmark, AlertCircle } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, auth, db, doc, getDoc, setDoc, serverTimestamp, query, where, collection, getDocs, signInAnonymously } from '../firebase';
 import { motion } from 'motion/react';
 import { Logo } from './Logo';
@@ -9,6 +9,52 @@ interface LoginProps {
   onLogin: (user: any, profile: any) => void;
   globalSettings: GlobalSettings;
 }
+
+// Strict WhatsApp Number Validator (Checks for original/genuine numbers)
+const validateOriginalWhatsApp = (numberStr: string): { isValid: boolean; formatted: string; error?: string } => {
+  const raw = (numberStr || '').trim();
+  const digits = raw.replace(/\D/g, '');
+
+  if (!digits || digits.length < 10) {
+    return { isValid: false, formatted: '', error: 'অনুগ্রহ করে একটি সঠিক ও সক্রিয় হোয়াটসঅ্যাপ নম্বর লিখুন।' };
+  }
+
+  // Reject obvious fake/dummy numbers (e.g. all repeating digits: 01777777777, 00000000000, 11111111111)
+  if (/^(\d)\1+$/.test(digits)) {
+    return { isValid: false, formatted: '', error: 'ভুল বা ডামি নম্বর গ্রহণযোগ্য নয়! আপনার আসল হোয়াটসঅ্যাপ নম্বর দিন।' };
+  }
+
+  // Reject sequential fake digits like 01234567890, 12345678901, 9876543210
+  if (digits.includes('12345678') || digits.includes('98765432') || digits.includes('01234567')) {
+    return { isValid: false, formatted: '', error: 'ধারাবাহিক ডামি নম্বর দেওয়া যাবে না। অরিজিনাল হোয়াটসঅ্যাপ নম্বর দিন।' };
+  }
+
+  // BD format check: 013, 014, 015, 016, 017, 018, 019
+  // If user entered 01XXXXXXXXX (11 digits)
+  if (digits.length === 11 && digits.startsWith('01')) {
+    const operatorDigit = digits[2];
+    if (!['3', '4', '5', '6', '7', '8', '9'].includes(operatorDigit)) {
+      return { isValid: false, formatted: '', error: 'বাংলাদেশের সঠিক মোবাইল অপারেটর কোড দিন (যেমন: 017, 018, 019, 016, 015, 013, 014)' };
+    }
+    return { isValid: true, formatted: digits };
+  }
+
+  // If user entered 8801XXXXXXXXX (13 digits)
+  if (digits.length === 13 && digits.startsWith('8801')) {
+    const operatorDigit = digits[4];
+    if (!['3', '4', '5', '6', '7', '8', '9'].includes(operatorDigit)) {
+      return { isValid: false, formatted: '', error: 'বাংলাদেশের সঠিক মোবাইল অপারেটর কোড দিন' };
+    }
+    return { isValid: true, formatted: digits.substring(2) }; // store as 01XXXXXXXXX
+  }
+
+  // If international (+ followed by 10-15 digits)
+  if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) {
+    return { isValid: true, formatted: '+' + digits };
+  }
+
+  return { isValid: false, formatted: '', error: '১১ ডিজিটের আসল ও সচল হোয়াটসঅ্যাপ নম্বর দিন (যেমন: 017xxxxxxxx)।' };
+};
 
 export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -54,7 +100,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
     try {
       if (isLogin) {
         // 1. Verify in Firestore first (our source of truth for profiles)
-        const q = query(collection(db, 'users'), where('email', '==', email));
+        const q = query(collection(db, 'users'), where('email', '==', email.trim().toLowerCase()));
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
@@ -72,38 +118,66 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
           throw new Error('Access Denied! Only admins can login.');
         }
 
+        // Check if regular user account is pending admin approval
+        if (profileData.role === 'user' && profileData.isApproved === false) {
+          setPendingProfile(profileData);
+          setShowVerification(true);
+          setError('');
+          setLoading(false);
+          return;
+        }
+
         localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
         onLogin(profileData, profileData);
       } else {
-        // simulated Sign Up logic remains
-        const q = query(collection(db, 'users'), where('email', '==', email));
+        // Check WhatsApp validity strictly
+        const phoneValidation = validateOriginalWhatsApp(whatsapp);
+        if (!phoneValidation.isValid) {
+          throw new Error(phoneValidation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
           throw new Error('This email is already in use. Please use a different email.');
         }
 
-        // Create a new user profile in Firestore
+        // Create a new user profile in Firestore with pending approval
         const newUserId = doc(collection(db, 'users')).id;
         const shortId = Math.floor(100000 + Math.random() * 900000).toString();
         const newProfile = {
           uid: newUserId,
           userId: shortId,
-          email: email,
+          email: cleanEmail,
           password: password,
-          whatsapp: whatsapp,
-          displayName: email.split('@')[0] || 'User',
-          photoURL: `https://ui-avatars.com/api/?name=${email.split('@')[0] || 'User'}&background=random`,
+          whatsapp: phoneValidation.formatted,
+          displayName: cleanEmail.split('@')[0] || 'User',
+          photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0] || 'User')}&background=random`,
           role: 'user',
           balance: 0,
           isPremium: false,
-          createdAt: new Date(),
-          isVerified: false // New field
+          isVerified: false,
+          isApproved: false, // Must be approved by admin in Admin Panel
+          createdAt: new Date()
         };
+
+        // Immediately persist to Firestore so it shows up in Admin Panel "ইউজার অ্যাপ্রুভ" tab!
+        await setDoc(doc(db, 'users', newUserId), newProfile);
 
         setPendingProfile(newProfile);
         setShowVerification(true);
         setLoading(false);
+
+        // Auto trigger WhatsApp message to admin with the requested text format
+        const waMsg = `Hello, I want to activate my account. My email: ${newProfile.email} User ID: ${newProfile.userId}`;
+        const waUrl = `https://wa.me/${getAdminVerificationPhone()}?text=${encodeURIComponent(waMsg)}`;
+        try {
+          window.open(waUrl, '_blank');
+        } catch {
+          // If popup is blocked, the user can click the button
+        }
       }
     } catch (err: any) {
       console.error('Simulated Auth error:', err);
@@ -130,10 +204,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
               </div>
             </div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-              {isAdminRoute ? 'Admin Panel' : (isLogin ? 'Welcome' : 'Create Account')}
+              {showVerification && pendingProfile
+                ? 'অ্যাকাউন্ট স্ট্যাটাস'
+                : (isAdminRoute ? 'Admin Panel' : (isLogin ? 'Welcome' : 'Create Account'))}
             </h1>
             <p className="text-sm text-slate-500">
-              {isAdminRoute ? 'Login to Admin Panel' : (isLogin ? 'Login to your account' : 'Provide information to create a new account')}
+              {showVerification && pendingProfile
+                ? 'অ্যাকাউন্ট অনুমোদন তথ্য ও নির্দেশনাবলী'
+                : (isAdminRoute ? 'Login to Admin Panel' : (isLogin ? 'Login to your account' : 'Provide information to create a new account'))}
             </p>
           </div>
 
@@ -143,26 +221,93 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
             </div>
           )}
 
-          {showVerification ? (
-            <div className="space-y-6 text-center">
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
-                <p className="font-bold">A few more steps left!</p>
-                <p className="text-sm mt-1">Please verify your WhatsApp number to activate your account.</p>
+          {showVerification && pendingProfile ? (
+            <div className="space-y-4 text-center">
+              {/* Notice Card */}
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-left space-y-3 shadow-sm">
+                <div className="flex items-center gap-2 text-amber-700 font-bold text-base">
+                  <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 animate-spin" />
+                  <span>অ্যাকাউন্ট পেন্ডিং রয়েছে (Pending Approval)</span>
+                </div>
+                
+                <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                  আপনার অ্যাকাউন্টটি এখনও অ্যাডমিন অনুমোদন করেনি, তাই অ্যাকাউন্ট পেন্ডিং রয়েছে। অনুমোদন হওয়ার সাথে সাথেই আপনি সফলভাবে লগইন করতে পারবেন।
+                </p>
+
+                {/* Specific instructions requested by the user */}
+                <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 space-y-2.5 text-xs text-slate-700 shadow-sm">
+                  <div className="flex items-start gap-2.5">
+                    <Monitor className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold text-indigo-900">ডেস্কটপ ব্যবহারকারী:</span>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        পরবর্তীতে সহজে দ্রুত লগইন করতে <strong className="text-slate-800">সাইটটি ডেস্কটপে সেভ করে রাখুন</strong> (বা ব্রাউজারে বুকমার্ক করুন: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono">Ctrl + D</kbd>)।
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-2 flex items-start gap-2.5">
+                    <Smartphone className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+                    <div className="w-full">
+                      <span className="font-bold text-emerald-900">মোবাইল ব্যবহারকারী:</span>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        সহজে ব্যবহার করতে <strong className="text-slate-800">মোবাইল ফোন এ অ্যাপস নামিয়ে রাখুন</strong>।
+                      </p>
+                      {globalSettings?.apkLink && (
+                        <a
+                          href={globalSettings.apkLink}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>অ্যান্ড্রয়েড অ্যাপ ডাউনলোড করুন (APK)</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Credentials Summary */}
+                <div className="bg-amber-100/70 p-3 rounded-xl border border-amber-200/80 text-xs space-y-1.5 font-mono">
+                  <p className="flex justify-between items-center">
+                    <span className="text-slate-600 font-sans">ইমেইল:</span>
+                    <span className="font-bold text-slate-900">{pendingProfile.email}</span>
+                  </p>
+                  <p className="flex justify-between items-center">
+                    <span className="text-slate-600 font-sans">ইউজার আইডি:</span>
+                    <span className="font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-amber-200">{pendingProfile.userId}</span>
+                  </p>
+                  <p className="flex justify-between items-center">
+                    <span className="text-slate-600 font-sans">হোয়াটসঅ্যাপ:</span>
+                    <span className="font-bold text-slate-900">{pendingProfile.whatsapp}</span>
+                  </p>
+                </div>
               </div>
+
+              {/* WhatsApp Activation Button */}
               <a
-                href={`https://wa.me/${getAdminVerificationPhone()}?text=${encodeURIComponent(`Hello, I want to activate my account. My email: ${pendingProfile.email}`)}`}
+                href={`https://wa.me/${getAdminVerificationPhone()}?text=${encodeURIComponent(`Hello, I want to activate my account. My email: ${pendingProfile.email} User ID: ${pendingProfile.userId}`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={async () => {
-                  await setDoc(doc(db, 'users', pendingProfile.uid), pendingProfile);
-                  alert('Verification message sent. Admin will activate your account soon.');
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 text-sm active:scale-95"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>অ্যাকাউন্ট চালু করতে অ্যাডমিনকে মেসেজ দিন</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
                   setIsLogin(true);
                   setShowVerification(false);
+                  setError('');
                 }}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/25 block text-center"
+                className="text-xs text-slate-500 hover:text-indigo-600 transition-colors block w-full text-center pt-1"
               >
-                Verify via WhatsApp
-              </a>
+                লগইন ফর্মে ফিরে যান
+              </button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -210,7 +355,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
 
               {!isLogin && !isAdminRoute && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700">WhatsApp Number</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-sm font-medium text-slate-700">হোয়াটসঅ্যাপ নম্বর (WhatsApp Number)</label>
+                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">অরিজিনাল নম্বর আবশ্যক</span>
+                  </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -226,6 +374,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
                       required
                     />
                   </div>
+                  <p className="text-[11px] text-slate-400">১১ ডিজিটের সঠিক হোয়াটসঅ্যাপ নম্বর লিখুন। অনুমোদন কনফার্মেশন এই নম্বরে যাবে।</p>
                 </div>
               )}
 
@@ -264,3 +413,4 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
     </div>
   );
 };
+
