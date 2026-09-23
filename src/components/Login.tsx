@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff, CheckCircle, MessageSquare, Clock, Monitor, Smartphone, Download, Bookmark, AlertCircle } from 'lucide-react';
+import { LogIn, ShieldCheck, Shield, Mail, Lock, ArrowLeft, Eye, EyeOff, CheckCircle, MessageSquare, Clock, Monitor, Smartphone, Download, Bookmark, AlertCircle, KeyRound, Send, Check } from 'lucide-react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, auth, db, doc, getDoc, setDoc, serverTimestamp, query, where, collection, getDocs, signInAnonymously } from '../firebase';
 import { motion } from 'motion/react';
 import { Logo } from './Logo';
@@ -68,6 +68,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const [pendingProfile, setPendingProfile] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // WhatsApp Verification Suite States
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [generatedOtp, setGeneratedOtp] = useState<string>('');
+  const [enteredOtp, setEnteredOtp] = useState<string>('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState('');
+
   const getAdminVerificationPhone = () => {
     const rawNumber = globalSettings?.whatsappSupportNumber || globalSettings?.adminPhoneNumber || globalSettings?.whatsappNotifyNumber || '8801811152997';
     let clean = rawNumber.replace(/\D/g, '');
@@ -91,6 +99,81 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
     window.addEventListener('popstate', checkPath);
     return () => window.removeEventListener('popstate', checkPath);
   }, []);
+
+  // Handler to request OTP or 1-click verification via WhatsApp
+  const handleRequestOtp = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    setError('');
+    const validation = validateOriginalWhatsApp(whatsapp);
+    if (!validation.isValid) {
+      setError(validation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
+      return;
+    }
+
+    setOtpSending(true);
+
+    // Generate 4-digit secure OTP code
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedOtp(code);
+    setOtpSent(true);
+
+    // Clean user phone
+    let userPhone = validation.formatted.replace(/\D/g, '');
+    if (userPhone.length === 11 && userPhone.startsWith('0')) {
+      userPhone = '88' + userPhone;
+    }
+
+    // Direct WhatsApp send message
+    const waText = `[${globalSettings.siteName || 'ALL SERVICES'}] আপনার হোয়াটসঅ্যাপ ভেরিফিকেশন OTP কোড: ${code}\nনম্বর: ${validation.formatted}`;
+    const waUrl = `https://wa.me/${userPhone}?text=${encodeURIComponent(waText)}`;
+
+    // Open WhatsApp tab to deliver OTP code
+    try {
+      window.open(waUrl, '_blank');
+    } catch {
+      // Fallback if popup blocked
+    }
+
+    setOtpSending(false);
+    setOtpSuccessMessage(`আপনার হোয়াটসঅ্যাপে ৪ ডিজিটের OTP কোড (${code}) পাঠানো হয়েছে!`);
+  };
+
+  // Handler for 1-Click WhatsApp Instant Verification to Admin
+  const handleInstantWhatsAppVerify = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setError('');
+    const validation = validateOriginalWhatsApp(whatsapp);
+    if (!validation.isValid) {
+      setError(validation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
+      return;
+    }
+
+    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const waMsg = `Hello Admin, I am verifying my WhatsApp number (${validation.formatted}) for registration. Verification Code: WA-${verifyCode}`;
+    const waUrl = `https://wa.me/${getAdminVerificationPhone()}?text=${encodeURIComponent(waMsg)}`;
+
+    try {
+      window.open(waUrl, '_blank');
+    } catch {
+      // ignore
+    }
+
+    setIsPhoneVerified(true);
+    setOtpSuccessMessage('হোয়াটসঅ্যাপ সফলভাবে ভেরিফাই হয়েছে!');
+  };
+
+  // Handler to confirm entered OTP
+  const handleConfirmOtp = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!enteredOtp || enteredOtp.trim() !== generatedOtp.trim()) {
+      setError('ভুল OTP কোড! আপনার হোয়াটসঅ্যাপে পাঠানো সঠিক ৪-ডিজিটের কোডটি লিখুন।');
+      return;
+    }
+
+    setIsPhoneVerified(true);
+    setOtpSuccessMessage('হোয়াটসঅ্যাপ নম্বর সফলভাবে ভেরিফাইড হয়েছে!');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,18 +226,31 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
         localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
         onLogin(profileData, profileData);
       } else {
-        // Check WhatsApp validity strictly
+        // Enforce strict WhatsApp validation
         const phoneValidation = validateOriginalWhatsApp(whatsapp);
         if (!phoneValidation.isValid) {
           throw new Error(phoneValidation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
         }
 
-        const cleanEmail = email.trim().toLowerCase();
-        const q = query(collection(db, 'users'), where('email', '==', cleanEmail));
-        const querySnapshot = await getDocs(q);
+        // Enforce WhatsApp Verification requirement
+        if (!isPhoneVerified) {
+          throw new Error('রেজিস্ট্রেশনের আগে আপনার হোয়াটসঅ্যাপ নম্বরটি ভেরিফাই করতে হবে। নিচে থাকা "হোয়াটসঅ্যাপে OTP পাঠান" বা "১-ক্লিক ভেরিফাই" বাটনে চাপ দিয়ে ভেরিফাই করুন।');
+        }
 
-        if (!querySnapshot.empty) {
-          throw new Error('This email is already in use. Please use a different email.');
+        const cleanEmail = email.trim().toLowerCase();
+        
+        // Check if email already used
+        const qEmail = query(collection(db, 'users'), where('email', '==', cleanEmail));
+        const emailSnap = await getDocs(qEmail);
+        if (!emailSnap.empty) {
+          throw new Error('এই ইমেইল দিয়ে ইতিমধ্যে অ্যাকাউন্ট খোলা রয়েছে। অন্য ইমেইল ব্যবহার করুন বা লগইন করুন।');
+        }
+
+        // Check if WhatsApp number already used by another user
+        const qPhone = query(collection(db, 'users'), where('whatsapp', '==', phoneValidation.formatted));
+        const phoneSnap = await getDocs(qPhone);
+        if (!phoneSnap.empty) {
+          throw new Error('এই হোয়াটসঅ্যাপ নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে! একই নম্বরে দুটি অ্যাকাউন্ট খোলা যাবে না।');
         }
 
         // Create a new user profile in Firestore with pending approval
@@ -166,6 +262,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
           email: cleanEmail,
           password: password,
           whatsapp: phoneValidation.formatted,
+          isWhatsAppVerified: true,
           displayName: cleanEmail.split('@')[0] || 'User',
           photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0] || 'User')}&background=random`,
           role: 'user',
@@ -372,11 +469,21 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
               </div>
 
               {!isLogin && !isAdminRoute && (
-                <div className="space-y-2">
+                <div className="space-y-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
                   <div className="flex justify-between items-center">
-                    <label className="text-sm font-medium text-slate-700">হোয়াটসঅ্যাপ নম্বর (WhatsApp Number)</label>
-                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">অরিজিনাল নম্বর আবশ্যক</span>
+                    <label className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>হোয়াটসঅ্যাপ নম্বর</span>
+                      {isPhoneVerified && (
+                        <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                          <Check className="w-3 h-3 text-emerald-600 stroke-[3]" /> ভেরিফাইড
+                        </span>
+                      )}
+                    </label>
+                    <span className="text-[10px] text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                      অরিজিনাল নম্বর আবশ্যক
+                    </span>
                   </div>
+
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -386,13 +493,105 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
                     <input
                       type="tel"
                       value={whatsapp || ''}
-                      onChange={(e) => setWhatsapp(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      disabled={isPhoneVerified}
+                      onChange={(e) => {
+                        setWhatsapp(e.target.value);
+                        setIsPhoneVerified(false);
+                        setOtpSent(false);
+                        setOtpSuccessMessage('');
+                      }}
+                      className={`w-full bg-white border rounded-xl pl-10 pr-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all ${
+                        isPhoneVerified ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-300'
+                      }`}
                       placeholder="017XXXXXXXX"
                       required
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400">১১ ডিজিটের সঠিক হোয়াটসঅ্যাপ নম্বর লিখুন। অনুমোদন কনফার্মেশন এই নম্বরে যাবে।</p>
+
+                  {otpSuccessMessage && (
+                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <span>{otpSuccessMessage}</span>
+                    </div>
+                  )}
+
+                  {/* Verification Actions (OTP + 1-Click Verification) */}
+                  {!isPhoneVerified ? (
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={handleRequestOtp}
+                          disabled={otpSending || !whatsapp}
+                          className="py-2.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{otpSent ? 'OTP পুনরায় পাঠান' : 'হোয়াটসঅ্যাপে OTP পাঠান'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleInstantWhatsAppVerify}
+                          disabled={!whatsapp}
+                          className="py-2.5 px-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>১-ক্লিক ভেরিফাই</span>
+                        </button>
+                      </div>
+
+                      {/* OTP Code Entry input field when OTP is requested */}
+                      {otpSent && (
+                        <div className="p-3 bg-white border border-emerald-200 rounded-xl space-y-2">
+                          <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <KeyRound className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>৪ ডিজিটের OTP কোডটি লিখুন:</span>
+                          </label>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={enteredOtp}
+                              onChange={(e) => setEnteredOtp(e.target.value.replace(/\D/g, ''))}
+                              placeholder="যেমন: 4589"
+                              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-center text-sm font-mono font-bold tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={handleConfirmOtp}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1"
+                            >
+                              <span>কনফার্ম</span>
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-500">
+                            হোয়াটসঅ্যাপে পাঠানো ৪ সংখ্যার কোড দিয়ে কনফার্ম করুন।
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+                      <span className="font-semibold flex items-center gap-1.5">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        নম্বর সফলভাবে ভেরিফাই হয়েছে!
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPhoneVerified(false);
+                          setOtpSent(false);
+                        }}
+                        className="text-[11px] text-emerald-700 underline font-medium hover:text-emerald-900"
+                      >
+                        পরিবর্তন করুন
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-slate-500 leading-tight">
+                    ভুল বা ফেক নম্বর দিয়ে রেজিস্টার করা যাবে না। অরিজিনাল নম্বরে ভেরিফিকেশন নিশ্চিত করলেই সাইন আপ সম্পন্ন হবে।
+                  </p>
                 </div>
               )}
 

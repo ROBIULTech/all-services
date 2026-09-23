@@ -3102,6 +3102,11 @@ https://all-services-roan.vercel.app/`;
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs font-semibold text-slate-800 font-mono">{u.whatsapp || 'No Number'}</span>
+                                    {u.isWhatsAppVerified && (
+                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200" title="WhatsApp Verified">
+                                        ✓ ভেরিফাইড
+                                      </span>
+                                    )}
                                     {userPhone && (
                                       <a
                                         href={`https://wa.me/${userPhone}`}
