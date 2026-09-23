@@ -10,18 +10,29 @@ interface LoginProps {
   globalSettings: GlobalSettings;
 }
 
-// Official / Government / Police CUG series prefixes in Bangladesh
-// e.g., Police CUG 0171337xxxx, 0171338xxxx, 0171339xxxx, 01320xxxxxx, RAB CUG 017777xxxxx, Govt Teletalk 01550xxxxxx, 01552xxxxxx, BGB 01769xxxxxx
+// Comprehensive Official / Government / Police CUG series prefixes in Bangladesh
+// Covers Bangladesh Police, RAB, BGB, DGFI/NSI, Armed Forces, Coast Guard, Ansar, Judiciary, & Ministries
 const GOVT_OFFICIAL_PREFIXES = [
-  '01320', // Police CUG new series
-  '01321', // Police / Armed Forces
-  '0171337', '0171338', '0171339', // Bangladesh Police CUG Grameenphone
-  '017777', // RAB special CUG series
-  '01769', // BGB & Armed Forces series
-  '01550', // Govt Teletalk Secretariat & Official CUG
-  '01552', // Govt Administration Teletalk CUG
-  '017290', // Judicial / Magistrate official lines
-  '018192', // Ministry / Special Govt CUG
+  '01320',                         // Bangladesh Police CUG new series (All Ranges)
+  '01321',                         // Bangladesh Police / Armed Forces
+  '01322',                         // Law Enforcement CUG
+  '0171337', '0171338', '0171339', // Bangladesh Police CUG Grameenphone (HQ, Range, SP, OC, Thana)
+  '0171336',                       // Police Range & Metropolitan Officers
+  '0171329',                       // Police / Intelligence line
+  '017777',                        // Rapid Action Battalion (RAB CUG)
+  '01769',                         // Border Guard Bangladesh (BGB) & Armed Forces CUG
+  '01767',                         // Armed Forces / Ansar & VDP official CUG
+  '01768',                         // BGB / Coast Guard lines
+  '01550',                         // Bangladesh Govt Teletalk Secretariat & Ministry CUG
+  '01552',                         // Govt Public Administration Teletalk CUG
+  '01553',                         // Govt Directorate & Field Administration
+  '01554',                         // Government Departments & Agencies
+  '017290',                        // Judicial / Magistrate / Court Official lines
+  '018192',                        // Special Ministry / Executive Govt lines
+  '019192',                        // Law Enforcement / High Official Banglalink lines
+  '017007',                        // Government Admin Officers
+  '017084',                        // Directorate & Upazila Administration CUG
+  '017096',                        // Government Executive Officers
 ];
 
 // Strict WhatsApp Number Validator with Govt Series and Blacklist check
