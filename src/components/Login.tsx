@@ -99,27 +99,40 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
 
     try {
       if (isLogin) {
-        // 1. Verify in Firestore first (our source of truth for profiles)
-        const q = query(collection(db, 'users'), where('email', '==', email.trim().toLowerCase()));
-        const querySnapshot = await getDocs(q);
+        const cleanEmail = email.trim();
+        const lowerEmail = cleanEmail.toLowerCase();
         
-        if (querySnapshot.empty) {
-          throw new Error('No account found with this email. Please sign up.');
-        }
+        // 1. Verify in Firestore (search both lowercase and original)
+        let profileData: any = null;
+        const qLower = query(collection(db, 'users'), where('email', '==', lowerEmail));
+        const snapLower = await getDocs(qLower);
 
-        const userDoc = querySnapshot.docs[0];
-        const profileData = userDoc.data();
+        if (!snapLower.empty) {
+          profileData = snapLower.docs[0].data();
+        } else {
+          const qExact = query(collection(db, 'users'), where('email', '==', cleanEmail));
+          const snapExact = await getDocs(qExact);
+          if (!snapExact.empty) {
+            profileData = snapExact.docs[0].data();
+          }
+        }
+        
+        if (!profileData) {
+          throw new Error('এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সাইন আপ করুন।');
+        }
         
         if (profileData.password && profileData.password !== password) {
-          throw new Error('Wrong password. Please try again.');
+          throw new Error('পাসওয়ার্ড ভুল হয়েছে! সঠিক পাসওয়ার্ড দিয়ে পুনরায় চেষ্টা করুন।');
         }
 
         if (isAdminRoute && profileData.role !== 'admin') {
-          throw new Error('Access Denied! Only admins can login.');
+          throw new Error('অ্যাক্সেস অস্বীকার করা হয়েছে! শুধুমাত্র অ্যাডমিন লগইন করতে পারবেন।');
         }
 
         // Check if regular user account is pending admin approval
-        if (profileData.role === 'user' && profileData.isApproved === false) {
+        // Check for isApproved === false or undefined/not approved
+        const isUserApproved = profileData.role === 'admin' || profileData.isApproved === true;
+        if (!isUserApproved) {
           setPendingProfile(profileData);
           setShowVerification(true);
           setError('');
@@ -223,35 +236,40 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
 
           {showVerification && pendingProfile ? (
             <div className="space-y-4 text-center">
-              {/* Notice Card */}
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-left space-y-3 shadow-sm">
-                <div className="flex items-center gap-2 text-amber-700 font-bold text-base">
+              {/* Notice Card with exact user requested text */}
+              <div className="p-5 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-950 text-left space-y-3 shadow-md">
+                <div className="flex items-center gap-2 text-amber-800 font-bold text-base">
                   <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 animate-spin" />
-                  <span>অ্যাকাউন্ট পেন্ডিং রয়েছে (Pending Approval)</span>
+                  <span>অ্যাকাউন্ট পেন্ডিং রয়েছে</span>
                 </div>
                 
+                {/* User's verbatim requested message */}
+                <div className="p-3.5 bg-amber-100/90 border border-amber-300 rounded-xl text-amber-900 font-bold text-sm leading-relaxed">
+                  অ্যাকাউন্ট পেন্ডিং রয়েছে, সেক্ষেত্রে আপনার সাইটটি ডেক্সটপে সেভ করে রাখুন বা মোবাইল ফোনে অ্যাপস নামিয়ে রাখুন।
+                </div>
+
                 <p className="text-xs text-amber-800 leading-relaxed font-medium">
-                  আপনার অ্যাকাউন্টটি এখনও অ্যাডমিন অনুমোদন করেনি, তাই অ্যাকাউন্ট পেন্ডিং রয়েছে। অনুমোদন হওয়ার সাথে সাথেই আপনি সফলভাবে লগইন করতে পারবেন।
+                  অ্যাডমিন আপনার অ্যাকাউন্ট অনুমোদন (Approve) করার সাথে সাথে আপনি সরাসরি লগইন করতে পারবেন।
                 </p>
 
                 {/* Specific instructions requested by the user */}
-                <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 space-y-2.5 text-xs text-slate-700 shadow-sm">
+                <div className="bg-white p-3.5 rounded-xl border border-amber-200 space-y-3 text-xs text-slate-700 shadow-sm">
                   <div className="flex items-start gap-2.5">
                     <Monitor className="w-4 h-4 text-indigo-600 flex-shrink-0 mt-0.5" />
                     <div>
                       <span className="font-bold text-indigo-900">ডেস্কটপ ব্যবহারকারী:</span>
                       <p className="text-[11px] text-slate-600 mt-0.5">
-                        পরবর্তীতে সহজে দ্রুত লগইন করতে <strong className="text-slate-800">সাইটটি ডেস্কটপে সেভ করে রাখুন</strong> (বা ব্রাউজারে বুকমার্ক করুন: <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono">Ctrl + D</kbd>)।
+                        সাইটটি পরবর্তীতে সহজে পাওয়ার জন্য <strong className="text-slate-900">ডেক্সটপে সেভ করে রাখুন</strong> অথবা বুকমার্ক করুন (<kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-200 rounded text-[10px] font-mono">Ctrl + D</kbd>)।
                       </p>
                     </div>
                   </div>
 
-                  <div className="border-t border-slate-100 pt-2 flex items-start gap-2.5">
+                  <div className="border-t border-slate-100 pt-2.5 flex items-start gap-2.5">
                     <Smartphone className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
                     <div className="w-full">
-                      <span className="font-bold text-emerald-900">মোবাইল ব্যবহারকারী:</span>
+                      <span className="font-bold text-emerald-900">মোবাইল ফোন ব্যবহারকারী:</span>
                       <p className="text-[11px] text-slate-600 mt-0.5">
-                        সহজে ব্যবহার করতে <strong className="text-slate-800">মোবাইল ফোন এ অ্যাপস নামিয়ে রাখুন</strong>।
+                        <strong className="text-slate-900">মোবাইল ফোন এ অ্যাপস নামিয়ে রাখুন</strong> যাতে সহজে যেকোনো সময় ব্যবহার করতে পারেন।
                       </p>
                       {globalSettings?.apkLink && (
                         <a
@@ -262,7 +280,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
                           className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm"
                         >
                           <Download className="w-3.5 h-3.5" />
-                          <span>অ্যান্ড্রয়েড অ্যাপ ডাউনলোড করুন (APK)</span>
+                          <span>অ্যাপস ডাউনলোড করুন (APK)</span>
                         </a>
                       )}
                     </div>
@@ -270,14 +288,14 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
                 </div>
 
                 {/* User Credentials Summary */}
-                <div className="bg-amber-100/70 p-3 rounded-xl border border-amber-200/80 text-xs space-y-1.5 font-mono">
+                <div className="bg-white/80 p-3 rounded-xl border border-amber-200 text-xs space-y-1.5 font-mono">
                   <p className="flex justify-between items-center">
                     <span className="text-slate-600 font-sans">ইমেইল:</span>
                     <span className="font-bold text-slate-900">{pendingProfile.email}</span>
                   </p>
                   <p className="flex justify-between items-center">
                     <span className="text-slate-600 font-sans">ইউজার আইডি:</span>
-                    <span className="font-bold text-indigo-700 bg-white px-2 py-0.5 rounded border border-amber-200">{pendingProfile.userId}</span>
+                    <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">{pendingProfile.userId}</span>
                   </p>
                   <p className="flex justify-between items-center">
                     <span className="text-slate-600 font-sans">হোয়াটসঅ্যাপ:</span>

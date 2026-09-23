@@ -509,14 +509,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [approvalSearchQuery, setApprovalSearchQuery] = useState('');
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<'pending' | 'approved' | 'all'>('pending');
 
-  const pendingApprovalsCount = allUsers.filter(u => u.role === 'user' && u.isApproved === false).length;
+  const pendingApprovalsCount = allUsers.filter(u => u.role === 'user' && u.isApproved !== true).length;
 
   const filteredApprovalUsers = allUsers.filter(u => {
     if (u.role === 'admin') return false;
     
     // Status filter
-    if (approvalStatusFilter === 'pending' && u.isApproved !== false) return false;
-    if (approvalStatusFilter === 'approved' && u.isApproved === false) return false;
+    if (approvalStatusFilter === 'pending' && u.isApproved === true) return false;
+    if (approvalStatusFilter === 'approved' && u.isApproved !== true) return false;
 
     const q = approvalSearchQuery.toLowerCase().trim();
     if (!q) return true;
@@ -3011,7 +3011,7 @@ https://all-services-roan.vercel.app/`;
                         "px-1.5 py-0.5 rounded-full text-[10px]",
                         approvalStatusFilter === 'approved' ? "bg-emerald-700 text-white" : "bg-slate-200 text-slate-700"
                       )}>
-                        {allUsers.filter(u => u.role === 'user' && u.isApproved !== false).length}
+                        {allUsers.filter(u => u.role === 'user' && u.isApproved === true).length}
                       </span>
                     </button>
                     <button
@@ -3057,7 +3057,7 @@ https://all-services-roan.vercel.app/`;
                       <tbody className="divide-y divide-slate-100">
                         {filteredApprovalUsers.length > 0 ? (
                           filteredApprovalUsers.map((u, i) => {
-                            const isPending = u.isApproved === false;
+                            const isPending = u.isApproved !== true;
                             let userPhone = (u.whatsapp || '').trim().replace(/\D/g, '');
                             if (userPhone.length === 11 && userPhone.startsWith('0')) {
                               userPhone = '88' + userPhone;

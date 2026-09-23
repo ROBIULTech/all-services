@@ -572,8 +572,16 @@ export default function App() {
         if (demoSession) {
           try {
             const session = JSON.parse(demoSession);
-            setUser(session.user);
-            setUserProfile(session.profile);
+            const prof = session.profile;
+            // Prevent unapproved users from restoring active session
+            if (prof && prof.role === 'user' && prof.isApproved === false) {
+              localStorage.removeItem('demo_session');
+              setUser(null);
+              setUserProfile(null);
+            } else {
+              setUser(session.user);
+              setUserProfile(session.profile);
+            }
           } catch (e) {
             setUser(null);
             setUserProfile(null);
@@ -780,9 +788,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Only fetch automatically if we have no orders yet or role just confirmed as admin
-    if (!loading && userProfile?.role === 'admin' && !isAdminViewingUserPanel && orders.length === 0) {
-      fetchAdminData();
+    // Fetch admin data automatically whenever admin is active and either orders or users are empty
+    if (!loading && userProfile?.role === 'admin' && !isAdminViewingUserPanel) {
+      if (orders.length === 0 || allUsers.length === 0) {
+        fetchAdminData();
+      }
     }
   }, [userProfile?.role, loading, isAdminViewingUserPanel]);
 
@@ -1163,10 +1173,13 @@ export default function App() {
     );
   }
 
-  if (!user || !userProfile) {
+  if (!user || !userProfile || (userProfile.role === 'user' && userProfile.isApproved === false)) {
     return <Login 
       globalSettings={globalSettings}
       onLogin={(userData, profileData) => {
+        if (profileData.role === 'user' && profileData.isApproved === false) {
+          return;
+        }
         setUser(userData);
         setUserProfile(profileData);
         localStorage.setItem('demo_session', JSON.stringify({ user: userData, profile: profileData }));
