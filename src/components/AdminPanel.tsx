@@ -61,7 +61,10 @@ import {
   Server,
   Sun,
   Moon,
-  ArrowLeft
+  ArrowLeft,
+  ShieldAlert,
+  Ban,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
@@ -508,8 +511,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // User Approvals States
   const [approvalSearchQuery, setApprovalSearchQuery] = useState('');
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<'pending' | 'approved' | 'all'>('pending');
+  const [newBlacklistInput, setNewBlacklistInput] = useState('');
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
 
   const pendingApprovalsCount = allUsers.filter(u => u.role === 'user' && u.isApproved !== true).length;
+
+  const handleAddBlacklist = async (numberToAdd?: string) => {
+    const num = (numberToAdd || newBlacklistInput || '').trim();
+    if (!num) return;
+    const cleanNum = num.replace(/\D/g, '');
+    const currentList = premiumSettingsForm.blacklistedNumbers || [];
+    if (currentList.includes(cleanNum) || currentList.includes(num)) {
+      alert('এই নম্বরটি ইতিমধ্যে ব্লকলিস্টে রয়েছে।');
+      return;
+    }
+
+    const updated = [...currentList, cleanNum || num];
+    setPremiumSettingsForm(prev => ({ ...prev, blacklistedNumbers: updated }));
+    setNewBlacklistInput('');
+
+    try {
+      await updateGlobalSettings({
+        blacklistedNumbers: updated
+      });
+      setShowSuccess(true);
+      setSuccessMessage({
+        title: 'নম্বর ব্লকলিস্ট হয়েছে!',
+        message: `${num} নম্বরটি সফলভাবে ব্লকলিস্টে যুক্ত করা হয়েছে। এই নম্বর দিয়ে আর রেজিস্ট্রেশন বা লগইন করা যাবে না।`
+      });
+    } catch (err) {
+      console.error('Failed to blacklist number:', err);
+    }
+  };
+
+  const handleRemoveBlacklist = async (numberToRemove: string) => {
+    const updated = (premiumSettingsForm.blacklistedNumbers || []).filter(n => n !== numberToRemove);
+    setPremiumSettingsForm(prev => ({ ...prev, blacklistedNumbers: updated }));
+
+    try {
+      await updateGlobalSettings({
+        blacklistedNumbers: updated
+      });
+      setShowSuccess(true);
+      setSuccessMessage({
+        title: 'ব্লকলিস্ট থেকে সরানো হয়েছে',
+        message: `${numberToRemove} নম্বরটি ব্লকলিস্ট থেকে মুক্ত করা হয়েছে।`
+      });
+    } catch (err) {
+      console.error('Failed to remove blacklist:', err);
+    }
+  };
 
   const filteredApprovalUsers = allUsers.filter(u => {
     if (u.role === 'admin') return false;
@@ -729,7 +780,9 @@ https://all-services-roan.vercel.app/`;
     apkLink: globalSettings?.apkLink || '',
     siteName: globalSettings?.siteName || 'All Services',
     siteDescription: globalSettings?.siteDescription || 'PLATFORM',
-    logoUrl: globalSettings?.logoUrl || ''
+    logoUrl: globalSettings?.logoUrl || '',
+    blacklistedNumbers: globalSettings?.blacklistedNumbers || [],
+    blockGovtSeries: globalSettings?.blockGovtSeries ?? true
   });
 
   useEffect(() => {
@@ -797,7 +850,9 @@ https://all-services-roan.vercel.app/`;
         apkLink: globalSettings.apkLink || '',
         siteName: globalSettings.siteName || 'All Services',
         siteDescription: globalSettings.siteDescription || 'PLATFORM',
-        logoUrl: globalSettings.logoUrl || ''
+        logoUrl: globalSettings.logoUrl || '',
+        blacklistedNumbers: globalSettings.blacklistedNumbers || [],
+        blockGovtSeries: globalSettings.blockGovtSeries ?? true
       });
     }
   }, [globalSettings]);
@@ -2970,6 +3025,13 @@ https://all-services-roan.vercel.app/`;
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowBlacklistModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors shadow-sm active:scale-95"
+                    >
+                      <Ban className="w-4 h-4 text-rose-600" />
+                      <span>ব্লকলিস্ট ও প্রশাসন ফিল্টার ({premiumSettingsForm.blacklistedNumbers?.length || 0})</span>
+                    </button>
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
                       পেন্ডিং একাউন্ট: {pendingApprovalsCount} জন
@@ -3048,6 +3110,7 @@ https://all-services-roan.vercel.app/`;
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ইউজার তথ্য</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ইউজার আইডি</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">হোয়াটসঅ্যাপ নম্বর</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ডিভাইস ও আইপি তথ্য</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">পাসওয়ার্ড</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">রেজিস্ট্রেশন তারিখ ও সময়</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">স্ট্যাটাস</th>
@@ -3062,10 +3125,16 @@ https://all-services-roan.vercel.app/`;
                             if (userPhone.length === 11 && userPhone.startsWith('0')) {
                               userPhone = '88' + userPhone;
                             }
+                            const isSuspicious = u.isSuspiciousGovt || false;
+                            const isBlacklisted = (premiumSettingsForm.blacklistedNumbers || []).some(b => {
+                              const cleanB = (b || '').replace(/\D/g, '');
+                              return cleanB && (userPhone.includes(cleanB) || (u.whatsapp || '').includes(cleanB));
+                            });
                             return (
                               <tr key={u.uid || `approval-user-${i}`} className={cn(
                                 "hover:bg-slate-50/80 transition-colors",
-                                isPending && "bg-amber-50/20"
+                                isSuspicious && "bg-rose-50/40 border-l-4 border-rose-500",
+                                isPending && !isSuspicious && "bg-amber-50/20"
                               )}>
                                 <td className="px-6 py-4">
                                   <div className="flex items-center gap-3">
@@ -3076,7 +3145,19 @@ https://all-services-roan.vercel.app/`;
                                       referrerPolicy="no-referrer"
                                     />
                                     <div>
-                                      <p className="text-sm font-bold text-slate-900">{u.displayName || 'Unknown User'}</p>
+                                      <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                        {u.displayName || 'Unknown User'}
+                                        {isSuspicious && (
+                                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700 border border-rose-300">
+                                            <AlertTriangle className="w-2.5 h-2.5 text-rose-600" /> সন্দেহজনক
+                                          </span>
+                                        )}
+                                        {isBlacklisted && (
+                                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900 text-rose-400">
+                                            ব্লকলিস্টেড
+                                          </span>
+                                        )}
+                                      </p>
                                       <p className="text-xs text-slate-500 font-mono">{u.email}</p>
                                     </div>
                                   </div>
@@ -3117,6 +3198,23 @@ https://all-services-roan.vercel.app/`;
                                       >
                                         <MessageSquare className="w-3.5 h-3.5" />
                                       </a>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="text-xs space-y-0.5">
+                                    <div className="flex items-center gap-1 text-slate-700 font-medium">
+                                      <Smartphone className="w-3 h-3 text-slate-400" />
+                                      <span>{u.registrationDevice || 'ব্রাউজার তথ্য নেই'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[11px] text-slate-500 font-mono">
+                                      <Globe className="w-3 h-3 text-slate-400" />
+                                      <span>IP: {u.registrationIp || 'লগ নেই'}</span>
+                                    </div>
+                                    {u.suspiciousReason && (
+                                      <p className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 inline-block">
+                                        {u.suspiciousReason}
+                                      </p>
                                     )}
                                   </div>
                                 </td>
@@ -3188,6 +3286,14 @@ https://all-services-roan.vercel.app/`;
                                     )}
 
                                     <button
+                                      onClick={() => handleAddBlacklist(u.whatsapp)}
+                                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                      title="এই নম্বরটি সরাসরি ব্লকলিস্টে যুক্ত করুন"
+                                    >
+                                      <Ban className="w-4 h-4" />
+                                    </button>
+
+                                    <button
                                       onClick={() => setDeleteConfirm({ type: 'user', id: u.uid })}
                                       className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors"
                                       title="ডিলিট / বাতিল করুন"
@@ -3201,7 +3307,7 @@ https://all-services-roan.vercel.app/`;
                           })
                         ) : (
                           <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
+                            <td colSpan={8} className="px-6 py-12 text-center text-slate-400">
                               <div className="flex flex-col items-center justify-center space-y-2">
                                 <UserCheck className="w-10 h-10 text-slate-300" />
                                 <p className="text-sm font-semibold text-slate-600">
@@ -3222,6 +3328,158 @@ https://all-services-roan.vercel.app/`;
                     </table>
                   </div>
                 </div>
+
+                {/* Blacklist Management Modal */}
+                <AnimatePresence>
+                  {showBlacklistModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                      <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setShowBlacklistModal(false)}
+                        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                      />
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden"
+                      >
+                        <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-rose-50/50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center">
+                              <ShieldAlert className="w-5 h-5 text-rose-600" />
+                            </div>
+                            <div>
+                              <h3 className="text-base font-bold text-slate-900 font-bangla">ব্লকলিস্ট ও প্রশাসন সিকিউরিটি ফিল্টার</h3>
+                              <p className="text-xs text-slate-500 font-bangla">প্রশাসনের নম্বর ও অবাঞ্ছিত ব্যক্তিদের স্বয়ংক্রিয়ভাবে ব্লক করুন</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => setShowBlacklistModal(false)}
+                            className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-600 shadow-sm"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                          {/* Govt CUG Auto-Block Toggle */}
+                          <div className="p-4 bg-amber-50/70 rounded-2xl border border-amber-200 flex items-start justify-between gap-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <ShieldCheck className="w-4 h-4 text-amber-700" />
+                                <h4 className="text-sm font-bold text-slate-900 font-bangla">অফিশিয়াল প্রশাসন/পুলিশ CUG কোড স্বয়ংক্রিয় ব্লক</h4>
+                              </div>
+                              <p className="text-xs text-slate-600 font-bangla leading-relaxed">
+                                পুলিশ (০১৩২০, ০১৭১৩৩৭-৩৯), র‍্যাব (০১৭৭৭৭), বিজিবি (০১৭৬৯), ও সচিবালয়/সরকারি টেলিটক (০১৫৫০, ০১৫৫২) সিরিজের নম্বরগুলো দিয়ে রেজিস্ট্রেশন করতে পারবে না।
+                              </p>
+                            </div>
+                            <button
+                              onClick={async () => {
+                                const newVal = !premiumSettingsForm.blockGovtSeries;
+                                setPremiumSettingsForm(prev => ({ ...prev, blockGovtSeries: newVal }));
+                                await updateGlobalSettings({ blockGovtSeries: newVal });
+                              }}
+                              className={cn(
+                                "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                                premiumSettingsForm.blockGovtSeries !== false ? "bg-emerald-600" : "bg-slate-300"
+                              )}
+                            >
+                              <span
+                                className={cn(
+                                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                  premiumSettingsForm.blockGovtSeries !== false ? "translate-x-5" : "translate-x-0"
+                                )}
+                              />
+                            </button>
+                          </div>
+
+                          {/* Add Custom Blacklist Number */}
+                          <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider font-bangla">
+                              নতুন সন্দেহজনক / নিষিদ্ধ নম্বর যুক্ত করুন
+                            </label>
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Ban className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                                <input
+                                  type="text"
+                                  placeholder="নম্বর লিখুন (যেমন: 017xxxxxxxx বা 013xxxxxxxx)"
+                                  value={newBlacklistInput}
+                                  onChange={(e) => setNewBlacklistInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddBlacklist();
+                                    }
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleAddBlacklist()}
+                                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-500/20 active:scale-95 flex items-center gap-1.5"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>ব্লকলিস্টে যোগ করুন</span>
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-slate-500 font-bangla">
+                              যেকোনো নম্বর এখানে যোগ করলে ঐ নম্বর দিয়ে কেউ রেজিস্ট্রেশন বা লগইন করতে পারবে না।
+                            </p>
+                          </div>
+
+                          {/* Blacklisted Numbers List */}
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider font-bangla">
+                                বর্তমানে ব্লকলিস্টে থাকা নম্বরসমূহ ({premiumSettingsForm.blacklistedNumbers?.length || 0})
+                              </h4>
+                            </div>
+
+                            {(!premiumSettingsForm.blacklistedNumbers || premiumSettingsForm.blacklistedNumbers.length === 0) ? (
+                              <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-center">
+                                <p className="text-xs text-slate-500 font-bangla">কোনো কাস্টম ব্লকলিস্টেড নম্বর যুক্ত করা নেই।</p>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+                                {premiumSettingsForm.blacklistedNumbers.map((num, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-rose-50/50 rounded-xl border border-slate-200 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                                      <span className="font-mono text-xs font-bold text-slate-800">{num}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => handleRemoveBlacklist(num)}
+                                      className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white transition-colors"
+                                      title="ব্লকলিস্ট থেকে সরান"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end">
+                          <button
+                            onClick={() => setShowBlacklistModal(false)}
+                            className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                          >
+                            বন্ধ করুন
+                          </button>
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
 
@@ -4724,7 +4982,9 @@ https://all-services-roan.vercel.app/`;
                             apkLink: premiumSettingsForm.apkLink || '',
                             siteName: premiumSettingsForm.siteName || 'All Services',
                             siteDescription: premiumSettingsForm.siteDescription || 'PLATFORM',
-                            logoUrl: premiumSettingsForm.logoUrl || ''
+                            logoUrl: premiumSettingsForm.logoUrl || '',
+                            blacklistedNumbers: premiumSettingsForm.blacklistedNumbers || [],
+                            blockGovtSeries: premiumSettingsForm.blockGovtSeries ?? true
                           });
                           setSuccessMessage({ title: 'Success!', message: 'Global settings updated successfully.' });
                           setShowSuccess(true);
@@ -4733,6 +4993,94 @@ https://all-services-roan.vercel.app/`;
                       >
                         Save Settings
                       </button>
+                    </div>
+
+                    {/* Blacklist & Govt Anti-Surveillance Settings */}
+                    <div className="mt-8 pt-8 border-t border-slate-200">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                          <ShieldAlert className="w-5 h-5 text-rose-600" />
+                          <h3 className="text-lg font-bold text-slate-900 font-bangla">ব্লকলিস্ট ও প্রশাসন সিকিউরিটি ফিল্টার</h3>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                          {premiumSettingsForm.blacklistedNumbers?.length || 0} টি নম্বর নিষিদ্ধ
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <h4 className="text-sm font-bold text-slate-900 font-bangla flex items-center gap-1.5">
+                              <ShieldCheck className="w-4 h-4 text-amber-700" />
+                              প্রশাসন ও পুলিশ অফিশিয়াল CUG কোটা সিরিজ স্বয়ংক্রিয় ব্লক
+                            </h4>
+                            <p className="text-xs text-slate-600 font-bangla">
+                              চালু থাকলে পুলিশ (০১৩২০, ০১৭১৩৩৭), র‍্যাব (০১৭৭৭৭), বিজিবি (০১৭৬৯) ও সরকারি সচিবালয় টেলিটক (০১৫৫০, ০১৫৫২) দিয়ে কেউ অ্যাকাউন্ট খুলতে পারবে না।
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setPremiumSettingsForm(prev => ({ ...prev, blockGovtSeries: !prev.blockGovtSeries }))}
+                            className={cn(
+                              "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
+                              premiumSettingsForm.blockGovtSeries !== false ? "bg-emerald-600" : "bg-slate-300"
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                                premiumSettingsForm.blockGovtSeries !== false ? "translate-x-5" : "translate-x-0"
+                              )}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Add custom blacklist */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder="সন্দেহজনক মোবাইল নম্বর লিখুন (যেমন: 017xxxxxxxx)..."
+                            value={newBlacklistInput}
+                            onChange={(e) => setNewBlacklistInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddBlacklist();
+                              }
+                            }}
+                            className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 text-xs font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddBlacklist()}
+                            className="px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors shadow-sm flex items-center gap-1.5"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>ব্লকলিস্টে যোগ করুন</span>
+                          </button>
+                        </div>
+
+                        {/* Badges of current blacklisted numbers */}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {(premiumSettingsForm.blacklistedNumbers || []).map((num, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-mono font-semibold border border-slate-200 hover:border-rose-300 transition-all"
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                              {num}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveBlacklist(num)}
+                                className="text-slate-400 hover:text-rose-600 ml-1"
+                                title="সরান"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mt-8 pt-8 border-t border-slate-200">

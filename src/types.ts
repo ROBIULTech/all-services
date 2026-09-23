@@ -19,6 +19,12 @@ export interface UserProfile {
   approvedAt?: any;
   isApiEnabled?: boolean;
   themeColor?: string;
+  isWhatsAppVerified?: boolean;
+  registrationIp?: string;
+  registrationIsp?: string;
+  registrationDevice?: string;
+  isSuspiciousGovt?: boolean;
+  suspiciousReason?: string;
 }
 
 export interface Order {
@@ -136,6 +142,8 @@ export interface GlobalSettings {
   siteName?: string;
   siteDescription?: string;
   logoUrl?: string;
+  blacklistedNumbers?: string[];
+  blockGovtSeries?: boolean;
 }
 
 export interface TrashItem {

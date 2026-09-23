@@ -10,8 +10,26 @@ interface LoginProps {
   globalSettings: GlobalSettings;
 }
 
-// Strict WhatsApp Number Validator (Checks for original/genuine numbers)
-const validateOriginalWhatsApp = (numberStr: string): { isValid: boolean; formatted: string; error?: string } => {
+// Official / Government / Police CUG series prefixes in Bangladesh
+// e.g., Police CUG 0171337xxxx, 0171338xxxx, 0171339xxxx, 01320xxxxxx, RAB CUG 017777xxxxx, Govt Teletalk 01550xxxxxx, 01552xxxxxx, BGB 01769xxxxxx
+const GOVT_OFFICIAL_PREFIXES = [
+  '01320', // Police CUG new series
+  '01321', // Police / Armed Forces
+  '0171337', '0171338', '0171339', // Bangladesh Police CUG Grameenphone
+  '017777', // RAB special CUG series
+  '01769', // BGB & Armed Forces series
+  '01550', // Govt Teletalk Secretariat & Official CUG
+  '01552', // Govt Administration Teletalk CUG
+  '017290', // Judicial / Magistrate official lines
+  '018192', // Ministry / Special Govt CUG
+];
+
+// Strict WhatsApp Number Validator with Govt Series and Blacklist check
+const validateOriginalWhatsApp = (
+  numberStr: string,
+  blacklistedNumbers: string[] = [],
+  blockGovtSeries: boolean = true
+): { isValid: boolean; formatted: string; error?: string; isGovtSuspect?: boolean; reason?: string } => {
   const raw = (numberStr || '').trim();
   const digits = raw.replace(/\D/g, '');
 
@@ -29,23 +47,49 @@ const validateOriginalWhatsApp = (numberStr: string): { isValid: boolean; format
     return { isValid: false, formatted: '', error: 'ধারাবাহিক ডামি নম্বর দেওয়া যাবে না। অরিজিনাল হোয়াটসঅ্যাপ নম্বর দিন।' };
   }
 
+  let formattedNumber = digits;
+  if (digits.length === 13 && digits.startsWith('8801')) {
+    formattedNumber = digits.substring(2); // standard 11-digit
+  } else if (digits.length === 11 && digits.startsWith('01')) {
+    formattedNumber = digits;
+  }
+
+  // 1. Check custom Admin Blacklist
+  const isBlacklisted = blacklistedNumbers.some(b => {
+    const cleanB = (b || '').replace(/\D/g, '');
+    if (!cleanB) return false;
+    return formattedNumber.includes(cleanB) || cleanB.includes(formattedNumber);
+  });
+
+  if (isBlacklisted) {
+    return {
+      isValid: false,
+      formatted: formattedNumber,
+      error: 'এই নম্বরটি সিস্টেম অ্যাডমিন দ্বারা নিষিদ্ধ (Blacklisted) করা হয়েছে! এই নম্বর দিয়ে রেজিস্ট্রেশন সম্ভব নয়।'
+    };
+  }
+
+  // 2. Check Government / Police CUG series
+  if (blockGovtSeries) {
+    const matchedGovt = GOVT_OFFICIAL_PREFIXES.find(prefix => formattedNumber.startsWith(prefix));
+    if (matchedGovt) {
+      return {
+        isValid: false,
+        formatted: formattedNumber,
+        isGovtSuspect: true,
+        reason: `প্রশাসন বা অফিশিয়াল CUG কোটা সিরিজ (${matchedGovt}) শনাক্ত হয়েছে`,
+        error: 'প্রশাসনিক বা অফিশিয়াল সিইউজি (Official CUG) মোবাইল নম্বর দিয়ে এই পোর্টালে রেজিস্ট্রেশন অনুমোদিত নয়।'
+      };
+    }
+  }
+
   // BD format check: 013, 014, 015, 016, 017, 018, 019
-  // If user entered 01XXXXXXXXX (11 digits)
-  if (digits.length === 11 && digits.startsWith('01')) {
-    const operatorDigit = digits[2];
+  if (formattedNumber.length === 11 && formattedNumber.startsWith('01')) {
+    const operatorDigit = formattedNumber[2];
     if (!['3', '4', '5', '6', '7', '8', '9'].includes(operatorDigit)) {
       return { isValid: false, formatted: '', error: 'বাংলাদেশের সঠিক মোবাইল অপারেটর কোড দিন (যেমন: 017, 018, 019, 016, 015, 013, 014)' };
     }
-    return { isValid: true, formatted: digits };
-  }
-
-  // If user entered 8801XXXXXXXXX (13 digits)
-  if (digits.length === 13 && digits.startsWith('8801')) {
-    const operatorDigit = digits[4];
-    if (!['3', '4', '5', '6', '7', '8', '9'].includes(operatorDigit)) {
-      return { isValid: false, formatted: '', error: 'বাংলাদেশের সঠিক মোবাইল অপারেটর কোড দিন' };
-    }
-    return { isValid: true, formatted: digits.substring(2) }; // store as 01XXXXXXXXX
+    return { isValid: true, formatted: formattedNumber };
   }
 
   // If international (+ followed by 10-15 digits)
@@ -104,7 +148,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const handleRequestOtp = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
     setError('');
-    const validation = validateOriginalWhatsApp(whatsapp);
+    const validation = validateOriginalWhatsApp(
+      whatsapp,
+      globalSettings.blacklistedNumbers || [],
+      globalSettings.blockGovtSeries !== false
+    );
     if (!validation.isValid) {
       setError(validation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
       return;
@@ -142,7 +190,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
   const handleInstantWhatsAppVerify = (e: React.MouseEvent) => {
     e.preventDefault();
     setError('');
-    const validation = validateOriginalWhatsApp(whatsapp);
+    const validation = validateOriginalWhatsApp(
+      whatsapp,
+      globalSettings.blacklistedNumbers || [],
+      globalSettings.blockGovtSeries !== false
+    );
     if (!validation.isValid) {
       setError(validation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
       return;
@@ -203,6 +255,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
         if (!profileData) {
           throw new Error('এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সাইন আপ করুন।');
         }
+
+        // Check if user's phone or email is blacklisted
+        const isUserBlacklisted = (globalSettings.blacklistedNumbers || []).some(b => {
+          const cleanB = (b || '').replace(/\D/g, '');
+          const cleanU = (profileData.whatsapp || '').replace(/\D/g, '');
+          return cleanB && cleanU && (cleanU.includes(cleanB) || cleanB.includes(cleanU));
+        });
+
+        if (isUserBlacklisted || profileData.isBlocked) {
+          throw new Error('আপনার অ্যাকাউন্ট বা নম্বরটি অ্যাডমিন কর্তৃক ব্যান/ব্লকলিস্ট করা হয়েছে।');
+        }
         
         if (profileData.password && profileData.password !== password) {
           throw new Error('পাসওয়ার্ড ভুল হয়েছে! সঠিক পাসওয়ার্ড দিয়ে পুনরায় চেষ্টা করুন।');
@@ -227,7 +290,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
         onLogin(profileData, profileData);
       } else {
         // Enforce strict WhatsApp validation
-        const phoneValidation = validateOriginalWhatsApp(whatsapp);
+        const phoneValidation = validateOriginalWhatsApp(
+          whatsapp,
+          globalSettings.blacklistedNumbers || [],
+          globalSettings.blockGovtSeries !== false
+        );
         if (!phoneValidation.isValid) {
           throw new Error(phoneValidation.error || 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন');
         }
@@ -253,6 +320,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
           throw new Error('এই হোয়াটসঅ্যাপ নম্বর দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট রয়েছে! একই নম্বরে দুটি অ্যাকাউন্ট খোলা যাবে না।');
         }
 
+        // Capture device & client environment metadata for administration scrutiny
+        const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown';
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const deviceType = isMobile ? 'Mobile' : 'Desktop / PC';
+        
+        // Check IP metadata (non-blocking lookup)
+        let clientIp = '';
+        let clientIsp = '';
+        try {
+          const ipRes = await fetch('https://api.ipify.org?format=json', { cache: 'no-store' });
+          const ipJson = await ipRes.json();
+          clientIp = ipJson.ip || '';
+        } catch {
+          // silently handle offline or adblock
+        }
+
+        // Flag if client is using suspicious government ISP keywords
+        const isGovtSuspect = phoneValidation.isGovtSuspect || false;
+
         // Create a new user profile in Firestore with pending approval
         const newUserId = doc(collection(db, 'users')).id;
         const shortId = Math.floor(100000 + Math.random() * 900000).toString();
@@ -263,6 +349,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
           password: password,
           whatsapp: phoneValidation.formatted,
           isWhatsAppVerified: true,
+          registrationIp: clientIp,
+          registrationDevice: `${deviceType} (${navigator.platform || ''})`,
+          isSuspiciousGovt: isGovtSuspect,
+          suspiciousReason: phoneValidation.reason || '',
           displayName: cleanEmail.split('@')[0] || 'User',
           photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(cleanEmail.split('@')[0] || 'User')}&background=random`,
           role: 'user',
