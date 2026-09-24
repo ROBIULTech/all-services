@@ -53,6 +53,19 @@
         }
       },
       "required": ["id", "titleBn", "price", "isActive"]
+    },
+    "SubAdmin": {
+      "title": "SubAdmin",
+      "description": "Sub-admin profile with area and WhatsApp",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "area": { "type": "string" },
+        "whatsapp": { "type": "string" },
+        "isVerified": { "type": "boolean" }
+      },
+      "required": ["uid", "name", "area", "whatsapp"]
     }
   },
   "firestore": {
@@ -67,6 +80,10 @@
     "/products/{productId}": {
       "schema": "Product",
       "description": "Service configurations"
+    },
+    "/subAdmins/{subAdminId}": {
+      "schema": "SubAdmin",
+      "description": "Sub-admin documents"
     }
   }
 }

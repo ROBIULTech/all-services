@@ -74,6 +74,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase';
 import ServiceControls from './ServiceControls';
 import { Logo } from './Logo';
+import { SubAdminPanel } from './SubAdminPanel';
 
 enum OperationType {
   CREATE = 'create',
@@ -867,6 +868,7 @@ https://all-services-roan.vercel.app/`;
     { id: 'completed-orders', label: 'Completed Orders', icon: CheckCircle, isSpecial: false },
     { id: 'rejected-orders', label: 'Rejected Orders', icon: XCircle, isSpecial: false },
     { id: 'recharge-requests', label: 'Recharge Requests', icon: CreditCard, isSpecial: false },
+    { id: 'sub-admins', label: 'Sub-Admin Management', icon: ShieldCheck, isSpecial: false },
     { id: 'notifications', label: 'Notifications', icon: Megaphone, isSpecial: false },
     { id: 'settings', label: 'Settings', icon: Settings, isSpecial: false },
     { id: 'trash', label: 'Trash', icon: Trash2, isSpecial: false },
@@ -2790,19 +2792,23 @@ https://all-services-roan.vercel.app/`;
                               <button 
                                 onClick={() => {
                                   const currentRole = u.role.toLowerCase();
-                                  const nextRole = currentRole === 'admin' ? 'user' : 'admin';
+                                  const nextRole = currentRole === 'admin' ? 'user' : currentRole === 'sub-admin' ? 'admin' : 'sub-admin';
                                   if (confirm(`Do you want to change ${u.displayName || u.email}'s role to ${nextRole.toUpperCase()}?`)) {
                                     updateUser(u.uid, { role: nextRole });
                                   }
                                 }}
                                 className={cn(
                                   "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
-                                  u.role === 'admin' ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                                  u.role === 'admin' ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : 
+                                  u.role === 'sub-admin' ? "bg-blue-600 text-white shadow-lg shadow-blue-200" :
+                                  "bg-slate-100 text-slate-400 hover:bg-slate-200"
                                 )}
-                                title={u.role === 'admin' ? "Admin (Click to revoke)" : "Promote to Admin"}
+                                title={u.role === 'admin' ? "Admin (Click to set User)" : u.role === 'sub-admin' ? "Sub-Admin (Click to set Admin)" : "Promote to Sub-Admin"}
                               >
                                 {u.role === 'admin' ? (
                                   <ShieldCheck className="w-5 h-5 animate-pulse" />
+                                ) : u.role === 'sub-admin' ? (
+                                  <ShieldAlert className="w-5 h-5" />
                                 ) : (
                                   <User className="w-5 h-5" />
                                 )}
@@ -3746,6 +3752,10 @@ https://all-services-roan.vercel.app/`;
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'sub-admins' && (
+              <SubAdminPanel allUsers={allUsers} updateUser={updateUser} />
             )}
 
             {activeTab === 'notifications' && (

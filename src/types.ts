@@ -4,7 +4,14 @@ export interface UserProfile {
   uid: string;
   userId?: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'sub-admin';
+  adminArea?: string;
+  division?: string;
+  district?: string;
+  upazila?: string;
+  union?: string;
+  ward?: string;
+  village?: string;
   balance: number;
   displayName?: string;
   photoURL?: string;
@@ -30,6 +37,7 @@ export interface UserProfile {
 export interface Order {
   id?: string;
   uid: string;
+  area?: string;
   serviceId: number;
   serviceTitle: string;
   status: 'pending' | 'processing' | 'completed' | 'rejected';

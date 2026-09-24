@@ -43,6 +43,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
     
+    // SubAdmins
+    match /subAdmins/{subAdminId} {
+      allow read, write: if isAdmin();
+    }
+    
     // Orders
     match /orders/{orderId} {
       allow read, write: if true;
