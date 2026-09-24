@@ -51,7 +51,9 @@ export const SubAdminPanel: React.FC<SubAdminPanelProps> = ({ allUsers, updateUs
       whatsapp: formData.whatsapp
     };
     
-    await updateUser(selectedUser.uid, updates);
+    // Generate Sub-Admin Login URL
+    const baseUrl = window.location.origin;
+    const subAdminUrl = `${baseUrl}/sub-admin-login?uid=${selectedUser.uid}`;
 
     // Send WhatsApp welcome message
     const msg = `অভিনন্দন! আপনাকে সাব-অ্যাডমিন হিসেবে নিয়োগ দেওয়া হয়েছে।
@@ -60,6 +62,8 @@ export const SubAdminPanel: React.FC<SubAdminPanelProps> = ({ allUsers, updateUs
 আইডি: ${selectedUser.userId || 'N/A'}
 ইমেইল: ${selectedUser.email}
 এলাকা: ${formData.adminArea}
+
+লগইন লিঙ্ক: ${subAdminUrl}
 
 আমাদের প্ল্যাটফর্মে স্বাগতম!`;
 
@@ -70,12 +74,21 @@ export const SubAdminPanel: React.FC<SubAdminPanelProps> = ({ allUsers, updateUs
         window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
+    // Add URL to updates
+    const finalUpdates: Partial<UserProfile> = { 
+      ...updates,
+      // @ts-ignore
+      subAdminUrl: subAdminUrl
+    };
+    
+    await updateUser(selectedUser.uid, finalUpdates);
+
     setSelectedUser(null);
     setFormData({ adminArea: '', division: '', district: '', upazila: '', union: '', ward: '', village: '', whatsapp: '' });
   };
 
   const handleDemote = async (uid: string) => {
-    await updateUser(uid, { role: 'user', adminArea: undefined });
+    await updateUser(uid, { role: 'user', adminArea: null });
   };
 
   return (
@@ -160,7 +173,13 @@ export const SubAdminPanel: React.FC<SubAdminPanelProps> = ({ allUsers, updateUs
               <div key={u.uid} className="flex items-center justify-between p-4 border rounded-xl">
                 <div>
                   <p className="font-bold">{u.displayName || u.email}</p>
-                  <p className="text-xs text-slate-500">Area: {u.adminArea}, {u.village}, {u.union}, {u.upazila}, {u.district}, {u.division}</p>
+                  <p className="text-xs text-slate-500 font-semibold">এলাকা: {u.adminArea || 'N/A'}</p>
+                  <p className="text-xs text-slate-600">ঠিকানা: {u.village || 'N/A'}, {u.union || 'N/A'}, {u.ward || 'N/A'}, {u.upazila || 'N/A'}, {u.district || 'N/A'}, {u.division || 'N/A'}</p>
+                  <p className="text-xs text-slate-600">হোয়াটসঅ্যাপ: {u.whatsapp || 'N/A'}</p>
+                  <p className="text-xs text-blue-600 font-mono mt-1 break-all">
+                    {/* @ts-ignore */}
+                    URL: {u.subAdminUrl || 'N/A'}
+                  </p>
                 </div>
                 <button onClick={() => handleDemote(u.uid)} className="text-red-500">
                   <Trash2 className="w-4 h-4" />
