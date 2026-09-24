@@ -1187,8 +1187,8 @@ export default function App() {
     />;
   }
 
-  // Only open AdminPanel if the profile explicitly has 'admin' role and is not previewing the user panel
-  if (userProfile.role === 'admin' && !isAdminViewingUserPanel) {
+  // Only open AdminPanel if the profile explicitly has 'admin' or 'sub-admin' role and is not previewing the user panel
+  if ((userProfile.role === 'admin' || userProfile.role === 'sub-admin') && !isAdminViewingUserPanel) {
     return (
       <AdminPanel 
         userProfile={userProfile}

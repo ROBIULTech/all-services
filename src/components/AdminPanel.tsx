@@ -1427,7 +1427,7 @@ https://all-services-roan.vercel.app/`;
 
                         return [
                           { label: 'Total Revenue', value: `৳${todayRevenue.toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'dashboard' },
-                          { label: 'Total Users', value: allUsers.length.toString(), change: '+5%', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100', tab: 'users' },
+                          { label: 'Total Users', value: userProfile.role === 'admin' ? allUsers.length.toString() : '***', change: userProfile.role === 'admin' ? '+5%' : 'Hidden', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100', tab: 'users', restricted: userProfile.role !== 'admin' },
                           { label: 'Total Orders', value: totalOrders.toString(), change: '+15%', icon: ShoppingBag, color: 'text-purple-600', bg: 'bg-purple-100', tab: 'orders' },
                           { label: 'Pending Orders', value: pendingOrders.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100', tab: 'orders' },
                           { label: 'Completed Orders', value: completedOrders.toString(), change: 'Completed', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'completed-orders' },
@@ -1439,6 +1439,10 @@ https://all-services-roan.vercel.app/`;
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.1 }}
                             onClick={() => {
+                              if ((stat as any).restricted) {
+                                alert("মেইন এডমিন ব্যাতিত কেউ দেখতে পারবে না");
+                                return;
+                              }
                               if (stat.label === 'Completed Orders') {
                                 setShowCompletedOrdersPicker(true);
                               } else if (stat.tab !== 'dashboard') {
@@ -3755,7 +3759,9 @@ https://all-services-roan.vercel.app/`;
             )}
 
             {activeTab === 'sub-admins' && (
-              <SubAdminPanel allUsers={allUsers} updateUser={updateUser} />
+              userProfile.role === 'admin' 
+                ? <SubAdminPanel allUsers={allUsers} updateUser={updateUser} />
+                : <div className="p-10 text-center text-red-500 font-bold bg-white rounded-2xl border">মেইন এডমিন ব্যাতিত কেউ দেখতে পারবে না</div>
             )}
 
             {activeTab === 'notifications' && (
