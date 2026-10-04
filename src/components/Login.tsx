@@ -297,16 +297,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin, globalSettings }) => {
           return;
         }
 
-        // --- NEW: Add WhatsApp Verification for Login ---
-        if (profileData.role === 'user' && !isPhoneVerified) {
-          setError('লগইন করতে আপনার হোয়াটসঅ্যাপ নম্বরটি ভেরিফাই করতে হবে।');
-          setShowVerification(true); // Using existing verification flow
-          setPendingProfile(profileData); // Reuse existing state to show verification UI
-          setLoading(false);
-          return;
-        }
-        // --- END NEW ---
-
         localStorage.setItem('demo_session', JSON.stringify({ user: profileData, profile: profileData }));
         onLogin(profileData, profileData);
       } else {
