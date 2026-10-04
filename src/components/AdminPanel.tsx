@@ -75,6 +75,7 @@ import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, o
 import ServiceControls from './ServiceControls';
 import { Logo } from './Logo';
 import { SubAdminPanel } from './SubAdminPanel';
+import { MessageModal } from './MessageModal';
 
 enum OperationType {
   CREATE = 'create',
@@ -197,6 +198,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [reportStartDate, setReportStartDate] = useState('');
   const [reportEndDate, setReportEndDate] = useState('');
   const [isCopiedUserUrl, setIsCopiedUserUrl] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [messageUser, setMessageUser] = useState<UserProfile | null>(null);
 
   const handleCopyUserUrl = () => {
     try {
@@ -457,6 +460,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [balancePrompt, setBalancePrompt] = useState<{ uid: string, currentBalance: number } | null>(null);
   const [newBalanceValue, setNewBalanceValue] = useState('');
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [userReportModalOpen, setUserReportModalOpen] = useState<UserProfile | null>(null);
   const [reportUserSearchModalOpen, setReportUserSearchModalOpen] = useState(false);
   const [reportUserSearchQuery, setReportUserSearchQuery] = useState('');
@@ -494,12 +499,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       u.whatsapp?.toLowerCase().includes(userSearchQuery.toLowerCase());
     
     if (userTypeFilter === 'Admin') {
-      return matchesSearch && u.role?.toLowerCase() === 'admin';
+      return matchesSearch && (u.role?.toLowerCase() === 'admin' || u.role?.toLowerCase() === 'sub-admin');
     }
     if (userTypeFilter === 'User') {
-      return matchesSearch && u.role?.toLowerCase() !== 'admin';
+      return matchesSearch && u.role?.toLowerCase() === 'user';
     }
     return matchesSearch;
+  }).sort((a, b) => {
+    const roleOrder: { [key: string]: number } = { 'admin': 1, 'sub-admin': 2, 'user': 3 };
+    return (roleOrder[a.role.toLowerCase()] || 4) - (roleOrder[b.role.toLowerCase()] || 4);
   });
 
   const filteredReportUsers = allUsers.filter(u => 
@@ -655,7 +663,7 @@ https://all-services-roan.vercel.app/`;
   const filteredOrders = orders.filter(o => 
     o.status !== 'rejected' &&
     o.status !== 'completed' &&
-    o.serviceTitle !== 'Recharge Request' &&
+    !o.serviceTitle?.toLowerCase().includes('recharge') &&
     !isPremium(o) && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
@@ -664,7 +672,7 @@ https://all-services-roan.vercel.app/`;
 
   const filteredCompletedOrders = orders.filter(o => 
     o.status === 'completed' &&
-    o.serviceTitle !== 'Recharge Request' &&
+    !o.serviceTitle?.toLowerCase().includes('recharge') &&
     !isPremium(o) && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
@@ -673,7 +681,7 @@ https://all-services-roan.vercel.app/`;
 
   const filteredRejectedOrders = orders.filter(o => 
     o.status === 'rejected' &&
-    o.serviceTitle !== 'Recharge Request' && (
+    !o.serviceTitle?.toLowerCase().includes('recharge') && (
       o.serviceTitle?.toLowerCase().includes(orderSearchQuery.toLowerCase()) ||
       o.userEmail?.toLowerCase().includes(orderSearchQuery.toLowerCase())
     )
@@ -1413,17 +1421,23 @@ https://all-services-roan.vercel.app/`;
                           return orderDate >= startOfToday;
                         });
 
-                        const todayRevenue = todaysOrders.reduce((acc, o) => {
+                        const todaysServiceOrders = todaysOrders.filter(o => !o.serviceTitle?.toLowerCase().includes('recharge'));
+
+                        const todayRevenue = todaysServiceOrders.reduce((acc, o) => {
                           if (o.status !== 'rejected') {
                               return acc + o.price;
                           }
                           return acc;
                         }, 0);
 
-                        const totalOrders = todaysOrders.length;
-                        const pendingOrders = todaysOrders.filter(o => o.status === 'pending').length;
-                        const canceledOrders = todaysOrders.filter(o => o.status === 'rejected').length;
-                        const completedOrders = todaysOrders.filter(o => o.status === 'completed').length;
+                        const totalOrders = todaysServiceOrders.length;
+                        const pendingOrders = todaysServiceOrders.filter(o => o.status === 'pending').length;
+                        const canceledOrders = todaysServiceOrders.filter(o => o.status === 'rejected').length;
+                        const completedOrders = todaysServiceOrders.filter(o => o.status === 'completed').length;
+                        
+                        const pendingRecharges = todaysOrders.filter(o => o.serviceTitle?.toLowerCase().includes('recharge') && o.status === 'pending').length;
+                        const canceledRecharges = todaysOrders.filter(o => o.serviceTitle?.toLowerCase().includes('recharge') && o.status === 'rejected').length;
+                        const approvedRecharges = todaysOrders.filter(o => o.serviceTitle?.toLowerCase().includes('recharge') && o.status === 'completed').length;
 
                         return [
                           { label: 'Total Revenue', value: `৳${todayRevenue.toLocaleString()}`, change: '+12%', icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'dashboard' },
@@ -1432,6 +1446,9 @@ https://all-services-roan.vercel.app/`;
                           { label: 'Pending Orders', value: pendingOrders.toString(), change: 'Action Required', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100', tab: 'orders' },
                           { label: 'Completed Orders', value: completedOrders.toString(), change: 'Completed', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'completed-orders' },
                           { label: 'Canceled Orders', value: canceledOrders.toString(), change: 'Canceled', icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', tab: 'rejected-orders' },
+                          { label: 'Recharge Requests', value: pendingRecharges.toString(), change: 'Action Required', icon: CreditCard, color: 'text-amber-600', bg: 'bg-amber-100', tab: 'recharge-requests' },
+                          { label: 'Recharge Approved', value: approvedRecharges.toString(), change: 'Completed', icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-100', tab: 'recharge-requests' },
+                          { label: 'Canceled Recharges', value: canceledRecharges.toString(), change: 'Canceled', icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', tab: 'recharge-requests' },
                         ].map((stat, i) => (
                           <motion.div
                             key={stat.label}
@@ -2775,13 +2792,14 @@ https://all-services-roan.vercel.app/`;
                             onClick={() => setUserTypeFilter(userTypeFilter === 'User' ? 'All' : 'User')}
                           >
                             <div className="flex items-center gap-1.5">
-                              User Info
+                              User
                               <div className={cn(
                                 "w-1.5 h-1.5 rounded-full transition-all shadow-[0_0_8px_rgba(129,140,248,0.8)]",
                                 userTypeFilter === 'User' ? "bg-emerald-500 scale-125 opacity-100" : "bg-indigo-400 opacity-0 group-hover:opacity-100"
                               )} />
                             </div>
                           </th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Info</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp / Password</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Balance</th>
@@ -2839,8 +2857,8 @@ https://all-services-roan.vercel.app/`;
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 rounded">{u.password || 'N/A'}</span>
                                   <button onClick={() => {
-                                    const newPass = prompt("Edit Password:", u.password);
-                                    if(newPass) updateUser(u.uid, { password: newPass });
+                                    setEditingUser(u);
+                                    setIsEditUserModalOpen(true);
                                   }} className="p-0.5 hover:bg-slate-100 rounded">
                                     <Settings className="w-3 h-3 text-slate-300" />
                                   </button>
@@ -3288,7 +3306,7 @@ https://all-services-roan.vercel.app/`;
                                           if (raw) window.open(`https://wa.me/${raw}?text=${encodeURIComponent(msg)}`, '_blank');
                                         }}
                                         className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
-                                        title="কনফার্মেশন মেসেজ পুনরায় পাঠান"
+                                        title="মেসেজ পাঠান ও সার্ভিসের স্ট্যাটাস দেখুন"
                                       >
                                         <MessageSquare className="w-3 h-3" />
                                         <span>মেসেজ পাঠান</span>
@@ -3666,7 +3684,7 @@ https://all-services-roan.vercel.app/`;
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500"></th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Amount & Method</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Transaction Details</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
@@ -3760,7 +3778,18 @@ https://all-services-roan.vercel.app/`;
 
             {activeTab === 'sub-admins' && (
               userProfile.role === 'admin' 
-                ? <SubAdminPanel allUsers={allUsers} updateUser={updateUser} />
+                ? (
+                    <>
+                      <SubAdminPanel allUsers={allUsers} updateUser={updateUser} />
+                      {isMessageModalOpen && messageUser && (
+                        <MessageModal 
+                          user={messageUser} 
+                          globalSettings={globalSettings} 
+                          onClose={() => setIsMessageModalOpen(false)} 
+                        />
+                      )}
+                    </>
+                  )
                 : <div className="p-10 text-center text-red-500 font-bold bg-white rounded-2xl border">মেইন এডমিন ব্যাতিত কেউ দেখতে পারবে না</div>
             )}
 
@@ -5609,6 +5638,32 @@ https://all-services-roan.vercel.app/`;
       </AnimatePresence>
 
       {/* Report Selection Modal */}
+      <AnimatePresence>
+        {isEditUserModalOpen && editingUser && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsEditUserModalOpen(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6">
+              <h3 className="text-xl font-bold mb-4">Edit User Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <input type="email" defaultValue={editingUser.email} onBlur={(e) => updateUser(editingUser.uid, { email: e.target.value })} className="w-full p-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">WhatsApp</label>
+                  <input type="text" defaultValue={editingUser.whatsapp || ''} onBlur={(e) => updateUser(editingUser.uid, { whatsapp: e.target.value })} className="w-full p-2 border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Password</label>
+                  <input type="text" defaultValue={editingUser.password || ''} onBlur={(e) => updateUser(editingUser.uid, { password: e.target.value })} className="w-full p-2 border rounded-lg" />
+                </div>
+                <button onClick={() => setIsEditUserModalOpen(false)} className="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold">Close</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {reportModalOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
