@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -52,14 +53,36 @@ async function getAccessToken(serviceName: string, tokenUrl: string, apiKey: str
   }
 }
 
+const uploadsDir = path.join(process.cwd(), "public", "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const diskStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const base = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+    cb(null, `${Date.now()}_${base}${ext}`);
+  }
+});
+
 const upload = multer({ storage: multer.memoryStorage() });
+const uploadToDisk = multer({ 
+  storage: diskStorage,
+  limits: { fileSize: 300 * 1024 * 1024 } // 300MB
+});
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(cors());
-  app.use(express.json());
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ limit: '50mb', extended: true }));
+  app.use('/uploads', express.static(uploadsDir));
 
   // API Route for sending SMS
   app.post("/api/send-sms", async (req, res) => {
@@ -539,30 +562,80 @@ async function startServer() {
     }
   });
 
-  // Upload Proxy Route
-  app.post("/api/upload", upload.single('file'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ success: false, error: "No file uploaded" });
+  // Local Disk File Upload Route (Supports up to 300MB: PDF, Images, Word, Excel, ZIP, etc.)
+  app.post("/api/upload", (req, res) => {
+    uploadToDisk.single('file')(req, res, (err) => {
+      if (err) {
+        console.error("[Upload API] Multer error:", err);
+        return res.status(400).json({ 
+          success: false, 
+          error: `ফাইল আপলোড ত্রুটি: ${err.message || 'Invalid upload'}` 
+        });
       }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: "কোন ফাইল পাওয়া যায়নি" });
+      }
+
+      const fileUrl = `/uploads/${req.file.filename}`;
+      console.log(`[Upload API] Saved file: ${fileUrl} (${(req.file.size / (1024 * 1024)).toFixed(2)} MB)`);
       
-      const formData = new FormData();
-      formData.append('reqtype', 'fileupload');
-      formData.append('fileToUpload', req.file.buffer, {
-        filename: req.file.originalname,
-        contentType: req.file.mimetype,
+      return res.json({ 
+        success: true, 
+        url: fileUrl, 
+        filename: req.file.originalname, 
+        size: req.file.size,
+        mimetype: req.file.mimetype 
       });
+    });
+  });
 
-      const response = await axios.post('https://catbox.moe/user/api.php', formData, {
-        headers: {
-          ...formData.getHeaders()
-        }
+  // Base64 direct upload route (Fallback for environments where multipart proxying has issues)
+  app.post("/api/upload-base64", (req, res) => {
+    try {
+      const { base64, filename } = req.body;
+      if (!base64 || typeof base64 !== 'string') {
+        return res.status(400).json({ success: false, error: "base64 ডেটা পাওয়া যায়নি" });
+      }
+
+      // Extract format and data
+      const matches = base64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      let buffer: Buffer;
+      let ext = '.png';
+      
+      if (matches && matches.length === 3) {
+        const mime = matches[1];
+        buffer = Buffer.from(matches[2], 'base64');
+        if (mime.includes('pdf')) ext = '.pdf';
+        else if (mime.includes('jpeg') || mime.includes('jpg')) ext = '.jpg';
+        else if (mime.includes('png')) ext = '.png';
+        else if (mime.includes('webp')) ext = '.webp';
+        else if (mime.includes('word') || mime.includes('docx')) ext = '.docx';
+        else if (mime.includes('excel') || mime.includes('xlsx')) ext = '.xlsx';
+        else if (mime.includes('zip')) ext = '.zip';
+        else ext = '.' + (mime.split('/')[1] || 'bin');
+      } else {
+        buffer = Buffer.from(base64, 'base64');
+      }
+
+      const originalName = filename ? path.basename(filename) : `file_${Date.now()}${ext}`;
+      const safeBase = originalName.replace(/[^a-zA-Z0-9_\u0980-\u09FF.-]/g, '_');
+      const savedFileName = `${Date.now()}_${safeBase}`;
+      const filePath = path.join(uploadsDir, savedFileName);
+
+      fs.writeFileSync(filePath, buffer);
+      const fileUrl = `/uploads/${savedFileName}`;
+      console.log(`[Upload API] Saved base64 file to disk: ${fileUrl} (${(buffer.length / (1024 * 1024)).toFixed(2)} MB)`);
+
+      return res.json({
+        success: true,
+        url: fileUrl,
+        filename: originalName,
+        size: buffer.length
       });
-
-      res.json({ success: true, url: response.data });
     } catch (error: any) {
-      console.error("Catbox proxy upload error:", error.message || error);
-      res.status(500).json({ success: false, error: "Upload failed" });
+      console.error("[Upload Base64] Error:", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to save base64 file" });
     }
   });
 

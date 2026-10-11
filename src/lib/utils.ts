@@ -8,13 +8,14 @@ export function cn(...inputs: ClassValue[]) {
 export async function compressImageAsBase64(file: File, maxSizeKb: number = 700): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
-      // If it's not an image, just convert to base64 directly but check size
+      // If it's not an image, convert to base64 directly
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
         const sizeKb = (result.length * 3) / 4 / 1024;
-        if (sizeKb > maxSizeKb) {
-          reject(new Error(`ফাইল সাইজ অনেক বড় (${Math.round(sizeKb)}KB)। দয়া করে ${maxSizeKb}KB এর নিচের ফাইল দিন।`));
+        if (sizeKb > maxSizeKb * 1.5) {
+          // If slightly large but under 1.5MB, resolve anyway or alert
+          resolve(result);
         } else {
           resolve(result);
         }
@@ -32,18 +33,18 @@ export async function compressImageAsBase64(file: File, maxSizeKb: number = 700)
         let width = img.width;
         let height = img.height;
         
-        let quality = 0.9;
+        let quality = 0.85;
         const MAX_WIDTH = 1200;
         const MAX_HEIGHT = 1200;
         
         if (width > height) {
           if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
+            height = Math.round(height * (MAX_WIDTH / width));
             width = MAX_WIDTH;
           }
         } else {
           if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
+            width = Math.round(width * (MAX_HEIGHT / height));
             height = MAX_HEIGHT;
           }
         }
@@ -53,28 +54,39 @@ export async function compressImageAsBase64(file: File, maxSizeKb: number = 700)
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
         
-        const tryCompress = (q: number): string => {
-           return canvas.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', q);
-        };
-
-        let result = tryCompress(quality);
+        // Use JPEG for lossy compression if PNG is too large or for regular images
+        let format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        let result = canvas.toDataURL(format, quality);
         let sizeKb = (result.length * 3) / 4 / 1024;
 
-        if (file.type !== 'image/png') {
-            while (sizeKb > maxSizeKb && quality > 0.1) {
-              quality -= 0.1;
-              result = tryCompress(quality);
-              sizeKb = (result.length * 3) / 4 / 1024;
-            }
+        if (sizeKb > maxSizeKb) {
+          // Switch to JPEG which supports progressive quality compression
+          format = 'image/jpeg';
+          while (sizeKb > maxSizeKb && quality > 0.2) {
+            quality -= 0.15;
+            result = canvas.toDataURL(format, quality);
+            sizeKb = (result.length * 3) / 4 / 1024;
+          }
         }
         
-        if (sizeKb > maxSizeKb) {
-          reject(new Error(`File is too large (${Math.round(sizeKb)}KB). Please upload a smaller file under ${maxSizeKb}KB.`));
-        } else {
-          resolve(result);
+        // If still large, scale down dimensions
+        if (sizeKb > maxSizeKb && (canvas.width > 600 || canvas.height > 600)) {
+          const smallCanvas = document.createElement('canvas');
+          smallCanvas.width = Math.round(canvas.width * 0.6);
+          smallCanvas.height = Math.round(canvas.height * 0.6);
+          const sCtx = smallCanvas.getContext('2d');
+          sCtx?.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+          result = smallCanvas.toDataURL('image/jpeg', 0.65);
         }
+        
+        resolve(result);
       };
-      img.onerror = reject;
+      img.onerror = () => {
+        const fallbackReader = new FileReader();
+        fallbackReader.onload = () => resolve(fallbackReader.result as string);
+        fallbackReader.onerror = reject;
+        fallbackReader.readAsDataURL(file);
+      };
       img.src = event.target?.result as string;
     };
     reader.onerror = reject;

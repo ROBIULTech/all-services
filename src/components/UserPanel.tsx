@@ -60,6 +60,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime } from '../lib/utils';
+import { uploadFile } from '../lib/uploadHelper';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
 import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage, getDocs } from '../firebase';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
@@ -3643,30 +3644,11 @@ Mobile-
                                         alert(`File "${file.name}" is too large. Max 300MB allowed.`);
                                         continue;
                                       }
-                                      setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + ')...');
-                                      if (file.size <= 800 * 1024) {
-                                        const base64 = await compressImageAsBase64(file, 1000);
-                                        newUploadedFiles.push(base64);
-                                      } else {
-                                        const fileName = Date.now() + '_' + file.name;
-                                        const storageRef = ref(storage, 'orders/' + userProfile.uid + '/' + fileName);
-                                        const uploadTask = uploadBytesResumable(storageRef, file);
-                                        
-                                        const downloadURL = await new Promise<string>((resolve, reject) => {
-                                          uploadTask.on('state_changed', 
-                                            (snapshot) => {
-                                              const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                                              setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + '): ' + progress + '%');
-                                            }, 
-                                            (error) => reject(error), 
-                                            async () => {
-                                              const url = await getDownloadURL(uploadTask.snapshot.ref);
-                                              resolve(url);
-                                            }
-                                          );
-                                        });
-                                        newUploadedFiles.push(downloadURL);
-                                      }
+                                      setUploadProgressMsg(`Uploading ${file.name} (${i + 1}/${files.length})...`);
+                                      const uploadedUrl = await uploadFile(file, (_percent, statusText) => {
+                                        setUploadProgressMsg(`${file.name}: ${statusText}`);
+                                      });
+                                      newUploadedFiles.push(uploadedUrl);
                                     }
                                     if (newUploadedFiles.length > 0) {
                                       setOrderFiles(prev => [...prev, ...newUploadedFiles]);
@@ -3728,30 +3710,11 @@ Mobile-
                                           alert(`File "${file.name}" is too large. Max 300MB allowed.`);
                                           continue;
                                         }
-                                        setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + ')...');
-                                        if (file.size <= 800 * 1024) {
-                                          const base64 = await compressImageAsBase64(file, 1000);
-                                          newUploadedFiles.push(base64);
-                                        } else {
-                                          const fileName = Date.now() + '_' + file.name;
-                                          const storageRef = ref(storage, 'orders/' + userProfile.uid + '/' + fileName);
-                                          const uploadTask = uploadBytesResumable(storageRef, file);
-                                          
-                                          const downloadURL = await new Promise<string>((resolve, reject) => {
-                                            uploadTask.on('state_changed', 
-                                              (snapshot) => {
-                                                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                                                setUploadProgressMsg('Uploading ' + file.name + ' (' + (i + 1) + '/' + files.length + '): ' + progress + '%');
-                                              }, 
-                                              (error) => reject(error), 
-                                              async () => {
-                                                const url = await getDownloadURL(uploadTask.snapshot.ref);
-                                                resolve(url);
-                                              }
-                                            );
-                                          });
-                                          newUploadedFiles.push(downloadURL);
-                                        }
+                                        setUploadProgressMsg(`Uploading ${file.name} (${i + 1}/${files.length})...`);
+                                        const uploadedUrl = await uploadFile(file, (_percent, statusText) => {
+                                          setUploadProgressMsg(`${file.name}: ${statusText}`);
+                                        });
+                                        newUploadedFiles.push(uploadedUrl);
                                       }
                                       if (newUploadedFiles.length > 0) {
                                         setOrderFiles(prev => [...prev, ...newUploadedFiles]);

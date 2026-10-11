@@ -69,6 +69,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import axios from 'axios';
 import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime } from '../lib/utils';
+import { uploadFile } from '../lib/uploadHelper';
 import { UserProfile, Order, Product, GlobalSettings, TrashItem } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, doc, setDoc, deleteDoc, Timestamp, updateDoc, getDoc, collection, onSnapshot, serverTimestamp, getDocs, auth, storage, ref, uploadBytesResumable, getDownloadURL } from '../firebase';
@@ -919,12 +920,13 @@ https://all-services-roan.vercel.app/`;
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 302 * 1024 * 1024) {
-        setOrderResultUploadStatus('Error: Maximum file size limit is 300 MB.');
+        setOrderResultUploadStatus('Error: সর্বোচ্চ ফাইলের সাইজ ৩০০ MB.');
         return;
       }
       setOrderResultFileObj(file); // Store file object for UI display
       setResultFile(null);
-      setOrderResultUploadStatus('ফাইল প্রস্তুত। অর্ডার সম্পূর্ন করতে ক্লিক করুন।');
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+      setOrderResultUploadStatus(`ফাইল নির্বাচিত (${sizeMb} MB) - অর্ডার সম্পন্ন করুন বাটনে ক্লিক করুন`);
       e.target.value = ''; // Reset input to allow re-selection
     }
   };
@@ -940,53 +942,9 @@ https://all-services-roan.vercel.app/`;
         setOrderResultUploadStatus('আপলোড হচ্ছে... ০%');
         const file = orderResultFileObj;
         
-        const isImage = file.type.startsWith('image/');
-        const isSmallNonImage = !isImage && file.size <= 800 * 1024; // <= 800KB
-        
-        if (isImage || isSmallNonImage) {
-          // Images of any size (they get compressed by compressImageAsBase64) or small non-images
-          finalResultFile = await compressImageAsBase64(file, 800); // 800KB for safety
-        } else {
-          // Large non-images (PDFs, ZIPs, etc > 800KB)
-          setOrderResultUploadStatus('যোগাযোগ করা হচ্ছে... অপেক্ষা করুন...');
-          const storageRef = ref(storage, `results/${Date.now()}_${file.name}`);
-          const uploadTask = uploadBytesResumable(storageRef, file);
-          
-          await new Promise<void>((resolve, reject) => {
-            // Firebase storage timeout tracker (in case storage is disabled or rules reject silently)
-            const timeoutTimer = setTimeout(() => {
-                reject(new Error("Storage Timeout: Firebase Storage চালু নেই অথবা পারমিশিন নেই। Firebase Console থেকে Storage চালু করুন।"));
-                uploadTask.cancel();
-            }, 30000); // 30 seconds wait for any progress
-            
-            uploadTask.on('state_changed', 
-              (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                const mbTransferred = (snapshot.bytesTransferred / (1024 * 1024)).toFixed(1);
-                const totalMb = (snapshot.totalBytes / (1024 * 1024)).toFixed(1);
-                
-                if (snapshot.state === 'running' && progress > 0) {
-                    clearTimeout(timeoutTimer); // Clear timeout once actual upload starts
-                }
-
-                if (progress === 100) {
-                    setOrderResultUploadStatus(`ফাইল আপলোড সম্পন্ন, সংরক্ষণ হচ্ছে...`);
-                } else {
-                    setOrderResultUploadStatus(`আপলোড হচ্ছে... ${progress}% (${mbTransferred}MB / ${totalMb}MB)`);
-                }
-              },
-              (error) => {
-                clearTimeout(timeoutTimer);
-                reject(error);
-              },
-              async () => {
-                clearTimeout(timeoutTimer);
-                finalResultFile = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve();
-              }
-            );
-          });
-        }
+        finalResultFile = await uploadFile(file, (percent, statusText) => {
+          setOrderResultUploadStatus(statusText);
+        });
       }
 
       setOrderResultUploadStatus('অর্ডার সম্পন্ন হচ্ছে...');
@@ -1001,7 +959,7 @@ https://all-services-roan.vercel.app/`;
       setShowSuccess(true);
     } catch (error: any) {
       console.error('Error completing order:', error);
-      setOrderResultUploadStatus('Error: ' + (error.message || "ব্যর্থ হয়েছে"));
+      setOrderResultUploadStatus('Error: ' + (error.message || "ফাইল আপলোড ব্যর্থ হয়েছে"));
     } finally {
       setIsProcessing(false);
     }
@@ -1756,6 +1714,7 @@ https://all-services-roan.vercel.app/`;
                 </div>
               </div>
             )}
+
 
             {activeTab === 'orders' && (
               <div className="space-y-8">
@@ -5431,9 +5390,14 @@ https://all-services-roan.vercel.app/`;
                         <div className="flex flex-col items-center gap-2">
                           <CheckCircle className="w-10 h-10 text-emerald-500" />
                           <p className="text-sm font-bold text-emerald-700">ফাইল যোগ করা হয়েছে</p>
-                          <p className="text-[10px] text-slate-500 bg-white px-2 py-0.5 rounded border">
-                            {orderResultFileObj?.name || 'ফাইল প্রস্তুত'}
+                          <p className="text-[11px] font-medium text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200 max-w-[280px] truncate">
+                            {orderResultFileObj?.name || 'ফাইল প্রস্তুত'} {orderResultFileObj ? `(${(orderResultFileObj.size / (1024 * 1024)).toFixed(2)} MB)` : ''}
                           </p>
+                          {orderResultUploadStatus && (
+                            <p className={cn("text-xs font-semibold px-2 py-0.5 rounded", orderResultUploadStatus.includes('Error') ? "text-red-600 bg-red-50" : "text-indigo-600 bg-indigo-50")}>
+                              {orderResultUploadStatus}
+                            </p>
+                          )}
                           <button 
                             type="button" 
                             onClick={(e) => { 
@@ -5442,7 +5406,7 @@ https://all-services-roan.vercel.app/`;
                               setOrderResultFileObj(null);
                               setOrderResultUploadStatus('');
                             }} 
-                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative"
+                            className="mt-2 text-xs font-bold px-3 py-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition-colors z-20 relative cursor-pointer"
                           >
                             Remove File
                           </button>
@@ -5450,7 +5414,7 @@ https://all-services-roan.vercel.app/`;
                       ) : (
                         <div className="flex flex-col items-center gap-2">
                           <FileUp className={cn("w-10 h-10", orderResultUploadStatus.includes('Error') ? "text-red-400" : "text-slate-400 group-hover:text-indigo-500")} />
-                          <p className="text-sm font-bold text-slate-700">
+                          <p className={cn("text-sm font-bold", orderResultUploadStatus.includes('Error') ? "text-red-600" : "text-slate-700")}>
                             {orderResultUploadStatus || 'ফাইল নির্বাচন করুন'}
                           </p>
                           <p className="text-xs text-slate-400">PDF, JPG, PNG, Doc, Docx, Xls, Xlsx or ZIP (Max 300MB)</p>
