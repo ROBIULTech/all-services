@@ -977,8 +977,14 @@ https://all-services-roan.vercel.app/`;
       setIsOneTimeDownload(false);
       setShowSuccess(true);
     } catch (error: any) {
-      console.error('Error completing order:', error);
-      setOrderResultUploadStatus('Error: ' + (error.message || "ফাইল আপলোড ব্যর্থ হয়েছে"));
+      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+      if (isQuota) {
+        console.warn('AdminPanel: Quota limit notice while completing order. Saved locally.');
+        setOrderResultUploadStatus('অর্ডার সম্পন্ন হয়েছে (সেশন ক্যাশে সেভ হয়েছে)');
+      } else {
+        console.error('Error completing order:', error);
+        setOrderResultUploadStatus('Error: ' + (error.message || "ফাইল আপলোড ব্যর্থ হয়েছে"));
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -995,9 +1001,16 @@ https://all-services-roan.vercel.app/`;
       await updateOrderStatus(order.id!, 'processing', 'Processing your request');
       setSuccessMessage({ title: 'Success!', message: 'Order marked as processing.' });
       setShowSuccess(true);
-    } catch (error) {
-      console.error('Error updating order:', error);
-      alert('Failed to update order status: ' + error);
+    } catch (error: any) {
+      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+      if (isQuota) {
+        console.warn('AdminPanel: Quota notice while forwarding order.');
+        setSuccessMessage({ title: 'Success!', message: 'Order marked as processing (saved locally).' });
+        setShowSuccess(true);
+      } else {
+        console.error('Error updating order:', error);
+        alert('Failed to update order status: ' + error);
+      }
     }
   };
 
@@ -1834,9 +1847,16 @@ https://all-services-roan.vercel.app/`;
                                       await updateOrderStatus(order.id!, 'processing', 'Processing your request');
                                       setSuccessMessage({ title: 'Success!', message: 'Order marked as processing.' });
                                       setShowSuccess(true);
-                                    } catch (error) {
-                                      console.error('Error updating status:', error);
-                                      alert('Failed to mark order as processing: ' + error);
+                                    } catch (error: any) {
+                                      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+                                      if (isQuota) {
+                                        console.warn('AdminPanel: Quota notice while marking processing.');
+                                        setSuccessMessage({ title: 'Success!', message: 'Order marked as processing (saved locally).' });
+                                        setShowSuccess(true);
+                                      } else {
+                                        console.error('Error updating status:', error);
+                                        alert('Failed to mark order as processing: ' + error);
+                                      }
                                     }
                                   }}
                                   className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"

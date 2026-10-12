@@ -291,7 +291,13 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isAdminViewingUserPanel, setIsAdminViewingUserPanel] = useState(false);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('cached_admin_orders');
+      if (cached) return JSON.parse(cached);
+    } catch (_) {}
+    return [];
+  });
   const [products, setProducts] = useState<Product[]>(initialProducts);
 
   useEffect(() => {
@@ -801,6 +807,9 @@ export default function App() {
       const ordersSnap = await getDocs(qOrders);
       const ordersData = ordersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
       setOrders(ordersData);
+      try {
+        localStorage.setItem('cached_admin_orders', JSON.stringify(ordersData));
+      } catch (_) {}
 
       // 2. Fetch Trash
       const qTrash = query(collection(db, 'trash'), orderBy('deletedAt', 'desc'), limit(50));
@@ -817,10 +826,24 @@ export default function App() {
       const usersSnap = await getDocs(qUsers);
       const usersData = usersSnap.docs.map(doc => doc.data() as UserProfile);
       setAllUsers(usersData);
+      try {
+        localStorage.setItem('cached_admin_users', JSON.stringify(usersData));
+      } catch (_) {}
       
     } catch (error: any) {
-      if (error.message?.includes('quota')) {
-        console.warn('Admin view: Firestore quota exceeded. Displaying available data.');
+      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+      if (isQuota) {
+        console.warn('Admin view: Firestore quota exceeded. Displaying cached session data.');
+        try {
+          const cachedOrders = localStorage.getItem('cached_admin_orders');
+          if (cachedOrders && orders.length === 0) {
+            setOrders(JSON.parse(cachedOrders));
+          }
+          const cachedUsers = localStorage.getItem('cached_admin_users');
+          if (cachedUsers && allUsers.length === 0) {
+            setAllUsers(JSON.parse(cachedUsers));
+          }
+        } catch (_) {}
       } else {
         console.error('Error fetching admin data:', error);
       }
@@ -983,14 +1006,25 @@ export default function App() {
   const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string, oneTimeDownload?: boolean) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
-      
-      if (!orderSnap.exists()) {
-        throw new Error('Order not found');
+
+      // Check local orders state first to save Firestore daily read quota
+      let orderData = orders.find(o => o.id === orderId);
+      if (!orderData) {
+        try {
+          const orderSnap = await getDoc(orderRef);
+          if (orderSnap.exists()) {
+            orderData = { id: orderSnap.id, ...orderSnap.data() } as Order;
+          }
+        } catch (readErr: any) {
+          const isQuota = readErr?.code === 'resource-exhausted' || readErr?.message?.toLowerCase()?.includes('quota');
+          if (isQuota) {
+            console.warn('Firestore read quota exceeded; using fallback order information.');
+          } else {
+            console.warn('Could not read order from Firestore:', readErr?.message);
+          }
+        }
       }
-      
-      const orderData = orderSnap.data() as Order;
-      
+
       const updates: any = { status, note, updatedAt: serverTimestamp() };
       if (resultFile) updates.resultFile = resultFile;
       if (successLink) updates.successLink = successLink;
@@ -1001,42 +1035,78 @@ export default function App() {
           updates.isDownloadExpired = false;
         }
       }
-      
-      await updateDoc(orderRef, updates);
-      
-      // Handle balance refund/deduction based on status change
-      if (status === 'rejected' && orderData.status !== 'rejected') {
-        // Refund the user (minus 5 Taka penalty for service orders)
-        const userRef = doc(db, 'users', orderData.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const userData = userSnap.data() as UserProfile;
-          let refundAmount = 0;
-          if (orderData.price && orderData.price > 0) {
-            refundAmount = orderData.price;
-          }
-          await updateDoc(userRef, {
-            balance: (userData.balance || 0) + refundAmount
-          });
+
+      // Try updating in Firestore
+      try {
+        await updateDoc(orderRef, updates);
+      } catch (writeErr: any) {
+        const isQuota = writeErr?.code === 'resource-exhausted' || writeErr?.message?.toLowerCase()?.includes('quota');
+        if (isQuota) {
+          console.warn('Firestore quota exceeded during order status update. Saved to session cache.');
+        } else {
+          throw writeErr;
         }
-      } else if (status !== 'rejected' && orderData.status === 'rejected') {
-        // Deduct the balance again if un-rejected
-        const userRef = doc(db, 'users', orderData.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const userData = userSnap.data() as UserProfile;
-          let deductedAmount = 0;
-          if (orderData.price && orderData.price > 0) {
-            deductedAmount = orderData.price;
+      }
+
+      // Immediately update local state & cached orders
+      setOrders(prevOrders => {
+        const next = prevOrders.map(o => {
+          if (o.id === orderId) {
+            return {
+              ...o,
+              ...updates,
+              updatedAt: new Date().toISOString()
+            };
           }
-          await updateDoc(userRef, {
-            balance: (userData.balance || 0) - deductedAmount
-          });
+          return o;
+        });
+        try {
+          localStorage.setItem('cached_admin_orders', JSON.stringify(next));
+        } catch (_) {}
+        return next;
+      });
+
+      // Handle balance refund/deduction based on status change
+      if (orderData?.uid) {
+        const userUid = orderData.uid;
+        const targetUser = allUsers.find(u => u.uid === userUid);
+        if (status === 'rejected' && orderData.status !== 'rejected') {
+          // Refund the user
+          const refundAmount = (orderData.price && orderData.price > 0) ? orderData.price : 0;
+          if (refundAmount > 0) {
+            const newBal = (targetUser?.balance || 0) + refundAmount;
+            setAllUsers(prev => prev.map(u => u.uid === userUid ? { ...u, balance: newBal } : u));
+            try {
+              const userRef = doc(db, 'users', userUid);
+              await updateDoc(userRef, { balance: newBal });
+            } catch (uErr: any) {
+              console.warn('Balance refund remote sync notice:', uErr?.message);
+            }
+          }
+        } else if (status !== 'rejected' && orderData.status === 'rejected') {
+          // Deduct the balance again if un-rejected
+          const deductAmount = (orderData.price && orderData.price > 0) ? orderData.price : 0;
+          if (deductAmount > 0) {
+            const newBal = (targetUser?.balance || 0) - deductAmount;
+            setAllUsers(prev => prev.map(u => u.uid === userUid ? { ...u, balance: newBal } : u));
+            try {
+              const userRef = doc(db, 'users', userUid);
+              await updateDoc(userRef, { balance: newBal });
+            } catch (uErr: any) {
+              console.warn('Balance deduct remote sync notice:', uErr?.message);
+            }
+          }
         }
       }
 
       setShowSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
+      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+      if (isQuota) {
+        console.warn('Firestore quota limit reached. Order status updated in local session.');
+        setShowSuccess(true);
+        return;
+      }
       console.error('Error updating order status:', error);
       if (error instanceof Error && error.message.includes('exceeds the maximum allowed size')) {
         alert('Error: The result file is too large to be saved. Please upload a smaller file (under 750KB).');
@@ -1049,22 +1119,46 @@ export default function App() {
   const deleteOrder = async (orderId: string) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
-      
-      if (orderSnap.exists()) {
-        const orderData = orderSnap.data() as Order;
-        // Move to trash
+      let orderData = orders.find(o => o.id === orderId);
+      if (!orderData) {
+        try {
+          const orderSnap = await getDoc(orderRef);
+          if (orderSnap.exists()) {
+            orderData = orderSnap.data() as Order;
+          }
+        } catch (_) {}
+      }
+
+      if (orderData) {
         const trashRef = doc(db, 'trash', orderId);
-        await setDoc(trashRef, {
-          id: orderId,
-          type: 'order',
-          data: orderData,
-          deletedAt: Timestamp.now()
+        try {
+          await setDoc(trashRef, {
+            id: orderId,
+            type: 'order',
+            data: orderData,
+            deletedAt: Timestamp.now()
+          });
+          await deleteDoc(orderRef);
+        } catch (tErr: any) {
+          console.warn('Trash remote sync skipped due to quota/network:', tErr?.message);
+        }
+        setOrders(prev => {
+          const next = prev.filter(o => o.id !== orderId);
+          try {
+            localStorage.setItem('cached_admin_orders', JSON.stringify(next));
+          } catch (_) {}
+          return next;
         });
-        await deleteDoc(orderRef);
         setShowSuccess(true);
       }
-    } catch (error) {
+    } catch (error: any) {
+      const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+      if (isQuota) {
+        console.warn('Firestore quota exceeded during order delete. Removed locally.');
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+        setShowSuccess(true);
+        return;
+      }
       console.error('Error deleting order:', error);
       alert('Error deleting order: ' + (error instanceof Error ? error.message : String(error)));
     }

@@ -105,7 +105,15 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [showCompletedOrdersPicker, setShowCompletedOrdersPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      if (userProfile?.uid) {
+        const cached = localStorage.getItem(`cached_user_orders_${userProfile.uid}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (_) {}
+    return [];
+  });
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<{name: string, price: number, autoDeliveryLink?: string}[]>([]);
@@ -539,8 +547,24 @@ Mobile-
         });
         
         setOrders(combined);
+        try {
+          if (userProfile?.uid) {
+            localStorage.setItem(`cached_user_orders_${userProfile.uid}`, JSON.stringify(combined));
+          }
+        } catch (_) {}
       } catch (error: any) {
-        if (!error.message?.includes('quota')) {
+        const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+        if (isQuota) {
+          console.warn('Orders fetch quota notice. Loading cached user orders.');
+          try {
+            if (userProfile?.uid) {
+              const cached = localStorage.getItem(`cached_user_orders_${userProfile.uid}`);
+              if (cached) {
+                setOrders(JSON.parse(cached));
+              }
+            }
+          } catch (_) {}
+        } else {
           console.error('Orders manual fetch error:', error);
         }
       }
