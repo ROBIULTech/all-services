@@ -174,65 +174,54 @@ export async function downloadFile(url: string, filename: string) {
     const ext = getExtensionFromUrl(url);
     cleanName = `${cleanName}.${ext}`;
   }
-  if (cleanName.toLowerCase() === 'index' || cleanName.toLowerCase().startsWith('index.')) {
-    cleanName = cleanName.replace(/index/i, 'document');
+  if (cleanName.toLowerCase() === 'index' || cleanName.toLowerCase().startsWith('index.') || cleanName.toLowerCase().startsWith('document.html')) {
+    cleanName = cleanName.replace(/index/i, 'document').replace(/\.html$/, '.pdf');
   }
 
-  // Handle Google Drive links specifically
-  let targetUrl = url;
+  // Handle Google Drive links specifically with direct download export
   const driveId = extractGoogleDriveId(url);
   if (driveId) {
-    targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+    const directDriveUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=t`;
+    // Open direct Google Drive download in new tab or create invisible click
+    const link = document.createElement('a');
+    link.href = directDriveUrl;
+    link.download = cleanName;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
   }
 
-  // Try direct fetch for blob download (if CORS allows)
-  try {
-    const response = await fetch(targetUrl, { mode: 'cors' });
-    if (response.ok) {
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('text/html')) {
-        const blob = await response.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = cleanName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-        return;
-      }
-    }
-  } catch (err) {
-    // CORS or network error, proceed to fallback
-  }
-
-  // Try proxy endpoint if backend server is active
-  const proxyUrl = `/api/secure-download/direct?url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(cleanName)}`;
+  // Try direct fetch or proxy endpoint
+  const proxyUrl = `/api/secure-download/direct?url=${encodeURIComponent(url)}&title=${encodeURIComponent(cleanName)}`;
   try {
     const proxyRes = await fetch(proxyUrl);
     if (proxyRes.ok) {
       const contentType = proxyRes.headers.get('content-type') || '';
       if (!contentType.includes('text/html')) {
         const blob = await proxyRes.blob();
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = cleanName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-        return;
+        if (blob.size > 100) {
+          const blobUrl = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = cleanName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+          return;
+        }
       }
     }
   } catch (e) {
     // ignore proxy error
   }
 
-  // Ultimate fallback: open targetUrl directly in new tab or trigger direct download
+  // Ultimate fallback: open targetUrl directly in new tab so browser handles file download properly
   const link = document.createElement('a');
-  link.href = targetUrl;
+  link.href = url;
   link.download = cleanName;
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
@@ -240,3 +229,4 @@ export async function downloadFile(url: string, filename: string) {
   link.click();
   document.body.removeChild(link);
 }
+

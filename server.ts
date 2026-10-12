@@ -270,8 +270,8 @@ export async function getApp() {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
         return driveResponse.data.pipe(res);
       } else {
-        // Fallback: If Google Drive cannot be directly streamed by server, redirect to Google Drive viewer (not raw download endpoint which saves as 'index')
-        return res.redirect(`https://drive.google.com/file/d/${driveId}/view`);
+        // Fallback: Redirect to direct Google Drive download endpoint
+        return res.redirect(`https://drive.google.com/uc?export=download&id=${driveId}&confirm=t`);
       }
     }
 

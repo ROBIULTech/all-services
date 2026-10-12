@@ -1,4 +1,5 @@
 import serverless from "serverless-http";
+// @ts-ignore
 import { getApp } from "../server.ts";
 
 let handler: any;
