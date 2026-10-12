@@ -661,15 +661,6 @@ Mobile-
       return;
     }
 
-    if (order.oneTimeDownload && (order.downloadCount || 0) === 0) {
-      const confirmed = window.confirm(
-        type === 'view'
-          ? "⚠️ সতর্কতা: এটি একটি One-Time (১ বার ব্যবহারযোগ্য) ফাইল!\n\nআপনি ফাইলটি শুধুমাত্র ১ বার দেখতে ও সেভ করতে পারবেন। একবার উইন্ডো ওপেন হলে লিংকটি স্বয়ংক্রিয়ভাবে লক হয়ে যাবে।\n\nআপনি কি এখনই ফাইলটি দেখতে চান?"
-          : "⚠️ সতর্কতা: এটি একটি One-Time (১ বার ব্যবহারযোগ্য) ফাইল লিংক!\n\nআপনি এই ফাইলটি শুধুমাত্র ১ বারই ডাউনলোড করতে পারবেন। একবার ডাউনলোড শুরু হলে লিংকটি স্বয়ংক্রিয়ভাবে অকেজো হয়ে যাবে।\n\nআপনি কি এখনই ফাইলটি ডাউনলোড করতে চান?"
-      );
-      if (!confirmed) return;
-    }
-
     try {
       if (type === 'view') {
         const targetUrl = order.resultFile || order.successLink || '';
@@ -1775,87 +1766,67 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {(order.resultFile || order.successLink) ? (
-                                <div className="flex flex-col items-center justify-center gap-1.5">
-                                  {order.oneTimeDownload && (
-                                    (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                      <div className="flex flex-col items-center gap-1 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl shadow-xs">
-                                        <div className="flex items-center gap-1.5">
-                                          <Lock className="w-3.5 h-3.5 text-rose-600" />
-                                          <span className="text-[11px] font-bold">লিংক লক (Expired)</span>
-                                        </div>
-                                        <span className="text-[9px] text-slate-500 font-medium">১ বার ডাউনলোড করা হয়েছে</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                                        ⚠️ ১ বার ডাউনলোড লিমিট
-                                      </span>
-                                    )
+                                <div className="flex items-center justify-center gap-2">
+                                  {order.resultFile && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'view')}
+                                        className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                                        title="View Result"
+                                      >
+                                        <Eye className="w-5 h-5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'resultFile')}
+                                        disabled={downloadingOrderId === order.id}
+                                        className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+                                        title="Download Result"
+                                      >
+                                        {downloadingOrderId === order.id ? (
+                                          <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                          <Download className="w-5 h-5" />
+                                        )}
+                                      </button>
+                                    </>
                                   )}
 
-                                  {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                    <div className="flex items-center justify-center gap-2">
-                                      {order.resultFile && (
-                                        <>
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'view')}
-                                            className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
-                                            title="View Result"
-                                          >
-                                            <Eye className="w-5 h-5" />
-                                          </button>
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'resultFile')}
-                                            disabled={downloadingOrderId === order.id}
-                                            className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
-                                            title="Download Result"
-                                          >
-                                            {downloadingOrderId === order.id ? (
-                                              <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                              <Download className="w-5 h-5" />
-                                            )}
-                                          </button>
-                                        </>
+                                  {order.successLink && (
+                                    <>
+                                      {!order.resultFile && (
+                                        <button 
+                                          onClick={() => handleSecureDownload(order, 'view')}
+                                          className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+                                          title="View File"
+                                        >
+                                          <Eye className="w-5 h-5" />
+                                        </button>
                                       )}
-
-                                      {order.successLink && (
-                                        <>
-                                          {!order.resultFile && (
-                                            <button 
-                                              onClick={() => handleSecureDownload(order, 'view')}
-                                              className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
-                                              title="View File"
-                                            >
-                                              <Eye className="w-5 h-5" />
-                                            </button>
-                                          )}
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'successLink')}
-                                            disabled={downloadingOrderId === order.id}
-                                            className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50"
-                                            title="Download File"
-                                          >
-                                            {downloadingOrderId === order.id ? (
-                                              <Loader2 className="w-5 h-5 animate-spin" />
-                                            ) : (
-                                              <Download className="w-5 h-5" />
-                                            )}
-                                          </button>
-                                          {!order.oneTimeDownload && (
-                                            <button 
-                                              onClick={() => {
-                                                navigator.clipboard.writeText(order.successLink || '');
-                                                alert('Download link copied!');
-                                              }}
-                                              className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20"
-                                              title="Copy Link"
-                                            >
-                                              <Copy className="w-5 h-5" />
-                                            </button>
-                                          )}
-                                        </>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'successLink')}
+                                        disabled={downloadingOrderId === order.id}
+                                        className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                        title="Download File"
+                                      >
+                                        {downloadingOrderId === order.id ? (
+                                          <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                          <Download className="w-5 h-5" />
+                                        )}
+                                      </button>
+                                      {!order.oneTimeDownload && (
+                                        <button 
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(order.successLink || '');
+                                            alert('Download link copied!');
+                                          }}
+                                          className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
+                                          title="Copy Link"
+                                        >
+                                          <Copy className="w-5 h-5" />
+                                        </button>
                                       )}
-                                    </div>
+                                    </>
                                   )}
                                 </div>
                               ) : (
@@ -1946,68 +1917,58 @@ Mobile-
                             </td>
                             <td className="px-6 py-4 text-center">
                               {(order.resultFile || order.successLink) ? (
-                                <div className="flex flex-col items-center justify-center gap-1.5">
-                                  {order.oneTimeDownload && (
-                                    (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                      <div className="flex flex-col items-center gap-1 px-3 py-1.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl shadow-xs">
-                                        <div className="flex items-center gap-1.5">
-                                          <Lock className="w-3.5 h-3.5 text-rose-600" />
-                                          <span className="text-[11px] font-bold">লিংক লক (Expired)</span>
-                                        </div>
-                                        <span className="text-[9px] text-slate-500 font-medium">১ বার ডাউনলোড করা হয়েছে</span>
-                                      </div>
-                                    ) : (
-                                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-200">
-                                        ⚠️ ১ বার ডাউনলোড লিমিট
-                                      </span>
-                                    )
+                                <div className="flex items-center justify-center gap-2">
+                                  {order.resultFile && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'view')}
+                                        className="w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+                                        title="View Result"
+                                      >
+                                        <Eye className="w-5 h-5" />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'resultFile')}
+                                        disabled={downloadingOrderId === order.id}
+                                        className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 text-center disabled:opacity-50 cursor-pointer"
+                                        title="Download Result"
+                                      >
+                                        {downloadingOrderId === order.id ? (
+                                          <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+                                        ) : (
+                                          <Download className="w-5 h-5 mx-auto" />
+                                        )}
+                                      </button>
+                                    </>
                                   )}
 
-                                  {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                    <div className="flex items-center justify-center gap-2">
-                                      {order.resultFile && (
-                                        <>
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'view')}
-                                            className="w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20"
-                                            title="View Result"
-                                          >
-                                            <Eye className="w-5 h-5" />
-                                          </button>
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'resultFile')}
-                                            className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 text-center"
-                                            title="Download Result"
-                                          >
-                                            <Download className="w-5 h-5 mx-auto" />
-                                          </button>
-                                        </>
+                                  {order.successLink && (
+                                    <>
+                                      <button 
+                                        onClick={() => handleSecureDownload(order, 'successLink')}
+                                        disabled={downloadingOrderId === order.id}
+                                        className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                        title="Download File"
+                                      >
+                                        {downloadingOrderId === order.id ? (
+                                          <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                          <Download className="w-5 h-5" />
+                                        )}
+                                      </button>
+                                      {!order.oneTimeDownload && (
+                                        <button 
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(order.successLink || '');
+                                            alert('Download link copied!');
+                                          }}
+                                          className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
+                                          title="Copy Link"
+                                        >
+                                          <Copy className="w-5 h-5" />
+                                        </button>
                                       )}
-
-                                      {order.successLink && (
-                                        <>
-                                          <button 
-                                            onClick={() => handleSecureDownload(order, 'successLink')}
-                                            className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
-                                            title="Download File"
-                                          >
-                                            <Download className="w-5 h-5" />
-                                          </button>
-                                          {!order.oneTimeDownload && (
-                                            <button 
-                                              onClick={() => {
-                                                navigator.clipboard.writeText(order.successLink || '');
-                                                alert('Download link copied!');
-                                              }}
-                                              className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20"
-                                              title="Copy Link"
-                                            >
-                                              <Copy className="w-5 h-5" />
-                                            </button>
-                                          )}
-                                        </>
-                                      )}
-                                    </div>
+                                    </>
                                   )}
                                 </div>
                               ) : (
@@ -2233,43 +2194,33 @@ Mobile-
                                   <h4 className="text-lg font-bold text-slate-900 uppercase">সম্পন্ন হয়েছে!</h4>
                                   <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
-                                {order.oneTimeDownload && (
-                                  (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                    <div className="w-full flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl mt-2">
-                                      <div className="flex items-center gap-1.5 font-bold text-sm">
-                                        <Lock className="w-4 h-4 text-rose-600" />
-                                        <span>লিংক লক (Expired)</span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে।</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full text-center text-xs text-amber-700 bg-amber-100/70 border border-amber-200 rounded-lg py-1 px-2 mt-2 font-bold">
-                                      ⚠️ এই ফাইলটি শুধুমাত্র ১ বার ডাউনলোড করা যাবে!
-                                    </div>
-                                  )
+                                {order.resultFile && (
+                                  <button 
+                                    onClick={() => handleSecureDownload(order, 'resultFile')}
+                                    disabled={downloadingOrderId === order.id}
+                                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {downloadingOrderId === order.id ? (
+                                      <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                      <Download className="w-5 h-5" />
+                                    )}
+                                    ফাইল ডাউনলোড করুন
+                                  </button>
                                 )}
-
-                                {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                  <>
-                                    {order.resultFile && (
-                                      <button 
-                                        onClick={() => handleSecureDownload(order, 'resultFile')}
-                                        className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-                                      >
-                                        <Download className="w-5 h-5" />
-                                        ফাইল ডাউনলোড করুন
-                                      </button>
+                                {order.successLink && (
+                                  <button 
+                                    onClick={() => handleSecureDownload(order, 'successLink')}
+                                    disabled={downloadingOrderId === order.id}
+                                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {downloadingOrderId === order.id ? (
+                                      <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                      <Download className="w-5 h-5" />
                                     )}
-                                    {order.successLink && (
-                                      <button 
-                                        onClick={() => handleSecureDownload(order, 'successLink')}
-                                        className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                                      >
-                                        <Download className="w-5 h-5" />
-                                        ফাইল ডাউনলোড করুন
-                                      </button>
-                                    )}
-                                  </>
+                                    ফাইল ডাউনলোড করুন
+                                  </button>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 101])}
@@ -2420,59 +2371,49 @@ Mobile-
                                     <p className="text-xs font-bold text-slate-700">{order.note}</p>
                                   </div>
                                 )}
-                                {order.oneTimeDownload && (
-                                  (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                    <div className="w-full flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl mt-2">
-                                      <div className="flex items-center gap-1.5 font-bold text-sm">
-                                        <Lock className="w-4 h-4 text-rose-600" />
-                                        <span>লিংক লক (Expired)</span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে।</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full text-center text-xs text-amber-700 bg-amber-100/70 border border-amber-200 rounded-lg py-1 px-2 mt-2 font-bold">
-                                      ⚠️ এই লিংকটি শুধুমাত্র ১ বার ডাউনলোড করা যাবে!
-                                    </div>
-                                  )
+                                {order.resultFile && (
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'resultFile')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ফাইল দেখুন / ডাউনলোড
+                                    </button>
+                                  </div>
                                 )}
-
-                                {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                  <>
-                                    {order.resultFile && (
-                                      <div className="flex flex-col w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'resultFile')}
-                                          className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ফাইল দেখুন / ডাউনলোড
-                                        </button>
-                                      </div>
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'successLink')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ডাউনলোড করুন
+                                    </button>
+                                    {!order.oneTimeDownload && (
+                                      <button 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(order.successLink || '');
+                                          alert('লিঙ্ক কপি করা হয়েছে!');
+                                        }}
+                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+                                        title="Copy Link"
+                                      >
+                                        <Copy className="w-5 h-5" />
+                                      </button>
                                     )}
-                                    {order.successLink && (
-                                      <div className="flex w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'successLink')}
-                                          className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ডাউনলোড করুন
-                                        </button>
-                                        {!order.oneTimeDownload && (
-                                          <button 
-                                            onClick={() => {
-                                              navigator.clipboard.writeText(order.successLink || '');
-                                              alert('লিঙ্ক কপি করা হয়েছে!');
-                                            }}
-                                            className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
-                                            title="Copy Link"
-                                          >
-                                            <Copy className="w-5 h-5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 102])}
@@ -2639,59 +2580,49 @@ Mobile-
                                   <h4 className="text-lg font-bold text-slate-900 uppercase">তথ্য পাওয়া গেছে!</h4>
                                   <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
-                                {order.oneTimeDownload && (
-                                  (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                    <div className="w-full flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl mt-2">
-                                      <div className="flex items-center gap-1.5 font-bold text-sm">
-                                        <Lock className="w-4 h-4 text-rose-600" />
-                                        <span>লিংক লক (Expired)</span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে।</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full text-center text-xs text-amber-700 bg-amber-100/70 border border-amber-200 rounded-lg py-1 px-2 mt-2 font-bold">
-                                      ⚠️ এই ফাইলটি শুধুমাত্র ১ বার ডাউনলোড করা যাবে!
-                                    </div>
-                                  )
+                                {order.resultFile && (
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'resultFile')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ফাইল ডাউনলোড করুন
+                                    </button>
+                                  </div>
                                 )}
-
-                                {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                  <>
-                                    {order.resultFile && (
-                                      <div className="flex flex-col w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'resultFile')}
-                                          className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-blue-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ফাইল ডাউনলোড করুন
-                                        </button>
-                                      </div>
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'successLink')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ডাউনলোড করুন
+                                    </button>
+                                    {!order.oneTimeDownload && (
+                                      <button 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(order.successLink || '');
+                                          alert('লিঙ্ক কপি করা হয়েছে!');
+                                        }}
+                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+                                        title="Copy Link"
+                                      >
+                                        <Copy className="w-5 h-5" />
+                                      </button>
                                     )}
-                                    {order.successLink && (
-                                      <div className="flex w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'successLink')}
-                                          className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ডাউনলোড করুন
-                                        </button>
-                                        {!order.oneTimeDownload && (
-                                          <button 
-                                            onClick={() => {
-                                              navigator.clipboard.writeText(order.successLink || '');
-                                              alert('লিঙ্ক কপি করা হয়েছে!');
-                                            }}
-                                            className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
-                                            title="Copy Link"
-                                          >
-                                            <Copy className="w-5 h-5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 103])}
@@ -2842,59 +2773,49 @@ Mobile-
                                   <h4 className="text-lg font-bold text-slate-900 uppercase">কার্ড প্রস্তুত!</h4>
                                   <p className="text-xs text-slate-500 font-medium">আপনার এনআইডি ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
-                                {order.oneTimeDownload && (
-                                  (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                    <div className="w-full flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl mt-2">
-                                      <div className="flex items-center gap-1.5 font-bold text-sm">
-                                        <Lock className="w-4 h-4 text-rose-600" />
-                                        <span>লিংক লক (Expired)</span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে।</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full text-center text-xs text-amber-700 bg-amber-100/70 border border-amber-200 rounded-lg py-1 px-2 mt-2 font-bold">
-                                      ⚠️ এই ফাইলটি শুধুমাত্র ১ বার ডাউনলোড করা যাবে!
-                                    </div>
-                                  )
+                                {order.resultFile && (
+                                  <div className="flex flex-col w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'resultFile')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-purple-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ডাউনলোড করুন
+                                    </button>
+                                  </div>
                                 )}
-
-                                {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                  <>
-                                    {order.resultFile && (
-                                      <div className="flex flex-col w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'resultFile')}
-                                          className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-purple-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ডাউনলোড করুন
-                                        </button>
-                                      </div>
+                                {order.successLink && (
+                                  <div className="flex w-full gap-2 mt-2">
+                                    <button 
+                                      onClick={() => handleSecureDownload(order, 'successLink')}
+                                      disabled={downloadingOrderId === order.id}
+                                      className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                    >
+                                      {downloadingOrderId === order.id ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                      ) : (
+                                        <Download className="w-5 h-5" />
+                                      )}
+                                      ডাউনলোড করুন
+                                    </button>
+                                    {!order.oneTimeDownload && (
+                                      <button 
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(order.successLink || '');
+                                          alert('লিঙ্ক কপি করা হয়েছে!');
+                                        }}
+                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+                                        title="Copy Link"
+                                      >
+                                        <Copy className="w-5 h-5" />
+                                      </button>
                                     )}
-                                    {order.successLink && (
-                                      <div className="flex w-full gap-2 mt-2">
-                                        <button 
-                                          onClick={() => handleSecureDownload(order, 'successLink')}
-                                          className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                                        >
-                                          <Download className="w-5 h-5" />
-                                          ডাউনলোড করুন
-                                        </button>
-                                        {!order.oneTimeDownload && (
-                                          <button 
-                                            onClick={() => {
-                                              navigator.clipboard.writeText(order.successLink || '');
-                                              alert('লিঙ্ক কপি করা হয়েছে!');
-                                            }}
-                                            className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
-                                            title="Copy Link"
-                                          >
-                                            <Copy className="w-5 h-5" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </>
+                                  </div>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 104])}
@@ -3032,43 +2953,33 @@ Mobile-
                                   <h4 className="text-lg font-bold text-slate-900 uppercase">সম্পন্ন হয়েছে!</h4>
                                   <p className="text-xs text-slate-500 font-medium">আপনার ফাইলটি এখন ডাউনলোডের জন্য প্রস্তুত।</p>
                                 </div>
-                                {order.oneTimeDownload && (
-                                  (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                                    <div className="w-full flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl mt-2">
-                                      <div className="flex items-center gap-1.5 font-bold text-sm">
-                                        <Lock className="w-4 h-4 text-rose-600" />
-                                        <span>লিংক লক (Expired)</span>
-                                      </div>
-                                      <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে।</span>
-                                    </div>
-                                  ) : (
-                                    <div className="w-full text-center text-xs text-amber-700 bg-amber-100/70 border border-amber-200 rounded-lg py-1 px-2 mt-2 font-bold">
-                                      ⚠️ এই ফাইলটি শুধুমাত্র ১ বার ডাউনলোড করা যাবে!
-                                    </div>
-                                  )
+                                {order.resultFile && (
+                                  <button 
+                                    onClick={() => handleSecureDownload(order, 'resultFile')}
+                                    disabled={downloadingOrderId === order.id}
+                                    className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {downloadingOrderId === order.id ? (
+                                      <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                      <Download className="w-5 h-5" />
+                                    )}
+                                    ফাইল ডাউনলোড করুন
+                                  </button>
                                 )}
-
-                                {(!order.oneTimeDownload || !(order.isDownloadExpired || (order.downloadCount || 0) >= 1)) && (
-                                  <>
-                                    {order.resultFile && (
-                                      <button 
-                                        onClick={() => handleSecureDownload(order, 'resultFile')}
-                                        className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20"
-                                      >
-                                        <Download className="w-5 h-5" />
-                                        ফাইল ডাউনলোড করুন
-                                      </button>
+                                {order.successLink && (
+                                  <button 
+                                    onClick={() => handleSecureDownload(order, 'successLink')}
+                                    disabled={downloadingOrderId === order.id}
+                                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {downloadingOrderId === order.id ? (
+                                      <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                      <Download className="w-5 h-5" />
                                     )}
-                                    {order.successLink && (
-                                      <button 
-                                        onClick={() => handleSecureDownload(order, 'successLink')}
-                                        className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20"
-                                      >
-                                        <Download className="w-5 h-5" />
-                                        ডাউনলোড করুন
-                                      </button>
-                                    )}
-                                  </>
+                                    ডাউনলোড করুন
+                                  </button>
                                 )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
@@ -4228,61 +4139,49 @@ Mobile-
                           <h4 className="text-lg font-bold text-slate-900 uppercase">তথ্য পাওয়া গেছে!</h4>
                           <p className="text-xs text-slate-500 font-medium">আপনার ভোটার তথ্যটি এখন দেখার জন্য প্রস্তুত।</p>
                         </div>
-                        {order.oneTimeDownload && (order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
-                          <div className="flex flex-col items-center gap-1 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl w-full my-2">
-                            <div className="flex items-center gap-1.5 font-bold text-xs">
-                              <Lock className="w-4 h-4 text-rose-600" />
-                              <span>লিংক লক (Expired)</span>
-                            </div>
-                            <span className="text-[10px] text-slate-500">১ বার ডাউনলোড সম্পন্ন হয়েছে</span>
+                        {order.resultFile && (
+                          <div className="flex flex-col w-full gap-2 mt-2">
+                            <button 
+                              onClick={() => handleSecureDownload(order, 'resultFile')}
+                              disabled={downloadingOrderId === order.id}
+                              className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer"
+                            >
+                              {downloadingOrderId === order.id ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Download className="w-5 h-5" />
+                              )}
+                              ফাইল ডাউনলোড করুন
+                            </button>
                           </div>
-                        ) : (
-                          <>
-                            {order.resultFile && (
-                              <div className="flex flex-col w-full gap-2 mt-2">
-                                <button 
-                                  onClick={() => handleSecureDownload(order, 'resultFile')}
-                                  disabled={downloadingOrderId === order.id}
-                                  className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer"
-                                >
-                                  {downloadingOrderId === order.id ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                  ) : (
-                                    <Download className="w-5 h-5" />
-                                  )}
-                                  ফাইল ডাউনলোড করুন
-                                </button>
-                              </div>
+                        )}
+                        {order.successLink && (
+                          <div className="flex w-full gap-2 mt-2">
+                            <button 
+                              onClick={() => handleSecureDownload(order, 'successLink')}
+                              disabled={downloadingOrderId === order.id}
+                              className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+                            >
+                              {downloadingOrderId === order.id ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                              ) : (
+                                <Download className="w-5 h-5" />
+                              )}
+                              ডাউনলোড করুন
+                            </button>
+                            {!order.oneTimeDownload && (
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(order.successLink || '');
+                                  alert('লিঙ্ক কপি করা হয়েছে!');
+                                }}
+                                className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+                                title="Copy Link"
+                              >
+                                <Copy className="w-5 h-5" />
+                              </button>
                             )}
-                            {order.successLink && (
-                              <div className="flex w-full gap-2 mt-2">
-                                <button 
-                                  onClick={() => handleSecureDownload(order, 'successLink')}
-                                  disabled={downloadingOrderId === order.id}
-                                  className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
-                                >
-                                  {downloadingOrderId === order.id ? (
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                  ) : (
-                                    <Download className="w-5 h-5" />
-                                  )}
-                                  ডাউনলোড করুন
-                                </button>
-                                {!order.oneTimeDownload && (
-                                  <button 
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(order.successLink || '');
-                                      alert('লিঙ্ক কপি করা হয়েছে!');
-                                    }}
-                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                                    title="Copy Link"
-                                  >
-                                    <Copy className="w-5 h-5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </>
+                          </div>
                         )}
                         <button 
                           onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
