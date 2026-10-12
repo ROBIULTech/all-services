@@ -75,9 +75,11 @@ const uploadToDisk = multer({
   limits: { fileSize: 300 * 1024 * 1024 } // 300MB
 });
 
-async function startServer() {
+let cachedApp: express.Express | null = null;
+
+export async function getApp() {
+  if (cachedApp) return cachedApp;
   const app = express();
-  const PORT = 3000;
 
   app.use(cors());
   app.use(express.json({ limit: '50mb' }));
@@ -990,13 +992,13 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -1004,9 +1006,18 @@ async function startServer() {
     });
   }
 
+  cachedApp = app;
+  return app;
+}
+
+async function startServer() {
+  const app = await getApp();
+  const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
