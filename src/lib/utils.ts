@@ -178,32 +178,24 @@ export async function downloadFile(url: string, filename: string) {
     cleanName = cleanName.replace(/index/i, 'document');
   }
 
-  // 2. Route all Google Drive & external URLs through our secure proxy
-  // This guarantees Content-Disposition header with filename and prevents Chrome from saving 'index'
-  const targetProxyUrl = `/api/secure-download/direct?url=${encodeURIComponent(url)}&title=${encodeURIComponent(cleanName)}`;
+  // Handle Google Drive links specifically
+  let targetUrl = url;
+  const driveId = extractGoogleDriveId(url);
+  if (driveId) {
+    targetUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+  }
 
+  // Try direct fetch for blob download (if CORS allows)
   try {
-    const response = await fetch(targetProxyUrl);
+    const response = await fetch(targetUrl, { mode: 'cors' });
     if (response.ok) {
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('text/html')) {
-        const disposition = response.headers.get('content-disposition');
-        let downloadName = cleanName;
-        if (disposition && disposition.includes('filename=')) {
-          const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-          if (match && match[1]) {
-            const parsed = decodeURIComponent(match[1].replace(/['"]/g, ''));
-            if (parsed && !parsed.toLowerCase().startsWith('index')) {
-              downloadName = parsed;
-            }
-          }
-        }
-
         const blob = await response.blob();
         const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = blobUrl;
-        link.download = downloadName;
+        link.download = cleanName;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -212,13 +204,38 @@ export async function downloadFile(url: string, filename: string) {
       }
     }
   } catch (err) {
-    console.warn('Proxy streaming encountered an error, falling back to direct anchor:', err);
+    // CORS or network error, proceed to fallback
   }
 
-  // Fallback: Trigger native browser download directly via same-origin proxy
+  // Try proxy endpoint if backend server is active
+  const proxyUrl = `/api/secure-download/direct?url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(cleanName)}`;
+  try {
+    const proxyRes = await fetch(proxyUrl);
+    if (proxyRes.ok) {
+      const contentType = proxyRes.headers.get('content-type') || '';
+      if (!contentType.includes('text/html')) {
+        const blob = await proxyRes.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = cleanName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+        return;
+      }
+    }
+  } catch (e) {
+    // ignore proxy error
+  }
+
+  // Ultimate fallback: open targetUrl directly in new tab or trigger direct download
   const link = document.createElement('a');
-  link.href = targetProxyUrl;
-  link.setAttribute('download', cleanName);
+  link.href = targetUrl;
+  link.download = cleanName;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
