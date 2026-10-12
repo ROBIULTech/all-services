@@ -188,10 +188,211 @@ async function startServer() {
     }
   });
 
-  // Secure Link Redirect API (5 minutes expiry)
-  app.get("/api/secure-link/:orderId", async (req, res) => {
+  // Helper to extract Google Drive file ID
+  function extractGoogleDriveId(url: string): string | null {
+    if (!url) return null;
+    const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (m1) return m1[1];
+    const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m2) return m2[1];
+    const m3 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (m3) return m3[1];
+    return null;
+  }
+
+  // Stream Google Drive file or external URL securely without exposing raw URLs
+  async function streamExternalResource(url: string, res: express.Response, downloadFilename: string, inline: boolean = false) {
+    const driveId = extractGoogleDriveId(url);
+
+    if (driveId) {
+      let driveUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=t`;
+      let response = await axios.get(driveUrl, {
+        responseType: 'stream',
+        maxRedirects: 10,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+
+      const contentType = response.headers['content-type'] || '';
+      if (contentType.includes('text/html')) {
+        // Collect chunks to find confirm code if Google asks for virus confirmation
+        const chunks: Buffer[] = [];
+        for await (const chunk of response.data) {
+          chunks.push(chunk);
+        }
+        const html = Buffer.concat(chunks).toString('utf-8');
+        const confirmMatch = html.match(/confirm=([0-9A-Za-z_-]+)/);
+        if (confirmMatch) {
+          const confirmCode = confirmMatch[1];
+          driveUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=${confirmCode}`;
+          response = await axios.get(driveUrl, {
+            responseType: 'stream',
+            maxRedirects: 10,
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+          });
+        }
+      }
+
+      const streamContentType = response.headers['content-type'] || 'application/octet-stream';
+      let ext = 'pdf';
+      if (streamContentType.includes('pdf')) ext = 'pdf';
+      else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
+      else if (streamContentType.includes('png')) ext = 'png';
+      else if (streamContentType.includes('zip')) ext = 'zip';
+
+      const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+      const dispositionType = inline ? 'inline' : 'attachment';
+
+      res.setHeader('Content-Type', streamContentType);
+      res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
+      if (response.headers['content-length']) {
+        res.setHeader('Content-Length', response.headers['content-length']);
+      }
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return response.data.pipe(res);
+    }
+
+    // Base64 Data URL
+    if (url.startsWith('data:')) {
+      const matches = url.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const contentType = matches[1];
+        const buffer = Buffer.from(matches[2], 'base64');
+        let ext = 'pdf';
+        if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+        else if (contentType.includes('png')) ext = 'png';
+        else if (contentType.includes('pdf')) ext = 'pdf';
+
+        const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+        const dispositionType = inline ? 'inline' : 'attachment';
+
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
+        res.setHeader('Content-Length', buffer.length);
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        return res.send(buffer);
+      }
+    }
+
+    // Local Disk File (/uploads/...)
+    if (url.startsWith('/uploads/') || url.includes('/uploads/')) {
+      const fname = path.basename(url.split('?')[0]);
+      const filePath = path.join(uploadsDir, fname);
+      if (fs.existsSync(filePath)) {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        if (inline) {
+          return res.sendFile(filePath);
+        }
+        return res.download(filePath, downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}_${fname}`);
+      }
+    }
+
+    // Any generic external URL (Cloudinary, S3, Firebase Storage, Direct HTTP file)
+    const response = await axios.get(url, {
+      responseType: 'stream',
+      maxRedirects: 10,
+      timeout: 60000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    const streamContentType = response.headers['content-type'] || 'application/octet-stream';
+    let ext = 'pdf';
+    if (streamContentType.includes('pdf')) ext = 'pdf';
+    else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
+    else if (streamContentType.includes('png')) ext = 'png';
+    else if (streamContentType.includes('zip')) ext = 'zip';
+    else {
+      const urlExt = path.extname(url.split('?')[0]).replace('.', '');
+      if (urlExt && urlExt.length <= 5) ext = urlExt;
+    }
+
+    const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+    const dispositionType = inline ? 'inline' : 'attachment';
+
+    res.setHeader('Content-Type', streamContentType);
+    res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
+    if (response.headers['content-length']) {
+      res.setHeader('Content-Length', response.headers['content-length']);
+    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    return response.data.pipe(res);
+  }
+
+  // Secure File Download Endpoint - One-Time Protected without exposing raw URLs or opening new tabs
+  app.get("/api/secure-download/:orderId", async (req, res) => {
     try {
       const { orderId } = req.params;
+      const type = (req.query.type as string) || 'auto';
+      const orderRef = doc(db, 'orders', orderId);
+      const orderSnap = await getDoc(orderRef);
+
+      if (!orderSnap.exists()) {
+        return res.status(404).json({ success: false, message: "অর্ডার খুঁজে পাওয়া যায়নি।" });
+      }
+
+      const orderData = orderSnap.data();
+      const isOneTime = Boolean(orderData.oneTimeDownload);
+      const isExpired = Boolean(orderData.isDownloadExpired) || Number(orderData.downloadCount || 0) >= 1;
+
+      if (isOneTime && isExpired) {
+        return res.status(403).json({
+          success: false,
+          error: "expired",
+          message: "⚠️ এই ফাইলটি ইতিমধ্যে ১ বার ডাউনলোড করা হয়ে গেছে এবং লিংকটির মেয়াদ শেষ হয়ে গেছে। পুনরায় এক্সেস পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।"
+        });
+      }
+
+      let targetUrl = '';
+      if (type === 'resultFile') {
+        targetUrl = orderData.resultFile || orderData.successLink || '';
+      } else if (type === 'successLink') {
+        targetUrl = orderData.successLink || orderData.resultFile || '';
+      } else {
+        targetUrl = orderData.resultFile || orderData.successLink || '';
+      }
+
+      if (!targetUrl) {
+        return res.status(404).json({ success: false, message: "ফাইল বা ডাউনলোড লিংক পাওয়া যায়নি।" });
+      }
+
+      // If one-time download is active, increment count and burn the link immediately on server
+      if (isOneTime) {
+        await updateDoc(orderRef, {
+          downloadCount: (orderData.downloadCount || 0) + 1,
+          isDownloadExpired: true,
+          downloadedAt: serverTimestamp()
+        });
+      }
+
+      const safeTitle = (orderData.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+      const filename = `${safeTitle}_${orderId}`;
+
+      await streamExternalResource(targetUrl, res, filename, false);
+    } catch (error: any) {
+      console.error("Secure download error:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "ফাইল ডাউনলোড সম্পন্ন করা যায়নি: " + (error.message || 'Error') });
+      }
+    }
+  });
+
+  // Secure In-App File Preview Endpoint (Streams inline for iframe / modal viewer)
+  app.get("/api/secure-preview/:orderId", async (req, res) => {
+    try {
+      const { orderId } = req.params;
+      const type = (req.query.type as string) || 'auto';
       const orderRef = doc(db, 'orders', orderId);
       const orderSnap = await getDoc(orderRef);
 
@@ -200,34 +401,52 @@ async function startServer() {
       }
 
       const orderData = orderSnap.data();
-      const createdAt = orderData.createdAt?.toMillis() || 0;
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
+      const isOneTime = Boolean(orderData.oneTimeDownload);
+      const isExpired = Boolean(orderData.isDownloadExpired) || Number(orderData.downloadCount || 0) >= 1;
 
-      // Check if 5 minutes have passed since order creation
-      if (now - createdAt > fiveMinutes) {
+      if (isOneTime && isExpired) {
         return res.status(403).send(`
           <html>
-            <head><title>Link Expired</title></head>
-            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #f8fafc;">
-              <h1 style="color: #ef4444;">Link Expired</h1>
-              <p style="color: #64748b;">This download link has expired. It was only valid for 5 minutes after purchase.</p>
+            <head><meta charset="utf-8"><title>Link Expired</title></head>
+            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #fff1f2; color: #be123c;">
+              <h2>⚠️ ফাইলটির মেয়াদ শেষ হয়ে গেছে</h2>
+              <p>সুরক্ষার স্বার্থে এই ফাইলটি ইতিমধ্যে ১ বার ব্যবহার করা হয়ে গেছে। পুনরায় লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
             </body>
           </html>
         `);
       }
 
-      // Find the link to redirect to
-      // It could be in the order data directly if we saved it there, or we can just redirect to the URL passed in query
-      const targetUrl = req.query.url as string;
-      if (!targetUrl) {
-        return res.status(400).send("Target URL missing");
+      let targetUrl = '';
+      if (type === 'resultFile') {
+        targetUrl = orderData.resultFile || orderData.successLink || '';
+      } else if (type === 'successLink') {
+        targetUrl = orderData.successLink || orderData.resultFile || '';
+      } else {
+        targetUrl = orderData.resultFile || orderData.successLink || '';
       }
 
-      res.redirect(targetUrl);
-    } catch (error) {
-      console.error("Secure link error:", error);
-      res.status(500).send("Internal Server Error");
+      if (!targetUrl) {
+        return res.status(404).send("File not found");
+      }
+
+      // If oneTimeDownload is enabled, viewing burns the one-time limit
+      if (isOneTime) {
+        await updateDoc(orderRef, {
+          downloadCount: (orderData.downloadCount || 0) + 1,
+          isDownloadExpired: true,
+          downloadedAt: serverTimestamp()
+        });
+      }
+
+      const safeTitle = (orderData.serviceTitle || 'preview').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+      const filename = `${safeTitle}_${orderId}`;
+
+      await streamExternalResource(targetUrl, res, filename, true);
+    } catch (error: any) {
+      console.error("Secure preview error:", error);
+      if (!res.headersSent) {
+        res.status(500).send("Preview Error: " + error.message);
+      }
     }
   });
 

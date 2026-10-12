@@ -27,6 +27,7 @@ import {
   LogIn,
   Crown,
   Lock,
+  Printer,
   FileText,
   ShoppingCart,
   Server,
@@ -132,6 +133,14 @@ const UserPanel: React.FC<UserPanelProps & { isAdmin?: boolean; onBackToAdmin?: 
   const [sessions, setSessions] = useState<any[]>([]);
   const [loginHistory, setLoginHistory] = useState<any[]>([]);
   const [showPassword, setShowPassword] = useState(false);
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null);
+  const [previewModal, setPreviewModal] = useState<{
+    order: Order;
+    url: string;
+    title: string;
+    isOneTime: boolean;
+    isImage: boolean;
+  } | null>(null);
 
   const themeColors = [
     { name: 'Blue', color: '#2563eb' },
@@ -620,126 +629,95 @@ Mobile-
   };
 
   const handleSecureDownload = async (order: Order, type: 'resultFile' | 'successLink' | 'view') => {
-    if (!order) return;
+    if (!order || !order.id) return;
 
     const isExpired = order.oneTimeDownload && (order.isDownloadExpired || (order.downloadCount || 0) >= 1);
     if (isExpired) {
-      alert("⚠️ ডাউনলোড লিংকটির মেয়াদ শেষ হয়ে গেছে!\n\nসুরক্ষার স্বার্থে এই ফাইলটি ইতিমধ্যে ১ বার ডাউনলোড করা হয়ে গেছে। পুনরায় লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।");
+      alert("⚠️ ডাউনলোড লিংকটির মেয়াদ শেষ হয়ে গেছে!\n\nসুরক্ষার স্বার্থে এই ফাইলটি ইতিমধ্যে ১ বার ডাউনলোড/দেখা হয়ে গেছে। পুনরায় লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।");
       return;
     }
 
     if (order.oneTimeDownload && (order.downloadCount || 0) === 0) {
-      const confirmed = window.confirm("⚠️ সতর্কতা: এটি একটি One-Time (১ বার ব্যবহারযোগ্য) ফাইল লিংক!\n\nআপনি এই ফাইলটি শুধুমাত্র ১ বারই ডাউনলোড/দেখতে পারবেন। একবার ডাউনলোড শুরু হলে লিংকটি স্বয়ংক্রিয়ভাবে অকেজো হয়ে যাবে।\n\nআপনি কি এখনই ফাইলটি ডাউনলোড করতে চান?");
+      const confirmed = window.confirm(
+        type === 'view'
+          ? "⚠️ সতর্কতা: এটি একটি One-Time (১ বার ব্যবহারযোগ্য) ফাইল!\n\nআপনি ফাইলটি শুধুমাত্র ১ বার দেখতে ও সেভ করতে পারবেন। একবার উইন্ডো ওপেন হলে লিংকটি স্বয়ংক্রিয়ভাবে লক হয়ে যাবে।\n\nআপনি কি এখনই ফাইলটি দেখতে চান?"
+          : "⚠️ সতর্কতা: এটি একটি One-Time (১ বার ব্যবহারযোগ্য) ফাইল লিংক!\n\nআপনি এই ফাইলটি শুধুমাত্র ১ বারই ডাউনলোড করতে পারবেন। একবার ডাউনলোড শুরু হলে লিংকটি স্বয়ংক্রিয়ভাবে অকেজো হয়ে যাবে।\n\nআপনি কি এখনই ফাইলটি ডাউনলোড করতে চান?"
+      );
       if (!confirmed) return;
     }
 
     try {
       if (type === 'view') {
-        if (order.resultFile?.startsWith('data:')) {
-          const win = window.open();
-          if (win) {
-            const isImage = order.resultFile?.startsWith('data:image/');
-            win.document.write(`
-              <html>
-                <head>
-                  <title>Result Preview - A4</title>
-                  <style>
-                    @page { size: A4; margin: 0; }
-                    body { 
-                      margin: 0; 
-                      background: #515559; 
-                      display: flex; 
-                      flex-direction: column; 
-                      align-items: center; 
-                      padding: 40px 0;
-                      min-height: 100vh;
-                      font-family: sans-serif;
-                    }
-                    .a4-page {
-                      background: white;
-                      width: 210mm;
-                      min-height: 297mm;
-                      box-shadow: 0 0 20px rgba(0,0,0,0.4);
-                      display: flex;
-                      flex-direction: column;
-                      justify-content: flex-start;
-                      align-items: center;
-                      position: relative;
-                    }
-                    .content {
-                      width: 100%;
-                      display: block;
-                      border: none;
-                    }
-                    iframe.content {
-                      height: 297mm;
-                    }
-                    .toolbar {
-                      margin-bottom: 20px;
-                      display: flex;
-                      gap: 15px;
-                      position: sticky;
-                      top: 20px;
-                      z-index: 100;
-                    }
-                    button {
-                      padding: 8px 16px;
-                      background: #1a73e8;
-                      color: white;
-                      border: none;
-                      border-radius: 4px;
-                      cursor: pointer;
-                      font-weight: bold;
-                      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-                    }
-                    button:hover { background: #1557b0; }
-                    @media print {
-                      body { background: white; padding: 0; }
-                      .a4-page { box-shadow: none; width: 210mm; height: 297mm; }
-                      .toolbar { display: none; }
-                    }
-                  </style>
-                </head>
-                <body>
-                  <div class="toolbar">
-                    <button onclick="window.print()">Print / Download</button>
-                    <button onclick="window.close()">Close</button>
-                  </div>
-                  <div class="a4-page">
-                    \${isImage ? \`<img src="\${order.resultFile}" class="content">\` : \`<iframe src="\${order.resultFile}" class="content"></iframe>\`}
-                  </div>
-                </body>
-              </html>
-            `);
-            win.document.close();
-          } else {
-            alert("Popup blocked! Please allow popups for this site.");
-            return;
-          }
-        } else if (order.resultFile) {
-          const link = document.createElement('a');
-          link.href = order.resultFile;
-          link.target = '_blank';
-          link.click();
+        const isBase64Img = order.resultFile?.startsWith('data:image/');
+        const previewUrl = `/api/secure-preview/${order.id}?type=resultFile`;
+        setPreviewModal({
+          order,
+          url: order.resultFile?.startsWith('data:') ? order.resultFile : previewUrl,
+          title: order.serviceTitle || 'ডকুমেন্ট প্রিভিউ',
+          isOneTime: Boolean(order.oneTimeDownload),
+          isImage: Boolean(isBase64Img)
+        });
+
+        if (order.oneTimeDownload) {
+          const orderRef = doc(db, 'orders', order.id);
+          await updateDoc(orderRef, {
+            downloadCount: (order.downloadCount || 0) + 1,
+            isDownloadExpired: true,
+            downloadedAt: serverTimestamp()
+          });
+          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, downloadCount: (o.downloadCount || 0) + 1, isDownloadExpired: true } : o));
         }
-      } else if (type === 'resultFile' && order.resultFile) {
-        const ext = getExtensionFromUrl(order.resultFile);
-        const safeTitle = (order.serviceTitle || 'result').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        downloadFile(order.resultFile, `\${safeTitle}_\${order.id || 'order'}.\${ext}`);
-      } else if (type === 'successLink' && order.successLink) {
-        window.open(order.successLink, '_blank');
+        return;
       }
 
-      if (order.oneTimeDownload && order.id) {
-        const orderRef = doc(db, 'orders', order.id);
-        await updateDoc(orderRef, {
-          downloadCount: (order.downloadCount || 0) + 1,
-          isDownloadExpired: true,
-          downloadedAt: serverTimestamp()
-        });
+      // Direct in-page background download without opening new tabs or browser history exposure
+      setDownloadingOrderId(order.id);
+
+      const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}`;
+      const response = await fetch(downloadEndpoint);
+
+      if (!response.ok) {
+        let errorMsg = '⚠️ ডাউনলোড সম্পন্ন করা সম্ভব হয়নি অথবা লিংকটির মেয়াদ শেষ হয়ে গেছে।';
+        try {
+          const errData = await response.json();
+          if (errData.message) errorMsg = errData.message;
+        } catch (_e) {}
+        alert(errorMsg);
+        return;
       }
-    } catch (err) {
+
+      // Extract filename from response header or create default
+      const disposition = response.headers.get('content-disposition');
+      let filename = '';
+      if (disposition && disposition.includes('filename=')) {
+        const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+        }
+      }
+      if (!filename) {
+        const safeTitle = (order.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+        filename = `${safeTitle}_${order.id}.pdf`;
+      }
+
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+
+      if (order.oneTimeDownload) {
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, downloadCount: (o.downloadCount || 0) + 1, isDownloadExpired: true } : o));
+      }
+    } catch (err: any) {
       console.error('Error during secure download:', err);
+      alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।');
+    } finally {
+      setDownloadingOrderId(null);
     }
   };
 
@@ -4342,6 +4320,106 @@ Mobile-
                 >
                   Close / বন্ধ করুন
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* In-App Document Preview Modal (No new tab, no browser history leak) */}
+      <AnimatePresence>
+        {previewModal && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPreviewModal(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 z-10"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-base">{previewModal.title}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {previewModal.isOneTime ? (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" /> ১ বার ভিউ মোড
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                          ফাইল প্রিভিউ
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400">ইন-অ্যাপ নিরাপদ প্রিভিউ</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
+                      if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.print();
+                      } else {
+                        window.print();
+                      }
+                    }}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="প্রিন্ট করুন"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span className="hidden sm:inline">প্রিন্ট</span>
+                  </button>
+                  <button
+                    onClick={() => handleSecureDownload(previewModal.order, 'resultFile')}
+                    disabled={downloadingOrderId === previewModal.order.id}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+                    title="ডাউনলোড করুন"
+                  >
+                    {downloadingOrderId === previewModal.order.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">ডাউনলোড</span>
+                  </button>
+                  <button
+                    onClick={() => setPreviewModal(null)}
+                    className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Content Body */}
+              <div className="flex-1 p-4 bg-slate-900/5 min-h-[500px] overflow-auto flex items-center justify-center">
+                {previewModal.isImage ? (
+                  <img 
+                    src={previewModal.url} 
+                    alt="Document preview" 
+                    className="max-h-[75vh] w-auto object-contain rounded-xl shadow-lg bg-white"
+                  />
+                ) : (
+                  <iframe 
+                    id="preview-iframe"
+                    src={previewModal.url} 
+                    title="Document preview" 
+                    className="w-full h-[75vh] rounded-xl border border-slate-200 bg-white shadow-sm"
+                  />
+                )}
               </div>
             </motion.div>
           </div>
