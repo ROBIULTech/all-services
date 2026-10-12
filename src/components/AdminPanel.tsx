@@ -34,6 +34,7 @@ import {
   EyeOff,
   Trash2,
   Crown,
+  Lock,
   Upload,
   RotateCcw,
   Tag,
@@ -137,7 +138,7 @@ interface AdminPanelProps {
   trashItems: TrashItem[];
   globalSettings: GlobalSettings;
   updateGlobalSettings: (updates: Partial<GlobalSettings>) => Promise<void>;
-  updateOrderStatus: (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string, oneTimeDownload?: boolean) => Promise<void>;
   deleteOrder: (orderId: string) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   restoreItem: (item: TrashItem) => Promise<void>;
@@ -707,7 +708,24 @@ https://all-services-roan.vercel.app/`;
   const [orderResultUploadStatus, setOrderResultUploadStatus] = useState<string>('');
   const [adminNote, setAdminNote] = useState('Order completed successfully');
   const [successLinkInput, setSuccessLinkInput] = useState('');
+  const [isOneTimeDownload, setIsOneTimeDownload] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleResetDownloadLimit = async (orderId: string) => {
+    if (!window.confirm('আপনি কি এই অর্ডারের ডাউনলোড লিমিট পুনরায় চালু (আনলক) করতে চান? ইউজার আবার ১ বার ডাউনলোড করতে পারবে।')) return;
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await updateDoc(orderRef, {
+        downloadCount: 0,
+        isDownloadExpired: false,
+        updatedAt: serverTimestamp()
+      });
+      alert('ডাউনলোড লিমিট সফলভাবে পুনরায় আনলক করা হয়েছে!');
+    } catch (err: any) {
+      console.error('Failed to reset download limit:', err);
+      alert('Failed to reset download limit: ' + err.message);
+    }
+  };
 
   const handleDownloadTrashFile = (item: TrashItem) => {
     // Generate CSV content
@@ -948,7 +966,7 @@ https://all-services-roan.vercel.app/`;
       }
 
       setOrderResultUploadStatus('অর্ডার সম্পন্ন হচ্ছে...');
-      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, finalResultFile ?? undefined, successLinkInput || undefined);
+      await updateOrderStatus(completingOrder.id!, 'completed', adminNote, finalResultFile ?? undefined, successLinkInput || undefined, isOneTimeDownload);
       
       setCompletingOrder(null);
       setResultFile(null);
@@ -956,6 +974,7 @@ https://all-services-roan.vercel.app/`;
       setOrderResultUploadStatus('');
       setAdminNote('Order completed successfully');
       setSuccessLinkInput('');
+      setIsOneTimeDownload(false);
       setShowSuccess(true);
     } catch (error: any) {
       console.error('Error completing order:', error);
@@ -2352,6 +2371,29 @@ https://all-services-roan.vercel.app/`;
                                 </div>
                               ) : (
                                 <span className="text-xs text-slate-400 italic">No file</span>
+                              )}
+
+                              {order.oneTimeDownload && (
+                                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                                  {(order.isDownloadExpired || (order.downloadCount || 0) >= 1) ? (
+                                    <>
+                                      <span className="text-[9px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-rose-200">
+                                        <Lock className="w-2.5 h-2.5" /> Expired ({order.downloadCount || 1}/1 বার ডাউনলোড)
+                                      </span>
+                                      <button 
+                                        onClick={() => handleResetDownloadLimit(order.id!)}
+                                        className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 rounded-md font-bold transition-colors shadow-xs"
+                                        title="ইউজারের জন্য ডাউনলোড পুনরায় চালু করুন"
+                                      >
+                                        পুনরায় আনলক
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-[9px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 border border-amber-200">
+                                      <ShieldCheck className="w-2.5 h-2.5" /> ১ বার লিমিট (অব্যবহৃত)
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </td>
                             <td className="px-6 py-4">
@@ -5376,6 +5418,33 @@ https://all-services-roan.vercel.app/`;
                       placeholder="https://drive.google.com/..."
                     />
                   </div>
+                </div>
+
+                {/* One-Time Download Security Option */}
+                <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-300/40 text-amber-700 flex items-center justify-center font-bold flex-shrink-0">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-900">One-Time Download Limit</span>
+                        <span className="text-[10px] bg-amber-200 text-amber-800 font-bold px-2 py-0.5 rounded-full">১ বার ডাউনলোড</span>
+                      </div>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        ইউজার লিঙ্ক বা ফাইলটি <strong>শুধুমাত্র ১ বার</strong> ব্যবহার করতে পারবে। ১ম বার ব্যবহারের পর লিঙ্কটি স্বয়ংক্রিয়ভাবে লক হয়ে যাবে।
+                      </p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={isOneTimeDownload} 
+                      onChange={(e) => setIsOneTimeDownload(e.target.checked)} 
+                      className="sr-only peer" 
+                    />
+                    <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+                  </label>
                 </div>
 
                 <div className="space-y-2">

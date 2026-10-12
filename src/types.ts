@@ -51,6 +51,11 @@ export interface Order {
   fileURLs?: string[];
   senderNumber?: string;
   trxID?: string;
+  successLink?: string;
+  oneTimeDownload?: boolean;
+  downloadCount?: number;
+  isDownloadExpired?: boolean;
+  downloadedAt?: any;
 }
 
 export interface Product {

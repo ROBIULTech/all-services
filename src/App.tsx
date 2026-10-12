@@ -940,7 +940,7 @@ export default function App() {
 
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
 
-  const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string) => {
+  const updateOrderStatus = async (orderId: string, status: Order['status'], note: string, resultFile?: string, successLink?: string, oneTimeDownload?: boolean) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       const orderSnap = await getDoc(orderRef);
@@ -954,6 +954,13 @@ export default function App() {
       const updates: any = { status, note, updatedAt: serverTimestamp() };
       if (resultFile) updates.resultFile = resultFile;
       if (successLink) updates.successLink = successLink;
+      if (oneTimeDownload !== undefined) {
+        updates.oneTimeDownload = oneTimeDownload;
+        if (oneTimeDownload) {
+          updates.downloadCount = 0;
+          updates.isDownloadExpired = false;
+        }
+      }
       
       await updateDoc(orderRef, updates);
       
