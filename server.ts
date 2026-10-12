@@ -202,6 +202,27 @@ export async function getApp() {
     return null;
   }
 
+  // Helper to check if file/url/title is ZIP or Excel (XL)
+  function isZipOrExcel(text: string): boolean {
+    if (!text) return false;
+    const lower = text.toLowerCase();
+    return (
+      lower.endsWith('.zip') ||
+      lower.endsWith('.rar') ||
+      lower.endsWith('.xlsx') ||
+      lower.endsWith('.xls') ||
+      lower.endsWith('.csv') ||
+      lower.includes('.zip?') ||
+      lower.includes('.xlsx?') ||
+      lower.includes('.xls?') ||
+      lower.includes('zip') ||
+      lower.includes('xl') ||
+      lower.includes('excel') ||
+      lower.includes('csv') ||
+      lower.includes('sheet')
+    );
+  }
+
   // Stream Google Drive file or external URL securely without exposing raw URLs
   async function streamExternalResource(url: string, res: express.Response, downloadFilename: string, inline: boolean = false) {
     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type, Content-Length');
@@ -364,6 +385,7 @@ export async function getApp() {
       const type = (req.query.type as string) || 'auto';
       let targetUrl = (req.query.url as string) || (req.query.targetUrl as string) || '';
       let serviceTitle = (req.query.title as string) || '';
+      let orderData: any = null;
 
       if (!targetUrl && orderId && orderId !== 'direct') {
         try {
@@ -371,7 +393,7 @@ export async function getApp() {
           const orderSnap = await getDoc(orderRef);
 
           if (orderSnap.exists()) {
-            const orderData = orderSnap.data();
+            orderData = orderSnap.data();
             if (type === 'resultFile') {
               targetUrl = orderData.resultFile || orderData.successLink || '';
             } else if (type === 'successLink') {
@@ -392,6 +414,18 @@ export async function getApp() {
         return res.status(404).json({ success: false, message: "ফাইল বা ডাউনলোড লিংক পাওয়া যায়নি।" });
       }
 
+      // Check One-Time Download Limit for ZIP and Excel (XL) files
+      const isZipOrXl = isZipOrExcel(targetUrl) || isZipOrExcel(serviceTitle);
+      if (isZipOrXl && orderId && orderId !== 'direct') {
+        if (orderData && (orderData.isDownloadExpired || (orderData.downloadCount || 0) >= 1)) {
+          return res.status(403).json({
+            success: false,
+            locked: true,
+            message: "এই ZIP/XL ফাইলটি ইতিমধ্যে একবার ডাউনলোড করা হয়েছে। নিয়ম অনুযায়ী এটি ১ বার ডাউনলোডের পর অটো-লক হয়ে গেছে।"
+          });
+        }
+      }
+
       let cleanTitle = (serviceTitle || 'document').replace(/[^a-zA-Z0-9_\u0980-\u09FF.-]/g, '_');
       if (cleanTitle.toLowerCase().startsWith('index')) {
         cleanTitle = cleanTitle.replace(/^index/i, 'document');
@@ -409,6 +443,18 @@ export async function getApp() {
       }
 
       await streamExternalResource(targetUrl, res, filename, false);
+
+      // If ZIP/XL and valid order, mark as downloaded and lock
+      if (isZipOrXl && orderId && orderId !== 'direct') {
+        try {
+          const orderRef = doc(db, 'orders', orderId);
+          await updateDoc(orderRef, {
+            downloadCount: 1,
+            isDownloadExpired: true,
+            downloadedAt: serverTimestamp()
+          });
+        } catch (err) {}
+      }
     } catch (error: any) {
       console.error("Secure download error:", error);
       if (!res.headersSent) {
