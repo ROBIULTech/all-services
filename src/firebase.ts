@@ -14,12 +14,3 @@ export const googleProvider = new GoogleAuthProvider();
 export { signInWithPopup, signOut, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, addDoc, serverTimestamp, getDocFromServer, Timestamp, signInWithEmailAndPassword, createUserWithEmailAndPassword, getDocs, deleteDoc, writeBatch, signInAnonymously, orderBy, limit, ref, uploadBytesResumable, getDownloadURL };
 export type { FirebaseUser };
 
-// Test connection
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (_error) {
-    // Ignore test connection errors silently
-  }
-}
-testConnection();

@@ -333,8 +333,8 @@ export default function App() {
             ip,
             timestamp: serverTimestamp()
           });
-        } catch (err) {
-          console.error("Error creating session in collection 'sessions' or 'login_history':", err);
+        } catch (err: any) {
+          console.warn("Notice recording session in 'sessions' or 'login_history':", err?.message || err);
         }
       } else {
         // Update last seen
@@ -353,8 +353,8 @@ export default function App() {
               createdAt: serverTimestamp(),
               lastSeen: serverTimestamp()
             });
-          } catch (e) {
-            console.error("Error updating/recreating session in collection 'sessions':", e);
+          } catch (e: any) {
+            console.warn("Notice updating session in 'sessions':", e?.message || e);
           }
         }
       }
@@ -550,8 +550,13 @@ export default function App() {
               setUserProfile(null);
             }
           }
-        } catch (e) {
-          console.error("Error fetching user profile:", e);
+        } catch (e: any) {
+          const isQuota = e?.code === 'resource-exhausted' || e?.message?.toLowerCase()?.includes('quota');
+          if (isQuota) {
+            console.warn("User profile fetch quota notice (using cached session):", e?.message || e);
+          } else {
+            console.warn("User profile fetch notice:", e?.message || e);
+          }
           const demoSession = localStorage.getItem('demo_session');
           if (demoSession) {
             try {
@@ -667,8 +672,13 @@ export default function App() {
           await setDoc(doc(db, 'users', adminId), adminProfile);
           console.log('Admin user bootstrapped successfully.');
         }
-      } catch (error) {
-        console.error('Error bootstrapping admin:', error);
+      } catch (error: any) {
+        const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+        if (isQuota) {
+          console.warn('Admin bootstrap quota notice (proceeding):', error?.message || error);
+        } else {
+          console.warn('Admin bootstrap notice:', error?.message || error);
+        }
       }
     };
     // Delay bootstrap slightly to allow auth to warm up
@@ -683,6 +693,20 @@ export default function App() {
       // For admins, we allow re-running if not synced yet to ensure DB updates
       if (initializationRef.current.products && (userProfile?.role !== 'admin' || initializationRef.current.synced)) return;
       
+      // Load from local cache immediately if available to reduce quota and render UI immediately
+      const cached = localStorage.getItem('cached_portal_products');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setProducts(parsed);
+            initializationRef.current.products = true;
+          }
+        } catch (_) {}
+      } else if (!products || products.length === 0) {
+        setProducts(initialProducts);
+      }
+
       try {
         const q = query(collection(db, 'products'), limit(100));
         const snapshot = await getDocs(q);
@@ -693,11 +717,12 @@ export default function App() {
         
         if (productsData.length > 0) {
           setProducts(productsData);
-          if (!initializationRef.current.products) {
-            initializationRef.current.products = true;
-          }
+          try {
+            localStorage.setItem('cached_portal_products', JSON.stringify(productsData));
+          } catch (_) {}
+          initializationRef.current.products = true;
         } else {
-          // Fallback to initial products if DB is empty (only for early setup)
+          // Fallback to initial products if DB is empty
           setProducts(initialProducts);
           initializationRef.current.products = true;
         }
@@ -709,12 +734,7 @@ export default function App() {
             const batch = writeBatch(db);
             missingProducts.forEach(p => {
               const ref = doc(db, 'products', p.id.toString());
-              
-              // Create a sanitized copy to save to Firestore
-              // We must omit 'icon' as it's a React Functional Component and causes
-              // FIRESTORE (12.11.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: 3029) CONTEXT: {"type":"symbol"}
               const { icon, ...productToSave } = p;
-              
               batch.set(ref, productToSave);
             });
             await batch.commit();
@@ -726,13 +746,33 @@ export default function App() {
               updatedProducts.push(doc.data() as Product);
             });
             setProducts(updatedProducts);
+            try {
+              localStorage.setItem('cached_portal_products', JSON.stringify(updatedProducts));
+            } catch (_) {}
           }
           initializationRef.current.synced = true;
           initializationRef.current.products = true;
         }
       } catch (error: any) {
-        console.error('Error initializing products:', error);
+        const isQuota = error?.code === 'resource-exhausted' || error?.message?.toLowerCase()?.includes('quota');
+        if (isQuota) {
+          console.warn('Firestore daily read quota limit reached. Using cached/initial products.');
+        } else {
+          console.warn('Products initialization notice (using defaults):', error?.message || error);
+        }
+
         if (!initializationRef.current.products) {
+          const cached = localStorage.getItem('cached_portal_products');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setProducts(parsed);
+                initializationRef.current.products = true;
+                return;
+              }
+            } catch (_) {}
+          }
           setProducts(initialProducts);
           initializationRef.current.products = true;
         }
