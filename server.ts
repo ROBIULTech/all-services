@@ -237,13 +237,24 @@ async function startServer() {
       }
 
       const streamContentType = response.headers['content-type'] || 'application/octet-stream';
+      let originalFilename = '';
+      const driveDisp = (response.headers['content-disposition'] as string) || '';
+      if (driveDisp) {
+        const match = driveDisp.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+        if (match && match[1]) {
+          originalFilename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+        }
+      }
+
       let ext = 'pdf';
-      if (streamContentType.includes('pdf')) ext = 'pdf';
+      if (originalFilename && originalFilename.includes('.')) {
+        ext = originalFilename.split('.').pop() || 'pdf';
+      } else if (streamContentType.includes('pdf')) ext = 'pdf';
       else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
       else if (streamContentType.includes('png')) ext = 'png';
       else if (streamContentType.includes('zip')) ext = 'zip';
 
-      const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+      const finalFilename = originalFilename || (downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`);
       const dispositionType = inline ? 'inline' : 'attachment';
 
       res.setHeader('Content-Type', streamContentType);
@@ -429,14 +440,10 @@ async function startServer() {
         return res.status(404).send("File not found");
       }
 
-      // If oneTimeDownload is enabled, viewing burns the one-time limit
-      if (isOneTime) {
-        await updateDoc(orderRef, {
-          downloadCount: (orderData.downloadCount || 0) + 1,
-          isDownloadExpired: true,
-          downloadedAt: serverTimestamp()
-        });
-      }
+      // Record preview activity without prematurely locking the download button
+      await updateDoc(orderRef, {
+        lastViewedAt: serverTimestamp()
+      });
 
       const safeTitle = (orderData.serviceTitle || 'preview').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
       const filename = `${safeTitle}_${orderId}`;

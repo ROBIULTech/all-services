@@ -88,30 +88,31 @@ export const initAntiTrackingShield = () => {
     }
   }
 
-  // 2. Cloak WebRTC Local IP Leak (RTCPeerConnection)
-  // Many tracking scripts exploit WebRTC ICE candidates to discover the actual private/public local IP.
+  // 2. Safe cloaking for WebRTC and Intl without breaking native constructor brand checks
   try {
     const origPeerConnection = (window as any).RTCPeerConnection || (window as any).webkitRTCPeerConnection || (window as any).mozRTCPeerConnection;
     if (origPeerConnection) {
-      const FakePeerConnection = function (config: any) {
-        // Force anonymous ICE candidate or relay only
-        if (config && config.iceServers) {
-          config.iceServers = [];
+      const FakePeerConnection = new Proxy(origPeerConnection, {
+        construct(target, argArray, newTarget) {
+          const config = argArray[0];
+          if (config && config.iceServers) {
+            config.iceServers = [];
+          }
+          const pc = Reflect.construct(target, argArray, newTarget);
+          if (pc && typeof pc.createOffer === 'function') {
+            const origCreateOffer = pc.createOffer.bind(pc);
+            pc.createOffer = function (options: any) {
+              return origCreateOffer(options).then((offer: any) => {
+                if (offer && offer.sdp) {
+                  offer.sdp = offer.sdp.replace(/c=IN IP4 [0-9.]+/g, 'c=IN IP4 185.220.101.5');
+                }
+                return offer;
+              });
+            };
+          }
+          return pc;
         }
-        const pc = new origPeerConnection(config);
-        const origCreateOffer = pc.createOffer.bind(pc);
-        pc.createOffer = function (options: any) {
-          return origCreateOffer(options).then((offer: any) => {
-            if (offer && offer.sdp) {
-              // Strip local 192.168.x.x / 10.x.x.x or raw IP leaks
-              offer.sdp = offer.sdp.replace(/c=IN IP4 [0-9.]+/g, 'c=IN IP4 185.220.101.5');
-            }
-            return offer;
-          });
-        };
-        return pc;
-      };
-      FakePeerConnection.prototype = origPeerConnection.prototype;
+      });
       (window as any).RTCPeerConnection = FakePeerConnection;
       if ((window as any).webkitRTCPeerConnection) (window as any).webkitRTCPeerConnection = FakePeerConnection;
     }
@@ -119,22 +120,28 @@ export const initAntiTrackingShield = () => {
     // ignore
   }
 
-  // 3. Spoof Intl Timezone query if requested by tracking scripts
+  // 3. Safe Intl Timezone query handling
   try {
     const origDateTimeFormat = Intl.DateTimeFormat;
     const resolvedTimezone = targetLoc.timezone;
-    (Intl as any).DateTimeFormat = function (...args: any[]) {
-      const instance = new (origDateTimeFormat as any)(...args);
-      const origResolvedOptions = instance.resolvedOptions.bind(instance);
-      instance.resolvedOptions = function () {
-        const options = origResolvedOptions();
-        options.timeZone = resolvedTimezone;
-        return options;
-      };
-      return instance;
-    };
-    (Intl.DateTimeFormat as any).prototype = origDateTimeFormat.prototype;
-    (Intl.DateTimeFormat as any).supportedLocalesOf = origDateTimeFormat.supportedLocalesOf;
+    const SafeDateTimeFormat = new Proxy(origDateTimeFormat, {
+      construct(target, argArray, newTarget) {
+        const instance = Reflect.construct(target, argArray, newTarget);
+        if (instance && typeof instance.resolvedOptions === 'function') {
+          const origResolved = instance.resolvedOptions.bind(instance);
+          instance.resolvedOptions = function () {
+            const options = origResolved();
+            options.timeZone = resolvedTimezone;
+            return options;
+          };
+        }
+        return instance;
+      },
+      apply(target, thisArg, argArray) {
+        return Reflect.apply(target, thisArg, argArray);
+      }
+    });
+    Intl.DateTimeFormat = SafeDateTimeFormat as any;
   } catch {
     // ignore
   }

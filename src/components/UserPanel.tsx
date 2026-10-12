@@ -648,25 +648,27 @@ Mobile-
 
     try {
       if (type === 'view') {
-        const isBase64Img = order.resultFile?.startsWith('data:image/');
-        const previewUrl = `/api/secure-preview/${order.id}?type=resultFile`;
+        const targetUrl = order.resultFile || order.successLink || '';
+        const driveMatch = targetUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || targetUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || targetUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        const driveId = driveMatch ? driveMatch[1] : null;
+
+        const isBase64Img = Boolean(targetUrl.startsWith('data:image/') || targetUrl.match(/\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i));
+        
+        // For Google Drive, use Google's official responsive embed player; otherwise use our secure stream endpoint
+        let previewUrl = `/api/secure-preview/${order.id}?type=auto`;
+        if (targetUrl.startsWith('data:')) {
+          previewUrl = targetUrl;
+        } else if (driveId) {
+          previewUrl = `https://drive.google.com/file/d/${driveId}/preview`;
+        }
+
         setPreviewModal({
           order,
-          url: order.resultFile?.startsWith('data:') ? order.resultFile : previewUrl,
+          url: previewUrl,
           title: order.serviceTitle || 'ডকুমেন্ট প্রিভিউ',
           isOneTime: Boolean(order.oneTimeDownload),
           isImage: Boolean(isBase64Img)
         });
-
-        if (order.oneTimeDownload) {
-          const orderRef = doc(db, 'orders', order.id);
-          await updateDoc(orderRef, {
-            downloadCount: (order.downloadCount || 0) + 1,
-            isDownloadExpired: true,
-            downloadedAt: serverTimestamp()
-          });
-          setOrders(prev => prev.map(o => o.id === order.id ? { ...o, downloadCount: (o.downloadCount || 0) + 1, isDownloadExpired: true } : o));
-        }
         return;
       }
 
@@ -1767,22 +1769,41 @@ Mobile-
                                           </button>
                                           <button 
                                             onClick={() => handleSecureDownload(order, 'resultFile')}
-                                            className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
+                                            disabled={downloadingOrderId === order.id}
+                                            className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                                             title="Download Result"
                                           >
-                                            <Download className="w-5 h-5" />
+                                            {downloadingOrderId === order.id ? (
+                                              <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                              <Download className="w-5 h-5" />
+                                            )}
                                           </button>
                                         </>
                                       )}
 
                                       {order.successLink && (
                                         <>
+                                          {!order.resultFile && (
+                                            <button 
+                                              onClick={() => handleSecureDownload(order, 'view')}
+                                              className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+                                              title="View File"
+                                            >
+                                              <Eye className="w-5 h-5" />
+                                            </button>
+                                          )}
                                           <button 
                                             onClick={() => handleSecureDownload(order, 'successLink')}
-                                            className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
+                                            disabled={downloadingOrderId === order.id}
+                                            className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50"
                                             title="Download File"
                                           >
-                                            <Download className="w-5 h-5" />
+                                            {downloadingOrderId === order.id ? (
+                                              <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                              <Download className="w-5 h-5" />
+                                            )}
                                           </button>
                                           {!order.oneTimeDownload && (
                                             <button 
@@ -4383,7 +4404,7 @@ Mobile-
                     <span className="hidden sm:inline">প্রিন্ট</span>
                   </button>
                   <button
-                    onClick={() => handleSecureDownload(previewModal.order, 'resultFile')}
+                    onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
                     disabled={downloadingOrderId === previewModal.order.id}
                     className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
                     title="ডাউনলোড করুন"
