@@ -689,7 +689,10 @@ Mobile-
       }
 
       // Safe clean filename
-      const safeTitle = (order.serviceTitle || 'document').replace(/[\\/:*?"<>|]/g, '_').trim();
+      let safeTitle = (order.serviceTitle || 'document').replace(/[\\/:*?"<>|]/g, '_').trim();
+      if (safeTitle.toLowerCase().startsWith('index')) {
+        safeTitle = safeTitle.replace(/^index/i, 'document');
+      }
       const orderSuffix = (order.id || '').replace(/[\\/:*?"<>|]/g, '_');
 
       // 1. If Base64 Data URL, download directly in-browser
@@ -705,30 +708,37 @@ Mobile-
         return;
       }
 
-      // 2. If Google Drive URL
-      const driveId = extractGoogleDriveId(targetUrl);
+      // 2. Determine probable extension based on title and URL
+      let probableExt = 'pdf';
+      const lowerUrl = targetUrl.toLowerCase();
+      const lowerTitle = safeTitle.toLowerCase();
+      if (lowerUrl.includes('.zip') || lowerTitle.includes('zip')) probableExt = 'zip';
+      else if (lowerUrl.includes('.ai') || lowerTitle.includes('vector') || lowerTitle.includes('ai')) probableExt = 'ai';
+      else if (lowerUrl.includes('.png') || lowerTitle.includes('png')) probableExt = 'png';
+      else if (lowerUrl.includes('.jpg') || lowerUrl.includes('.jpeg') || lowerTitle.includes('jpg')) probableExt = 'jpg';
 
-      // Attempt server streaming first with full parameters so server doesn't hit Firestore
-      const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}&url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(safeTitle)}`;
+      const computedFilename = `${safeTitle}_${orderSuffix}.${probableExt}`;
+
+      // Route all downloads (including Google Drive & external links) through our secure proxy
+      // This sends Content-Disposition: attachment header with the exact filename, preventing Chrome from saving 'index'
+      const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}&url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(safeTitle)}&ext=${probableExt}`;
       let fetchSuccess = false;
+
       try {
         const response = await fetch(downloadEndpoint);
         if (response.ok) {
           const contentType = response.headers.get('content-type') || '';
           if (!contentType.includes('text/html')) {
             const disposition = response.headers.get('content-disposition');
-            let filename = '';
+            let filename = computedFilename;
             if (disposition && disposition.includes('filename=')) {
               const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
               if (match && match[1]) {
-                filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                const parsed = decodeURIComponent(match[1].replace(/['"]/g, ''));
+                if (parsed && !parsed.toLowerCase().startsWith('index')) {
+                  filename = parsed;
+                }
               }
-            }
-            if (!filename) {
-              let ext = 'pdf';
-              if (contentType.includes('image/jpeg')) ext = 'jpg';
-              else if (contentType.includes('image/png')) ext = 'png';
-              filename = `${safeTitle}_${orderSuffix}.${ext}`;
             }
 
             const blob = await response.blob();
@@ -744,7 +754,7 @@ Mobile-
           }
         }
       } catch (_fetchErr) {
-        // Fallback below
+        console.warn('Fetch streaming error, attempting native download trigger:', _fetchErr);
       }
 
       if (fetchSuccess) {
@@ -752,36 +762,21 @@ Mobile-
         return;
       }
 
-      // 3. Fallback for Google Drive: Direct export download WITHOUT download attribute
-      // (Setting download attribute on cross-origin view URLs is what caused browsers to save 'index')
-      if (driveId) {
-        const directDriveDownload = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
-        const link = document.createElement('a');
-        link.href = directDriveDownload;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setDownloadingOrderId(null);
-        return;
-      }
-
-      // 4. Fallback for other URLs
-      const link = document.createElement('a');
-      link.href = targetUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 3. Fallback: Trigger native browser download directly via same-origin proxy link
+      // Since it's same-origin, browser invokes native download manager with Content-Disposition headers
+      const nativeLink = document.createElement('a');
+      nativeLink.href = downloadEndpoint;
+      nativeLink.setAttribute('download', computedFilename);
+      document.body.appendChild(nativeLink);
+      nativeLink.click();
+      document.body.removeChild(nativeLink);
     } catch (err: any) {
       console.error('Error during secure download:', err);
       const targetUrl = order.resultFile || order.successLink || '';
       if (targetUrl) {
         window.open(targetUrl, '_blank');
       } else {
-        alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।');
+        alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
       }
     } finally {
       setDownloadingOrderId(null);
@@ -4360,40 +4355,32 @@ Mobile-
               className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 z-10"
             >
               {/* Header */}
-              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/80">
+              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/90">
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* Left Side Download Icon Button */}
+                  {/* Left Side Prominent Download Icon Button */}
                   <button
                     onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
                     disabled={downloadingOrderId === previewModal.order.id}
-                    className="w-11 h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer group disabled:opacity-50"
-                    title="ফাইল ডাউনলোড করুন (Download)"
+                    className="h-11 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center gap-2 flex-shrink-0 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer group disabled:opacity-50"
+                    title="মূল ফাইল সরাসরি ডাউনলোড করুন (Download Original File)"
                   >
                     {downloadingOrderId === previewModal.order.id ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
                     )}
+                    <span className="font-bold text-xs sm:text-sm">ডাউনলোড করুন</span>
                   </button>
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-slate-900 text-base truncate">{previewModal.title}</h3>
-                      <button
-                        onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
-                        disabled={downloadingOrderId === previewModal.order.id}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                        title="ডাউনলোড করুন"
-                      >
-                        <Download className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>ডাউনলোড</span>
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                      <h3 className="font-bold text-slate-900 text-sm sm:text-base truncate">{previewModal.title}</h3>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
                         ফাইল প্রিভিউ
                       </span>
-                      <span className="text-xs text-slate-400 hidden sm:inline">বাম পাশের আইকনে ক্লিক করে সরাসরি ডাউনলোড করতে পারবেন</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-slate-500 hidden sm:inline">বাম পাশের সবুজ বাটনে ক্লিক করে মূল ফাইলটি ডাউনলোড করুন</span>
                     </div>
                   </div>
                 </div>
@@ -4409,7 +4396,7 @@ Mobile-
                         window.print();
                       }
                     }}
-                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                     title="প্রিন্ট করুন"
                   >
                     <Printer className="w-4 h-4" />
@@ -4435,6 +4422,16 @@ Mobile-
                   >
                     <X className="w-5 h-5" />
                   </button>
+                </div>
+              </div>
+
+              {/* Informational Guidance Banner */}
+              <div className="bg-emerald-50 border-b border-emerald-100 px-4 py-2 flex items-center justify-between gap-2 text-xs text-emerald-800">
+                <div className="flex items-center gap-2">
+                  <Download className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                  <span>
+                    <strong>টিপস:</strong> কোনো &apos;index&apos; ফাইল ছাড়া সরাসরি মূল ফাইল (PDF/AI/ZIP) ডাউনলোড করতে উপরের বা বাম পাশের সবুজ বাটনে ক্লিক করুন।
+                  </span>
                 </div>
               </div>
 

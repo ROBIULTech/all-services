@@ -162,55 +162,64 @@ export function downloadBase64(dataUrl: string, filename: string): void {
 export async function downloadFile(url: string, filename: string) {
   if (!url) return;
 
-  // 1. Base64 handling
+  // 1. Base64 Data URL handling
   if (url.startsWith('data:')) {
     downloadBase64(url, filename);
     return;
   }
 
-  // 2. Google Drive handling
-  const driveId = extractGoogleDriveId(url);
-  if (driveId) {
-    const directUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
-    // Open direct Google Drive download in new tab without download attribute to prevent 'index' file download
-    const link = document.createElement('a');
-    link.href = directUrl;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    return;
+  // Ensure clean filename with valid extension
+  let cleanName = filename ? filename.trim() : 'document';
+  if (!cleanName.includes('.')) {
+    const ext = getExtensionFromUrl(url);
+    cleanName = `${cleanName}.${ext}`;
+  }
+  if (cleanName.toLowerCase() === 'index' || cleanName.toLowerCase().startsWith('index.')) {
+    cleanName = cleanName.replace(/index/i, 'document');
   }
 
-  // 3. Local or regular URLs
+  // 2. Route all Google Drive & external URLs through our secure proxy
+  // This guarantees Content-Disposition header with filename and prevents Chrome from saving 'index'
+  const targetProxyUrl = `/api/secure-download/direct?url=${encodeURIComponent(url)}&title=${encodeURIComponent(cleanName)}`;
+
   try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Fetch failed');
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('text/html')) {
-      // Don't save HTML webpages as files
-      window.open(url, '_blank');
-      return;
+    const response = await fetch(targetProxyUrl);
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('text/html')) {
+        const disposition = response.headers.get('content-disposition');
+        let downloadName = cleanName;
+        if (disposition && disposition.includes('filename=')) {
+          const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+          if (match && match[1]) {
+            const parsed = decodeURIComponent(match[1].replace(/['"]/g, ''));
+            if (parsed && !parsed.toLowerCase().startsWith('index')) {
+              downloadName = parsed;
+            }
+          }
+        }
+
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = downloadName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+        return;
+      }
     }
-    const blob = await response.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
-  } catch (error) {
-    console.error('Download failed:', error);
-    // Fallback: Open in new window WITHOUT download attribute
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  } catch (err) {
+    console.warn('Proxy streaming encountered an error, falling back to direct anchor:', err);
   }
+
+  // Fallback: Trigger native browser download directly via same-origin proxy
+  const link = document.createElement('a');
+  link.href = targetProxyUrl;
+  link.setAttribute('download', cleanName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }

@@ -223,10 +223,10 @@ async function startServer() {
           const resp = await axios.get(dUrl, {
             responseType: 'stream',
             maxRedirects: 10,
-            timeout: 15000,
+            timeout: 30000,
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept': 'application/pdf,image/*,*/*'
+              'Accept': '*/*'
             }
           });
           const cType = resp.headers['content-type'] || '';
@@ -240,14 +240,23 @@ async function startServer() {
       }
 
       if (driveResponse) {
-        const streamContentType = driveResponse.headers['content-type'] || 'application/pdf';
+        const streamContentType = driveResponse.headers['content-type'] || 'application/octet-stream';
         let ext = 'pdf';
         if (streamContentType.includes('pdf')) ext = 'pdf';
         else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
         else if (streamContentType.includes('png')) ext = 'png';
         else if (streamContentType.includes('zip')) ext = 'zip';
+        else if (downloadFilename.toLowerCase().includes('vector') || downloadFilename.toLowerCase().includes('ai')) ext = 'ai';
+        else if (downloadFilename.toLowerCase().includes('zip')) ext = 'zip';
 
-        const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+        let finalFilename = downloadFilename.trim();
+        if (!finalFilename.includes('.')) {
+          finalFilename = `${finalFilename}.${ext}`;
+        }
+        if (finalFilename.toLowerCase() === 'index' || finalFilename.toLowerCase().startsWith('index.')) {
+          finalFilename = finalFilename.replace(/index/i, 'document');
+        }
+
         const asciiSafe = finalFilename.replace(/[^a-zA-Z0-9_.-]/g, '_');
         const dispositionType = inline ? 'inline' : 'attachment';
 
@@ -259,10 +268,8 @@ async function startServer() {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
         return driveResponse.data.pipe(res);
       } else {
-        // If Google Drive requires user session/cookies, redirect directly to usercontent export
-        // The browser will initiate the native download without saving an HTML 'index' file
-        const directExport = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
-        return res.redirect(directExport);
+        // Fallback: If Google Drive cannot be directly streamed by server, redirect to Google Drive viewer (not raw download endpoint which saves as 'index')
+        return res.redirect(`https://drive.google.com/file/d/${driveId}/view`);
       }
     }
 
@@ -383,8 +390,21 @@ async function startServer() {
         return res.status(404).json({ success: false, message: "ফাইল বা ডাউনলোড লিংক পাওয়া যায়নি।" });
       }
 
-      const safeTitle = (serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
-      const filename = `${safeTitle}_${orderId}`;
+      let cleanTitle = (serviceTitle || 'document').replace(/[^a-zA-Z0-9_\u0980-\u09FF.-]/g, '_');
+      if (cleanTitle.toLowerCase().startsWith('index')) {
+        cleanTitle = cleanTitle.replace(/^index/i, 'document');
+      }
+
+      let filename = cleanTitle;
+      if (orderId && orderId !== 'direct') {
+        const hasExt = cleanTitle.match(/\.([a-zA-Z0-9]{2,5})$/);
+        if (hasExt) {
+          const base = cleanTitle.substring(0, cleanTitle.length - hasExt[0].length);
+          filename = `${base}_${orderId}.${hasExt[1]}`;
+        } else {
+          filename = `${cleanTitle}_${orderId}`;
+        }
+      }
 
       await streamExternalResource(targetUrl, res, filename, false);
     } catch (error: any) {
