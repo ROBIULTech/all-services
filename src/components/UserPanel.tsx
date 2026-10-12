@@ -655,12 +655,6 @@ Mobile-
   const handleSecureDownload = async (order: Order, type: 'resultFile' | 'successLink' | 'view') => {
     if (!order || !order.id) return;
 
-    const isExpired = order.oneTimeDownload && (order.isDownloadExpired || (order.downloadCount || 0) >= 1);
-    if (isExpired) {
-      alert("⚠️ ডাউনলোড লিংকটির মেয়াদ শেষ হয়ে গেছে!\n\nসুরক্ষার স্বার্থে এই ফাইলটি ইতিমধ্যে ১ বার ডাউনলোড/দেখা হয়ে গেছে। পুনরায় লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।");
-      return;
-    }
-
     try {
       if (type === 'view') {
         const targetUrl = order.resultFile || order.successLink || '';
@@ -681,7 +675,7 @@ Mobile-
           order,
           url: previewUrl,
           title: order.serviceTitle || 'ডকুমেন্ট প্রিভিউ',
-          isOneTime: Boolean(order.oneTimeDownload),
+          isOneTime: false,
           isImage: Boolean(isBase64Img)
         });
         return;
@@ -691,15 +685,28 @@ Mobile-
       setDownloadingOrderId(order.id);
 
       const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}`;
-      const response = await fetch(downloadEndpoint);
+      let response: Response | null = null;
+      try {
+        response = await fetch(downloadEndpoint);
+      } catch (_fetchErr) {
+        // Fallback to direct download
+      }
 
-      if (!response.ok) {
-        let errorMsg = '⚠️ ডাউনলোড সম্পন্ন করা সম্ভব হয়নি অথবা লিংকটির মেয়াদ শেষ হয়ে গেছে।';
-        try {
-          const errData = await response.json();
-          if (errData.message) errorMsg = errData.message;
-        } catch (_e) {}
-        alert(errorMsg);
+      if (!response || !response.ok) {
+        // Fallback: If secure-download endpoint had any issue, download directly using available link
+        const directTarget = (type === 'successLink' ? (order.successLink || order.resultFile) : (order.resultFile || order.successLink)) || '';
+        if (directTarget) {
+          const directLink = document.createElement('a');
+          directLink.href = directTarget;
+          directLink.target = '_blank';
+          directLink.rel = 'noreferrer';
+          directLink.download = `${(order.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_')}_${order.id}`;
+          document.body.appendChild(directLink);
+          directLink.click();
+          document.body.removeChild(directLink);
+          return;
+        }
+        alert('⚠️ ডাউনলোড সম্পন্ন করা সম্ভব হয়নি। লিংকটি যাচাই করুন।');
         return;
       }
 
@@ -726,25 +733,14 @@ Mobile-
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
-
-      if (order.oneTimeDownload) {
-        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, downloadCount: (o.downloadCount || 0) + 1, isDownloadExpired: true } : o));
-        try {
-          await updateDoc(doc(db, 'orders', order.id), {
-            downloadCount: (order.downloadCount || 0) + 1,
-            isDownloadExpired: true,
-            downloadedAt: serverTimestamp()
-          });
-        } catch (_e) {
-          // Handled on server
-        }
-        if (previewModal && previewModal.order.id === order.id) {
-          setPreviewModal(null);
-        }
-      }
     } catch (err: any) {
       console.error('Error during secure download:', err);
-      alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।');
+      const directTarget = (type === 'successLink' ? (order.successLink || order.resultFile) : (order.resultFile || order.successLink)) || '';
+      if (directTarget) {
+        window.open(directTarget, '_blank');
+      } else {
+        alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।');
+      }
     } finally {
       setDownloadingOrderId(null);
     }
@@ -4322,29 +4318,46 @@ Mobile-
               className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 z-10"
             >
               {/* Header */}
-              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-base">{previewModal.title}</h3>
+              <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-slate-50/80">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Left Side Download Icon Button */}
+                  <button
+                    onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
+                    disabled={downloadingOrderId === previewModal.order.id}
+                    className="w-11 h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer group disabled:opacity-50"
+                    title="ফাইল ডাউনলোড করুন (Download)"
+                  >
+                    {downloadingOrderId === previewModal.order.id ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    )}
+                  </button>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-slate-900 text-base truncate">{previewModal.title}</h3>
+                      <button
+                        onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
+                        disabled={downloadingOrderId === previewModal.order.id}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                        title="ডাউনলোড করুন"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>ডাউনলোড</span>
+                      </button>
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {previewModal.isOneTime ? (
-                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full border border-amber-200 flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5" /> ১ বার ভিউ মোড
-                        </span>
-                      ) : (
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                          ফাইল প্রিভিউ
-                        </span>
-                      )}
-                      <span className="text-xs text-slate-400">ইন-অ্যাপ নিরাপদ প্রিভিউ</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
+                        ফাইল প্রিভিউ
+                      </span>
+                      <span className="text-xs text-slate-400 hidden sm:inline">বাম পাশের আইকনে ক্লিক করে সরাসরি ডাউনলোড করতে পারবেন</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {/* Right Side Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     onClick={() => {
                       const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
@@ -4376,6 +4389,7 @@ Mobile-
                   <button
                     onClick={() => setPreviewModal(null)}
                     className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer"
+                    title="বন্ধ করুন"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -4383,15 +4397,39 @@ Mobile-
               </div>
 
               {/* Content Body */}
-              <div className="flex-1 p-4 bg-slate-900/5 min-h-[500px] overflow-auto flex items-center justify-center">
+              <div className="flex-1 p-3 sm:p-4 bg-slate-900/5 min-h-[500px] overflow-auto flex items-center justify-center relative">
                 {previewModal.isImage ? (
-                  <img 
-                    src={previewModal.url} 
-                    alt="Document preview" 
-                    className="max-h-[75vh] w-auto object-contain rounded-xl shadow-lg bg-white"
-                  />
+                  <div className="relative max-h-[75vh] w-auto flex items-center justify-center">
+                    {/* Floating Download Button on Top-Left */}
+                    <div className="absolute top-3 left-3 z-30">
+                      <button
+                        onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
+                        disabled={downloadingOrderId === previewModal.order.id}
+                        className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xl shadow-black/30 border border-emerald-400/30 transition-all cursor-pointer active:scale-95"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>ডাউনলোড করুন</span>
+                      </button>
+                    </div>
+                    <img 
+                      src={previewModal.url} 
+                      alt="Document preview" 
+                      className="max-h-[75vh] w-auto object-contain rounded-xl shadow-lg bg-white"
+                    />
+                  </div>
                 ) : (
                   <div className="relative w-full h-[75vh] rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shadow-sm">
+                    {/* Floating Download Button on Top-Left */}
+                    <div className="absolute top-3 left-3 z-30">
+                      <button
+                        onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
+                        disabled={downloadingOrderId === previewModal.order.id}
+                        className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600/95 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xl shadow-black/40 border border-white/20 transition-all cursor-pointer backdrop-blur-md active:scale-95 hover:scale-105"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>ডাউনলোড করুন</span>
+                      </button>
+                    </div>
                     <iframe 
                       id="preview-iframe"
                       src={previewModal.url} 
@@ -4399,16 +4437,6 @@ Mobile-
                       sandbox="allow-scripts allow-same-origin allow-forms"
                       className="w-full h-full border-0 bg-white"
                     />
-                    {/* Pop-out Blocker Mask: Covers & blocks the Google Drive top-right pop-out / open in new tab button */}
-                    <div 
-                      className="absolute top-0 right-0 h-14 w-28 bg-[#1f1f1f] z-30 flex items-center justify-end px-3 select-none pointer-events-auto border-b border-l border-slate-800 shadow-md"
-                      title="সুরক্ষিত ভিউ - নতুন উইন্ডো বা ট্যাবে খোলা বন্ধ রাখা হয়েছে"
-                    >
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 text-slate-300 text-[11px] font-semibold rounded-md border border-slate-700 shadow-inner">
-                        <Lock className="w-3.5 h-3.5 text-amber-400" />
-                        <span>সুরক্ষিত</span>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>

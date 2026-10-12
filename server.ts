@@ -354,17 +354,6 @@ async function startServer() {
       }
 
       const orderData = orderSnap.data();
-      const isOneTime = Boolean(orderData.oneTimeDownload);
-      const isExpired = Boolean(orderData.isDownloadExpired) || Number(orderData.downloadCount || 0) >= 1;
-
-      if (isOneTime && isExpired) {
-        return res.status(403).json({
-          success: false,
-          error: "expired",
-          message: "⚠️ এই ফাইলটি ইতিমধ্যে ১ বার ডাউনলোড করা হয়ে গেছে এবং লিংকটির মেয়াদ শেষ হয়ে গেছে। পুনরায় এক্সেস পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।"
-        });
-      }
-
       let targetUrl = '';
       if (type === 'resultFile') {
         targetUrl = orderData.resultFile || orderData.successLink || '';
@@ -376,15 +365,6 @@ async function startServer() {
 
       if (!targetUrl) {
         return res.status(404).json({ success: false, message: "ফাইল বা ডাউনলোড লিংক পাওয়া যায়নি।" });
-      }
-
-      // If one-time download is active, increment count and burn the link immediately on server
-      if (isOneTime) {
-        await updateDoc(orderRef, {
-          downloadCount: (orderData.downloadCount || 0) + 1,
-          isDownloadExpired: true,
-          downloadedAt: serverTimestamp()
-        });
       }
 
       const safeTitle = (orderData.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
@@ -412,20 +392,6 @@ async function startServer() {
       }
 
       const orderData = orderSnap.data();
-      const isOneTime = Boolean(orderData.oneTimeDownload);
-      const isExpired = Boolean(orderData.isDownloadExpired) || Number(orderData.downloadCount || 0) >= 1;
-
-      if (isOneTime && isExpired) {
-        return res.status(403).send(`
-          <html>
-            <head><meta charset="utf-8"><title>Link Expired</title></head>
-            <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #fff1f2; color: #be123c;">
-              <h2>⚠️ ফাইলটির মেয়াদ শেষ হয়ে গেছে</h2>
-              <p>সুরক্ষার স্বার্থে এই ফাইলটি ইতিমধ্যে ১ বার ব্যবহার করা হয়ে গেছে। পুনরায় লিংক পেতে অ্যাডমিনের সাথে যোগাযোগ করুন।</p>
-            </body>
-          </html>
-        `);
-      }
 
       let targetUrl = '';
       if (type === 'resultFile') {
