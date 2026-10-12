@@ -55,6 +55,7 @@ export interface Order {
   oneTimeDownload?: boolean;
   downloadCount?: number;
   isDownloadExpired?: boolean;
+  isCopyExpired?: boolean;
   downloadedAt?: any;
 }
 

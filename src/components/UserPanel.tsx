@@ -783,6 +783,20 @@ Mobile-
     }
   };
 
+  const handleCopyOrderLink = async (order: Order) => {
+    if (!order.successLink) return;
+    navigator.clipboard.writeText(order.successLink);
+    try {
+      if (order.id) {
+        await updateDoc(doc(db, 'orders', order.id), { isCopyExpired: true });
+        setOrders(prev => prev.map(o => o.id === order.id ? { ...o, isCopyExpired: true } : o));
+      }
+    } catch (e) {
+      console.error('Failed to update copy status:', e);
+    }
+    alert('✅ লিংকটি সফলভাবে কপি করা হয়েছে! নিয়ম অনুযায়ী এটি এখন লক হয়ে গেছে (১ বার কপি লিমিট)।');
+  };
+
   const handlePlaceOrder = async () => {
     if (!selectedProduct || (!orderData.trim() && orderFiles.length === 0) || !userProfile) return;
     
@@ -1847,16 +1861,21 @@ Mobile-
                                           <Download className="w-5 h-5" />
                                         )}
                                       </button>
-                                      {!order.oneTimeDownload && (
+                                      {!order.isCopyExpired && !order.oneTimeDownload ? (
                                         <button 
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(order.successLink || '');
-                                            alert('Download link copied!');
-                                          }}
+                                          onClick={() => handleCopyOrderLink(order)}
                                           className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
-                                          title="Copy Link"
+                                          title="Copy Link (One-Time Copy Limit)"
                                         >
                                           <Copy className="w-5 h-5" />
+                                        </button>
+                                      ) : (
+                                        <button 
+                                          disabled
+                                          className="w-10 h-10 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center cursor-not-allowed"
+                                          title="Already Copied - Locked (One-Time Copy Limit)"
+                                        >
+                                          <Lock className="w-5 h-5" />
                                         </button>
                                       )}
                                     </>
@@ -1989,16 +2008,21 @@ Mobile-
                                           <Download className="w-5 h-5" />
                                         )}
                                       </button>
-                                      {!order.oneTimeDownload && (
+                                      {!order.isCopyExpired && !order.oneTimeDownload ? (
                                         <button 
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(order.successLink || '');
-                                            alert('Download link copied!');
-                                          }}
+                                          onClick={() => handleCopyOrderLink(order)}
                                           className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
-                                          title="Copy Link"
+                                          title="Copy Link (One-Time Copy Limit)"
                                         >
                                           <Copy className="w-5 h-5" />
+                                        </button>
+                                      ) : (
+                                        <button 
+                                          disabled
+                                          className="w-10 h-10 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center cursor-not-allowed"
+                                          title="Already Copied - Locked (One-Time Copy Limit)"
+                                        >
+                                          <Lock className="w-5 h-5" />
                                         </button>
                                       )}
                                     </>
