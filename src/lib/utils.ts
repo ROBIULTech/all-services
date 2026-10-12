@@ -116,9 +116,83 @@ export function getExtensionFromMime(mime: string): string {
   return 'file';
 }
 
+export function extractGoogleDriveId(url: string): string | null {
+  if (!url) return null;
+  const m1 = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m1) return m1[1];
+  const m2 = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (m2) return m2[1];
+  const m3 = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (m3) return m3[1];
+  return null;
+}
+
+export function getGoogleDriveDirectDownloadUrl(url: string): string {
+  const driveId = extractGoogleDriveId(url);
+  if (!driveId) return url;
+  return `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+}
+
+export function downloadBase64(dataUrl: string, filename: string): void {
+  try {
+    const parts = dataUrl.split(',');
+    const mimeMatch = parts[0]?.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const binaryStr = atob(parts[1] || '');
+    const len = binaryStr.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: mime });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+  } catch (err) {
+    console.error('Failed to download base64:', err);
+    window.open(dataUrl, '_blank');
+  }
+}
+
 export async function downloadFile(url: string, filename: string) {
+  if (!url) return;
+
+  // 1. Base64 handling
+  if (url.startsWith('data:')) {
+    downloadBase64(url, filename);
+    return;
+  }
+
+  // 2. Google Drive handling
+  const driveId = extractGoogleDriveId(url);
+  if (driveId) {
+    const directUrl = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+    // Open direct Google Drive download in new tab without download attribute to prevent 'index' file download
+    const link = document.createElement('a');
+    link.href = directUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return;
+  }
+
+  // 3. Local or regular URLs
   try {
     const response = await fetch(url);
+    if (!response.ok) throw new Error('Fetch failed');
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      // Don't save HTML webpages as files
+      window.open(url, '_blank');
+      return;
+    }
     const blob = await response.blob();
     const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -127,14 +201,16 @@ export async function downloadFile(url: string, filename: string) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    window.URL.revokeObjectURL(blobUrl);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
   } catch (error) {
     console.error('Download failed:', error);
-    // Fallback: Open in new window if fetch fails
+    // Fallback: Open in new window WITHOUT download attribute
     const link = document.createElement('a');
     link.href = url;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
   }
 }

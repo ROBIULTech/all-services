@@ -60,7 +60,7 @@ import {
   Moon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime } from '../lib/utils';
+import { cn, compressImageAsBase64, downloadFile, getExtensionFromUrl, getExtensionFromMime, extractGoogleDriveId, downloadBase64 } from '../lib/utils';
 import { uploadFile } from '../lib/uploadHelper';
 import { UserProfile, Order, Product, GlobalSettings } from '../types';
 import { auth, signOut, db, collection, addDoc, serverTimestamp, query, where, onSnapshot, Timestamp, doc, setDoc, updateDoc, deleteDoc, orderBy, limit, storage, getDocs } from '../firebase';
@@ -658,13 +658,11 @@ Mobile-
     try {
       if (type === 'view') {
         const targetUrl = order.resultFile || order.successLink || '';
-        const driveMatch = targetUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || targetUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/) || targetUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-        const driveId = driveMatch ? driveMatch[1] : null;
-
+        const driveId = extractGoogleDriveId(targetUrl);
         const isBase64Img = Boolean(targetUrl.startsWith('data:image/') || targetUrl.match(/\.(jpeg|jpg|png|webp|gif)(\?.*)?$/i));
         
         // For Google Drive, use Google's official responsive embed player; otherwise use our secure stream endpoint
-        let previewUrl = `/api/secure-preview/${order.id}?type=auto`;
+        let previewUrl = `/api/secure-preview/${order.id}?type=auto&url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(order.serviceTitle || 'preview')}`;
         if (targetUrl.startsWith('data:')) {
           previewUrl = targetUrl;
         } else if (driveId) {
@@ -681,63 +679,107 @@ Mobile-
         return;
       }
 
-      // Direct in-page background download without opening new tabs or browser history exposure
       setDownloadingOrderId(order.id);
 
-      const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}`;
-      let response: Response | null = null;
-      try {
-        response = await fetch(downloadEndpoint);
-      } catch (_fetchErr) {
-        // Fallback to direct download
-      }
-
-      if (!response || !response.ok) {
-        // Fallback: If secure-download endpoint had any issue, download directly using available link
-        const directTarget = (type === 'successLink' ? (order.successLink || order.resultFile) : (order.resultFile || order.successLink)) || '';
-        if (directTarget) {
-          const directLink = document.createElement('a');
-          directLink.href = directTarget;
-          directLink.target = '_blank';
-          directLink.rel = 'noreferrer';
-          directLink.download = `${(order.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_')}_${order.id}`;
-          document.body.appendChild(directLink);
-          directLink.click();
-          document.body.removeChild(directLink);
-          return;
-        }
-        alert('⚠️ ডাউনলোড সম্পন্ন করা সম্ভব হয়নি। লিংকটি যাচাই করুন।');
+      const targetUrl = (type === 'successLink' ? (order.successLink || order.resultFile) : (order.resultFile || order.successLink)) || '';
+      if (!targetUrl) {
+        alert('⚠️ ডাউনলোডের কোনো ফাইল বা লিংক পাওয়া যায়নি।');
+        setDownloadingOrderId(null);
         return;
       }
 
-      // Extract filename from response header or create default
-      const disposition = response.headers.get('content-disposition');
-      let filename = '';
-      if (disposition && disposition.includes('filename=')) {
-        const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-        if (match && match[1]) {
-          filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
-        }
-      }
-      if (!filename) {
-        const safeTitle = (order.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
-        filename = `${safeTitle}_${order.id}.pdf`;
+      // Safe clean filename
+      const safeTitle = (order.serviceTitle || 'document').replace(/[\\/:*?"<>|]/g, '_').trim();
+      const orderSuffix = (order.id || '').replace(/[\\/:*?"<>|]/g, '_');
+
+      // 1. If Base64 Data URL, download directly in-browser
+      if (targetUrl.startsWith('data:')) {
+        let ext = 'pdf';
+        if (targetUrl.startsWith('data:image/jpeg') || targetUrl.startsWith('data:image/jpg')) ext = 'jpg';
+        else if (targetUrl.startsWith('data:image/png')) ext = 'png';
+        else if (targetUrl.startsWith('data:image/webp')) ext = 'webp';
+
+        const finalName = `${safeTitle}_${orderSuffix}.${ext}`;
+        downloadBase64(targetUrl, finalName);
+        setDownloadingOrderId(null);
+        return;
       }
 
-      const blob = await response.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
+      // 2. If Google Drive URL
+      const driveId = extractGoogleDriveId(targetUrl);
+
+      // Attempt server streaming first with full parameters so server doesn't hit Firestore
+      const downloadEndpoint = `/api/secure-download/${order.id}?type=${type}&url=${encodeURIComponent(targetUrl)}&title=${encodeURIComponent(safeTitle)}`;
+      let fetchSuccess = false;
+      try {
+        const response = await fetch(downloadEndpoint);
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('text/html')) {
+            const disposition = response.headers.get('content-disposition');
+            let filename = '';
+            if (disposition && disposition.includes('filename=')) {
+              const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+              if (match && match[1]) {
+                filename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+              }
+            }
+            if (!filename) {
+              let ext = 'pdf';
+              if (contentType.includes('image/jpeg')) ext = 'jpg';
+              else if (contentType.includes('image/png')) ext = 'png';
+              filename = `${safeTitle}_${orderSuffix}.${ext}`;
+            }
+
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+            fetchSuccess = true;
+          }
+        }
+      } catch (_fetchErr) {
+        // Fallback below
+      }
+
+      if (fetchSuccess) {
+        setDownloadingOrderId(null);
+        return;
+      }
+
+      // 3. Fallback for Google Drive: Direct export download WITHOUT download attribute
+      // (Setting download attribute on cross-origin view URLs is what caused browsers to save 'index')
+      if (driveId) {
+        const directDriveDownload = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+        const link = document.createElement('a');
+        link.href = directDriveDownload;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setDownloadingOrderId(null);
+        return;
+      }
+
+      // 4. Fallback for other URLs
       const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
+      link.href = targetUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
     } catch (err: any) {
       console.error('Error during secure download:', err);
-      const directTarget = (type === 'successLink' ? (order.successLink || order.resultFile) : (order.resultFile || order.successLink)) || '';
-      if (directTarget) {
-        window.open(directTarget, '_blank');
+      const targetUrl = order.resultFile || order.successLink || '';
+      if (targetUrl) {
+        window.open(targetUrl, '_blank');
       } else {
         alert('⚠️ ফাইল ডাউনলোডে সমস্যা হয়েছে। অনুগ্রহ করে ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।');
       }
@@ -4434,7 +4476,7 @@ Mobile-
                       id="preview-iframe"
                       src={previewModal.url} 
                       title="Document preview" 
-                      sandbox="allow-scripts allow-same-origin allow-forms"
+                      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
                       className="w-full h-full border-0 bg-white"
                     />
                   </div>

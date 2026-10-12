@@ -202,70 +202,68 @@ async function startServer() {
 
   // Stream Google Drive file or external URL securely without exposing raw URLs
   async function streamExternalResource(url: string, res: express.Response, downloadFilename: string, inline: boolean = false) {
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Type, Content-Length');
+
     const driveId = extractGoogleDriveId(url);
 
     if (driveId) {
-      let driveUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=t`;
-      let response = await axios.get(driveUrl, {
-        responseType: 'stream',
-        maxRedirects: 10,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      });
+      if (inline) {
+        return res.redirect(`https://drive.google.com/file/d/${driveId}/preview`);
+      }
 
-      const contentType = response.headers['content-type'] || '';
-      if (contentType.includes('text/html')) {
-        // Collect chunks to find confirm code if Google asks for virus confirmation
-        const chunks: Buffer[] = [];
-        for await (const chunk of response.data) {
-          chunks.push(chunk);
-        }
-        const html = Buffer.concat(chunks).toString('utf-8');
-        const confirmMatch = html.match(/confirm=([0-9A-Za-z_-]+)/);
-        if (confirmMatch) {
-          const confirmCode = confirmMatch[1];
-          driveUrl = `https://drive.google.com/uc?export=download&id=${driveId}&confirm=${confirmCode}`;
-          response = await axios.get(driveUrl, {
+      // Try fetching direct stream from Google usercontent
+      const driveUrls = [
+        `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`,
+        `https://drive.google.com/uc?export=download&id=${driveId}&confirm=t`
+      ];
+
+      let driveResponse: any = null;
+      for (const dUrl of driveUrls) {
+        try {
+          const resp = await axios.get(dUrl, {
             responseType: 'stream',
             maxRedirects: 10,
+            timeout: 15000,
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'application/pdf,image/*,*/*'
             }
           });
+          const cType = resp.headers['content-type'] || '';
+          if (!cType.includes('text/html')) {
+            driveResponse = resp;
+            break;
+          }
+        } catch (_err) {
+          // Try next URL
         }
       }
 
-      const streamContentType = response.headers['content-type'] || 'application/octet-stream';
-      let originalFilename = '';
-      const driveDisp = (response.headers['content-disposition'] as string) || '';
-      if (driveDisp) {
-        const match = driveDisp.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
-        if (match && match[1]) {
-          originalFilename = decodeURIComponent(match[1].replace(/['"]/g, ''));
+      if (driveResponse) {
+        const streamContentType = driveResponse.headers['content-type'] || 'application/pdf';
+        let ext = 'pdf';
+        if (streamContentType.includes('pdf')) ext = 'pdf';
+        else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
+        else if (streamContentType.includes('png')) ext = 'png';
+        else if (streamContentType.includes('zip')) ext = 'zip';
+
+        const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+        const asciiSafe = finalFilename.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const dispositionType = inline ? 'inline' : 'attachment';
+
+        res.setHeader('Content-Type', streamContentType);
+        res.setHeader('Content-Disposition', `${dispositionType}; filename="${asciiSafe}"; filename*=UTF-8''${encodeURIComponent(finalFilename)}`);
+        if (driveResponse.headers['content-length']) {
+          res.setHeader('Content-Length', driveResponse.headers['content-length']);
         }
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+        return driveResponse.data.pipe(res);
+      } else {
+        // If Google Drive requires user session/cookies, redirect directly to usercontent export
+        // The browser will initiate the native download without saving an HTML 'index' file
+        const directExport = `https://drive.usercontent.google.com/download?id=${driveId}&export=download&authuser=0`;
+        return res.redirect(directExport);
       }
-
-      let ext = 'pdf';
-      if (originalFilename && originalFilename.includes('.')) {
-        ext = originalFilename.split('.').pop() || 'pdf';
-      } else if (streamContentType.includes('pdf')) ext = 'pdf';
-      else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
-      else if (streamContentType.includes('png')) ext = 'png';
-      else if (streamContentType.includes('zip')) ext = 'zip';
-
-      const finalFilename = originalFilename || (downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`);
-      const dispositionType = inline ? 'inline' : 'attachment';
-
-      res.setHeader('Content-Type', streamContentType);
-      res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
-      if (response.headers['content-length']) {
-        res.setHeader('Content-Length', response.headers['content-length']);
-      }
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-      res.setHeader('Pragma', 'no-cache');
-      res.setHeader('Expires', '0');
-      return response.data.pipe(res);
     }
 
     // Base64 Data URL
@@ -280,10 +278,11 @@ async function startServer() {
         else if (contentType.includes('pdf')) ext = 'pdf';
 
         const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+        const asciiSafe = finalFilename.replace(/[^a-zA-Z0-9_.-]/g, '_');
         const dispositionType = inline ? 'inline' : 'attachment';
 
         res.setHeader('Content-Type', contentType);
-        res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
+        res.setHeader('Content-Disposition', `${dispositionType}; filename="${asciiSafe}"; filename*=UTF-8''${encodeURIComponent(finalFilename)}`);
         res.setHeader('Content-Length', buffer.length);
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
         res.setHeader('Pragma', 'no-cache');
@@ -299,46 +298,54 @@ async function startServer() {
       if (fs.existsSync(filePath)) {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
         res.setHeader('Pragma', 'no-cache');
+        const ext = path.extname(fname).replace('.', '') || 'pdf';
+        const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
         if (inline) {
           return res.sendFile(filePath);
         }
-        return res.download(filePath, downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}_${fname}`);
+        return res.download(filePath, finalFilename);
       }
     }
 
     // Any generic external URL (Cloudinary, S3, Firebase Storage, Direct HTTP file)
-    const response = await axios.get(url, {
-      responseType: 'stream',
-      maxRedirects: 10,
-      timeout: 60000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    try {
+      const response = await axios.get(url, {
+        responseType: 'stream',
+        maxRedirects: 10,
+        timeout: 60000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
+
+      const streamContentType = response.headers['content-type'] || 'application/octet-stream';
+      let ext = 'pdf';
+      if (streamContentType.includes('pdf')) ext = 'pdf';
+      else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
+      else if (streamContentType.includes('png')) ext = 'png';
+      else if (streamContentType.includes('zip')) ext = 'zip';
+      else {
+        const urlExt = path.extname(url.split('?')[0]).replace('.', '');
+        if (urlExt && urlExt.length <= 5) ext = urlExt;
       }
-    });
 
-    const streamContentType = response.headers['content-type'] || 'application/octet-stream';
-    let ext = 'pdf';
-    if (streamContentType.includes('pdf')) ext = 'pdf';
-    else if (streamContentType.includes('jpeg') || streamContentType.includes('jpg')) ext = 'jpg';
-    else if (streamContentType.includes('png')) ext = 'png';
-    else if (streamContentType.includes('zip')) ext = 'zip';
-    else {
-      const urlExt = path.extname(url.split('?')[0]).replace('.', '');
-      if (urlExt && urlExt.length <= 5) ext = urlExt;
+      const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
+      const asciiSafe = finalFilename.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      const dispositionType = inline ? 'inline' : 'attachment';
+
+      res.setHeader('Content-Type', streamContentType);
+      res.setHeader('Content-Disposition', `${dispositionType}; filename="${asciiSafe}"; filename*=UTF-8''${encodeURIComponent(finalFilename)}`);
+      if (response.headers['content-length']) {
+        res.setHeader('Content-Length', response.headers['content-length']);
+      }
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      return response.data.pipe(res);
+    } catch (_extErr) {
+      // If external streaming fails, redirect to direct URL
+      return res.redirect(url);
     }
-
-    const finalFilename = downloadFilename.includes('.') ? downloadFilename : `${downloadFilename}.${ext}`;
-    const dispositionType = inline ? 'inline' : 'attachment';
-
-    res.setHeader('Content-Type', streamContentType);
-    res.setHeader('Content-Disposition', `${dispositionType}; filename="${encodeURIComponent(finalFilename)}"`);
-    if (response.headers['content-length']) {
-      res.setHeader('Content-Length', response.headers['content-length']);
-    }
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    return response.data.pipe(res);
   }
 
   // Secure File Download Endpoint - One-Time Protected without exposing raw URLs or opening new tabs
@@ -346,28 +353,37 @@ async function startServer() {
     try {
       const { orderId } = req.params;
       const type = (req.query.type as string) || 'auto';
-      const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
+      let targetUrl = (req.query.url as string) || (req.query.targetUrl as string) || '';
+      let serviceTitle = (req.query.title as string) || '';
 
-      if (!orderSnap.exists()) {
-        return res.status(404).json({ success: false, message: "অর্ডার খুঁজে পাওয়া যায়নি।" });
-      }
+      if (!targetUrl && orderId && orderId !== 'direct') {
+        try {
+          const orderRef = doc(db, 'orders', orderId);
+          const orderSnap = await getDoc(orderRef);
 
-      const orderData = orderSnap.data();
-      let targetUrl = '';
-      if (type === 'resultFile') {
-        targetUrl = orderData.resultFile || orderData.successLink || '';
-      } else if (type === 'successLink') {
-        targetUrl = orderData.successLink || orderData.resultFile || '';
-      } else {
-        targetUrl = orderData.resultFile || orderData.successLink || '';
+          if (orderSnap.exists()) {
+            const orderData = orderSnap.data();
+            if (type === 'resultFile') {
+              targetUrl = orderData.resultFile || orderData.successLink || '';
+            } else if (type === 'successLink') {
+              targetUrl = orderData.successLink || orderData.resultFile || '';
+            } else {
+              targetUrl = orderData.resultFile || orderData.successLink || '';
+            }
+            if (!serviceTitle) {
+              serviceTitle = orderData.serviceTitle || 'result';
+            }
+          }
+        } catch (dbErr: any) {
+          console.warn("Firestore lookup skipped in secure-download (quota/offline):", dbErr.message);
+        }
       }
 
       if (!targetUrl) {
         return res.status(404).json({ success: false, message: "ফাইল বা ডাউনলোড লিংক পাওয়া যায়নি।" });
       }
 
-      const safeTitle = (orderData.serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+      const safeTitle = (serviceTitle || 'result').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
       const filename = `${safeTitle}_${orderId}`;
 
       await streamExternalResource(targetUrl, res, filename, false);
@@ -384,34 +400,44 @@ async function startServer() {
     try {
       const { orderId } = req.params;
       const type = (req.query.type as string) || 'auto';
-      const orderRef = doc(db, 'orders', orderId);
-      const orderSnap = await getDoc(orderRef);
+      let targetUrl = (req.query.url as string) || (req.query.targetUrl as string) || '';
+      let serviceTitle = (req.query.title as string) || '';
 
-      if (!orderSnap.exists()) {
-        return res.status(404).send("Order not found");
-      }
+      if (!targetUrl && orderId && orderId !== 'direct') {
+        try {
+          const orderRef = doc(db, 'orders', orderId);
+          const orderSnap = await getDoc(orderRef);
 
-      const orderData = orderSnap.data();
+          if (orderSnap.exists()) {
+            const orderData = orderSnap.data();
+            if (type === 'resultFile') {
+              targetUrl = orderData.resultFile || orderData.successLink || '';
+            } else if (type === 'successLink') {
+              targetUrl = orderData.successLink || orderData.resultFile || '';
+            } else {
+              targetUrl = orderData.resultFile || orderData.successLink || '';
+            }
+            if (!serviceTitle) {
+              serviceTitle = orderData.serviceTitle || 'preview';
+            }
 
-      let targetUrl = '';
-      if (type === 'resultFile') {
-        targetUrl = orderData.resultFile || orderData.successLink || '';
-      } else if (type === 'successLink') {
-        targetUrl = orderData.successLink || orderData.resultFile || '';
-      } else {
-        targetUrl = orderData.resultFile || orderData.successLink || '';
+            // Record preview activity safely
+            try {
+              await updateDoc(orderRef, {
+                lastViewedAt: serverTimestamp()
+              });
+            } catch (_) {}
+          }
+        } catch (dbErr: any) {
+          console.warn("Firestore lookup skipped in secure-preview (quota/offline):", dbErr.message);
+        }
       }
 
       if (!targetUrl) {
         return res.status(404).send("File not found");
       }
 
-      // Record preview activity without prematurely locking the download button
-      await updateDoc(orderRef, {
-        lastViewedAt: serverTimestamp()
-      });
-
-      const safeTitle = (orderData.serviceTitle || 'preview').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
+      const safeTitle = (serviceTitle || 'preview').replace(/[^a-zA-Z0-9_\u0980-\u09FF-]/g, '_');
       const filename = `${safeTitle}_${orderId}`;
 
       await streamExternalResource(targetUrl, res, filename, true);
