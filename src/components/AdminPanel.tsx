@@ -3914,15 +3914,16 @@ https://all-services-roan.vercel.app/`;
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order ID</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Data</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deleted Date</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Approve Date</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Date</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-20">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredTrashItems.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                            <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
                               <Trash2 className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                               <p className="font-medium">
                                 {trashItems.length === 0 ? "Trash is empty" : "No matching items found"}
@@ -4057,33 +4058,114 @@ https://all-services-roan.vercel.app/`;
                                   <span className="text-xs text-slate-400 italic">N/A</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
-                                {item.type === 'order' ? (
-                                  item.data.createdAt?.toDate ? (
-                                    <div>
-                                      <p className="font-bold text-slate-800">{item.data.createdAt.toDate().toLocaleDateString()}</p>
-                                      <p className="text-[10px] text-slate-400">{item.data.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                              {/* 1. Deleted Date (কবে ডিলিট হলো) */}
+                              <td className="px-6 py-4 whitespace-nowrap text-xs">
+                                {item.deletedAt ? (() => {
+                                  const d = item.deletedAt.toDate ? item.deletedAt.toDate() : new Date(item.deletedAt);
+                                  return (
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                        <span>{d.toLocaleDateString()}</span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-400 font-medium pl-5">
+                                        {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
                                     </div>
-                                  ) : (
-                                    <span>{item.data.date || '-'}</span>
-                                  )
-                                ) : item.type === 'user' && item.data.createdAt?.toDate ? (
-                                  <div>
-                                    <p className="font-bold text-slate-800">{item.data.createdAt.toDate().toLocaleDateString()}</p>
-                                    <p className="text-[10px] text-slate-400">রেজিস্ট্রেশন</p>
-                                  </div>
-                                ) : (
+                                  );
+                                })() : (
+                                  <span className="text-slate-400 italic">N/A</span>
+                                )}
+                              </td>
+
+                              {/* 2. Approve Date (কত তারিখে approve হয়েছিল) */}
+                              <td className="px-6 py-4 whitespace-nowrap text-xs">
+                                {item.type === 'order' ? (() => {
+                                  const rawApproveDate = item.data.approvedAt || item.data.completedAt || (item.data.status === 'completed' ? item.data.updatedAt : null);
+                                  if (!rawApproveDate) {
+                                    return (
+                                      <span className={cn(
+                                        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold",
+                                        item.data.status === 'rejected' ? "bg-red-50 text-red-600 border border-red-200" :
+                                        item.data.status === 'processing' ? "bg-blue-50 text-blue-600 border border-blue-200" :
+                                        "bg-amber-50 text-amber-700 border border-amber-200"
+                                      )}>
+                                        {item.data.status === 'rejected' ? 'বাতিলকৃত' : 
+                                         item.data.status === 'processing' ? 'প্রসেসিং' : 'পেন্ডিং / অ্যাপ্রুভ হয়নি'}
+                                      </span>
+                                    );
+                                  }
+                                  const d = rawApproveDate.toDate ? rawApproveDate.toDate() : new Date(rawApproveDate);
+                                  return (
+                                    <div className="space-y-0.5">
+                                      <div className="flex items-center gap-1.5 font-bold text-emerald-700">
+                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span>{d.toLocaleDateString()}</span>
+                                      </div>
+                                      <p className="text-[10px] text-slate-400 font-medium pl-5">
+                                        {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                  );
+                                })() : item.type === 'user' ? (() => {
+                                  const isAppr = item.data.isApproved === true;
+                                  const rawApproveDate = item.data.approvedAt;
+                                  if (!isAppr) {
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        পেন্ডিং / অ্যাপ্রুভ হয়নি
+                                      </span>
+                                    );
+                                  }
+                                  if (rawApproveDate) {
+                                    const d = rawApproveDate.toDate ? rawApproveDate.toDate() : new Date(rawApproveDate);
+                                    return (
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-1.5 font-bold text-emerald-700">
+                                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                          <span>{d.toLocaleDateString()}</span>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-medium pl-5">
+                                          {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                      অনুমোদিত
+                                    </span>
+                                  );
+                                })() : (
                                   <span className="text-slate-400 italic">-</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
-                                {item.deletedAt?.toDate ? (
-                                  <div>
-                                    <p className="font-semibold text-slate-700">{item.deletedAt.toDate().toLocaleDateString()}</p>
-                                    <p className="text-[10px] text-slate-400">{item.deletedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                  </div>
-                                ) : (
-                                  <span>{item.deletedAt?.toDate?.().toLocaleString() || 'Unknown'}</span>
+
+                              {/* 3. Order Date (অর্ডারের তারিখ) */}
+                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                                {item.type === 'order' ? (() => {
+                                  const rawDate = item.data.createdAt;
+                                  if (!rawDate) return <span>{item.data.date || '-'}</span>;
+                                  const d = rawDate.toDate ? rawDate.toDate() : new Date(rawDate);
+                                  return (
+                                    <div className="space-y-0.5">
+                                      <p className="font-bold text-slate-800">{d.toLocaleDateString()}</p>
+                                      <p className="text-[10px] text-slate-400">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                  );
+                                })() : item.type === 'user' ? (() => {
+                                  const rawDate = item.data.createdAt;
+                                  if (!rawDate) return <span className="text-slate-400 italic">-</span>;
+                                  const d = rawDate.toDate ? rawDate.toDate() : new Date(rawDate);
+                                  return (
+                                    <div className="space-y-0.5">
+                                      <p className="font-bold text-slate-800">{d.toLocaleDateString()}</p>
+                                      <p className="text-[10px] text-slate-400">রেজিস্ট্রেশন তারিখ</p>
+                                    </div>
+                                  );
+                                })() : (
+                                  <span className="text-slate-400 italic">-</span>
                                 )}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-right space-x-1.5 sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-10">
@@ -6623,6 +6705,31 @@ https://all-services-roan.vercel.app/`;
                           <span><strong>User Email:</strong> {ord.userEmail || 'N/A'}</span>
                           {ord.createdAt && <span><strong>Ordered At:</strong> {ord.createdAt?.toDate?.().toLocaleString?.() || 'N/A'}</span>}
                           {ord.option && <span><strong>Option:</strong> {typeof ord.option === 'object' ? ord.option.name : ord.option}</span>}
+                        </div>
+                        {/* Timeline Date Cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                            <span className="text-[10px] font-bold uppercase text-slate-400 block">Order Date</span>
+                            <span className="text-xs font-bold text-slate-800">
+                              {ord.createdAt?.toDate ? ord.createdAt.toDate().toLocaleString() : (ord.date || 'N/A')}
+                            </span>
+                          </div>
+                          <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                            <span className="text-[10px] font-bold uppercase text-emerald-600 block">Approve Date</span>
+                            <span className="text-xs font-bold text-emerald-800">
+                              {(() => {
+                                const ad = ord.approvedAt || ord.completedAt || (ord.status === 'completed' ? ord.updatedAt : null);
+                                if (!ad) return ord.status === 'completed' ? 'Approved' : 'Not Approved / Pending';
+                                return ad.toDate ? ad.toDate().toLocaleString() : new Date(ad).toLocaleString();
+                              })()}
+                            </span>
+                          </div>
+                          <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/80 shadow-2xs">
+                            <span className="text-[10px] font-bold uppercase text-rose-600 block">Deleted Date</span>
+                            <span className="text-xs font-bold text-rose-800">
+                              {viewingTrashItem.deletedAt?.toDate ? viewingTrashItem.deletedAt.toDate().toLocaleString() : (viewingTrashItem.deletedAt ? new Date(viewingTrashItem.deletedAt).toLocaleString() : 'N/A')}
+                            </span>
+                          </div>
                         </div>
                       </div>
 

@@ -1026,6 +1026,10 @@ export default function App() {
       }
 
       const updates: any = { status, note, updatedAt: serverTimestamp() };
+      if (status === 'completed') {
+        updates.completedAt = serverTimestamp();
+        updates.approvedAt = serverTimestamp();
+      }
       if (resultFile) updates.resultFile = resultFile;
       if (successLink) updates.successLink = successLink;
       if (oneTimeDownload !== undefined) {
