@@ -21,6 +21,7 @@ import {
   XCircle, 
   Plus, 
   Copy,
+  Calendar,
   ExternalLink,
   ChevronLeft,
   ChevronRight,
@@ -565,6 +566,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const trashTableRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
+  // Safe Date & Time Formatter
+  const formatDateTime = (val: any) => {
+    if (!val) return null;
+    let date: Date | null = null;
+    try {
+      if (typeof val?.toDate === 'function') {
+        date = val.toDate();
+      } else if (val instanceof Date && !isNaN(val.getTime())) {
+        date = val;
+      } else if (typeof val === 'number') {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) date = d;
+      } else if (typeof val === 'string') {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) date = d;
+      } else if (typeof val === 'object' && typeof val?.seconds === 'number') {
+        date = new Date(val.seconds * 1000);
+      } else if (typeof val === 'object' && typeof val?._seconds === 'number') {
+        date = new Date(val._seconds * 1000);
+      }
+    } catch (_) {}
+    if (!date || isNaN(date.getTime())) return null;
+    const dateStr = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return { dateStr, timeStr, full: `${dateStr} ${timeStr}`, rawDate: date };
+  };
+
   const scrollApprovalTable = (direction: 'left' | 'right') => {
     if (approvalTableRef.current) {
       const delta = direction === 'right' ? 380 : -380;
@@ -575,13 +603,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const scrollTrashTable = (direction: 'left' | 'right') => {
-    if (trashTableRef.current) {
+  const scrollTrashTable = (direction: 'left' | 'right' | 'start' | 'end') => {
+    if (!trashTableRef.current) return;
+    if (direction === 'start') {
+      trashTableRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    } else if (direction === 'end') {
+      trashTableRef.current.scrollTo({ left: trashTableRef.current.scrollWidth, behavior: 'smooth' });
+    } else {
       const delta = direction === 'right' ? 380 : -380;
-      trashTableRef.current.scrollBy({
-        left: delta,
-        behavior: 'smooth'
-      });
+      trashTableRef.current.scrollBy({ left: delta, behavior: 'smooth' });
     }
   };
 
@@ -1414,13 +1444,36 @@ https://all-services-roan.vercel.app/`;
                                         {order.serviceTitle}
                                       </p>
                                       {(() => {
-                                        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-                                        const orderDate = order.createdAt?.toDate?.() || new Date();
-                                        if (orderDate > fortyEightHoursAgo) {
-                                          return <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter animate-pulse">New</span>;
-                                        }
-                                        return null;
-                                      })()}
+                                     const createdDate = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)) : null;
+                                     const approvedDate = u.approvedAt ? (u.approvedAt.toDate ? u.approvedAt.toDate() : new Date(u.approvedAt)) : null;
+
+                                     if (!createdDate && !approvedDate) {
+                                       return <span className="text-xs text-slate-400">N/A</span>;
+                                     }
+
+                                     const formatDate = (date: Date) => {
+                                       const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                       const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                                       return { dateStr, timeStr };
+                                     };
+
+                                     return (
+                                       <div className="text-xs space-y-1">
+                                         {createdDate && (
+                                           <div>
+                                             <div className="text-[9px] font-bold text-slate-400 uppercase">Reg:</div>
+                                             <p className="font-medium text-slate-700">{formatDate(createdDate).dateStr} {formatDate(createdDate).timeStr}</p>
+                                           </div>
+                                         )}
+                                         {approvedDate && (
+                                           <div>
+                                             <div className="text-[9px] font-bold text-emerald-600 uppercase">Apprv:</div>
+                                             <p className="font-medium text-emerald-700">{formatDate(approvedDate).dateStr} {formatDate(approvedDate).timeStr}</p>
+                                           </div>
+                                         )}
+                                       </div>
+                                     );
+                                   })()}
                                     </div>
                                     <p className="text-xs text-slate-500 line-clamp-1">
                                       User: {order.userEmail}
@@ -1909,7 +1962,7 @@ https://all-services-roan.vercel.app/`;
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order ID</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Date</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order & Approve Date</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
                         </tr>
@@ -1986,14 +2039,53 @@ https://all-services-roan.vercel.app/`;
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-xs text-slate-700">
-                                <div className="font-semibold text-slate-800 flex items-center gap-1">
-                                  <Clock className="w-3 h-3 text-slate-400" />
-                                  {order.createdAt?.toDate?.() ? order.createdAt.toDate().toLocaleDateString('en-GB') : 'N/A'}
-                                </div>
-                                <div className="text-[10px] text-slate-400 mt-0.5 pl-4">
-                                  {order.createdAt?.toDate?.() ? order.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
-                                </div>
+                              <div className="text-xs space-y-1.5">
+                                {/* 1. Order Date */}
+                                {(() => {
+                                  const ordF = formatDateTime(order.createdAt || order.date);
+                                  if (ordF) {
+                                    return (
+                                      <div>
+                                        <div className="font-semibold text-slate-800 flex items-center gap-1">
+                                          <Calendar className="w-3 h-3 text-indigo-500 shrink-0" />
+                                          <span>{ordF.dateStr}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 font-mono pl-4">
+                                          {ordF.timeStr}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return <span className="text-slate-400">{order.date || 'N/A'}</span>;
+                                })()}
+
+                                {/* 2. Approve Date */}
+                                {(() => {
+                                  const apprVal = order.approvedAt || order.completedAt || (order.status === 'completed' ? order.updatedAt : null);
+                                  const apprF = formatDateTime(apprVal);
+                                  if (apprF) {
+                                    return (
+                                      <div className="pt-1.5 border-t border-slate-100">
+                                        <div className="font-semibold text-emerald-700 flex items-center gap-1">
+                                          <CheckCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                                          <span>{apprF.dateStr}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 font-mono pl-4">
+                                          {apprF.timeStr}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  if (order.status === 'completed') {
+                                    return (
+                                      <div className="pt-1.5 border-t border-slate-100 text-[10px] font-bold text-emerald-700 flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                                        <span>অনুমোদিত</span>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })()}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -2962,43 +3054,28 @@ https://all-services-roan.vercel.app/`;
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th 
-                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors group"
-                            onClick={() => setUserTypeFilter(userTypeFilter === 'Admin' ? 'All' : 'Admin')}
-                          >
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors group">
                             <div className="flex items-center gap-1">
                               Admin?
-                              {userTypeFilter === 'Admin' ? (
-                                <ShieldCheck className="w-3 h-3 text-purple-600" />
-                              ) : (
-                                <Filter className="w-3 h-3 text-slate-300 group-hover:text-slate-400" />
-                              )}
                             </div>
                           </th>
-                          <th 
-                            className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors group"
-                            onClick={() => setUserTypeFilter(userTypeFilter === 'User' ? 'All' : 'User')}
-                          >
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-indigo-600 transition-colors group">
                             <div className="flex items-center gap-1.5">
                               User
-                              <div className={cn(
-                                "w-1.5 h-1.5 rounded-full transition-all shadow-[0_0_8px_rgba(129,140,248,0.8)]",
-                                userTypeFilter === 'User' ? "bg-emerald-500 scale-125 opacity-100" : "bg-indigo-400 opacity-0 group-hover:opacity-100"
-                              )} />
                             </div>
                           </th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Info</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">UserID</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">WhatsApp / Password</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Balance</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right font-bangla">Joined At / জয়েনিং সময়</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Action</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500">User Info</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">UserID</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">WhatsApp / Password</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Balance</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right font-bangla whitespace-nowrap">Joined At / জয়েনিং সময়</th>
+                          <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 text-right whitespace-nowrap">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {filteredUsers.map((u, i) => (
                           <tr key={u.uid || `full-user-${i}`} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3">
                               <button 
                                 onClick={() => {
                                   const currentRole = u.role.toLowerCase();
@@ -3008,7 +3085,7 @@ https://all-services-roan.vercel.app/`;
                                   }
                                 }}
                                 className={cn(
-                                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                                  "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
                                   u.role === 'admin' ? "bg-purple-600 text-white shadow-lg shadow-purple-200" : 
                                   u.role === 'sub-admin' ? "bg-blue-600 text-white shadow-lg shadow-blue-200" :
                                   "bg-slate-100 text-slate-400 hover:bg-slate-200"
@@ -3016,82 +3093,68 @@ https://all-services-roan.vercel.app/`;
                                 title={u.role === 'admin' ? "Admin (Click to set User)" : u.role === 'sub-admin' ? "Sub-Admin (Click to set Admin)" : "Promote to Sub-Admin"}
                               >
                                 {u.role === 'admin' ? (
-                                  <ShieldCheck className="w-5 h-5 animate-pulse" />
+                                  <ShieldCheck className="w-4 h-4 animate-pulse" />
                                 ) : u.role === 'sub-admin' ? (
-                                  <ShieldAlert className="w-5 h-5" />
+                                  <ShieldAlert className="w-4 h-4" />
                                 ) : (
-                                  <User className="w-5 h-5" />
+                                  <User className="w-4 h-4" />
                                 )}
                               </button>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3">
                               <div 
-                                className="flex items-center gap-3 cursor-pointer group/infohover"
+                                className="flex items-center gap-2 cursor-pointer group/infohover"
                                 onClick={() => setViewingUser(u)}
                               >
-                                <img src={u.photoURL} alt="" className="w-10 h-10 rounded-full border-2 border-white shadow-sm group-hover/infohover:border-indigo-400 transition-all" referrerPolicy="no-referrer" />
-                                <div>
-                                  <p className="text-sm font-bold text-slate-900 line-clamp-1 group-hover/infohover:text-indigo-600 transition-colors">{u.displayName || 'Unknown User'}</p>
-                                  <p className="text-[10px] text-slate-500 font-mono italic">{u.email}</p>
+                                <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full border border-white shadow-sm group-hover/infohover:border-indigo-400 transition-all" referrerPolicy="no-referrer" />
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-xs">
+                                <p className="font-bold text-slate-900 line-clamp-1 group-hover/infohover:text-indigo-600 transition-colors">{u.displayName || 'Unknown User'}</p>
+                                <p className="text-[10px] text-slate-500 font-mono italic">{u.email}</p>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className="text-xs font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 whitespace-nowrap">{u.userId || 'N/A'}</span>
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{u.whatsapp || 'No Number'}</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 rounded">{u.password || 'N/A'}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4">
-                              <span className="text-sm font-mono text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{u.userId || 'N/A'}</span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex flex-col gap-1">
-                                <span className="text-sm font-bold text-slate-700">{u.whatsapp || 'No Number'}</span>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 rounded">{u.password || 'N/A'}</span>
-                                  <button onClick={() => {
-                                    setEditingUser(u);
-                                    setIsEditUserModalOpen(true);
-                                  }} className="p-0.5 hover:bg-slate-100 rounded">
-                                    <Settings className="w-3 h-3 text-slate-300" />
-                                  </button>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3">
                               {u.role === 'admin' ? (
-                                <span className="text-slate-400 font-mono">-</span>
+                                <span className="text-slate-400 font-mono text-xs">-</span>
                               ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-emerald-600">৳{u.balance.toLocaleString()}</span>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs font-bold text-emerald-600 whitespace-nowrap">৳{u.balance.toLocaleString()}</span>
                                   <button 
                                     onClick={() => {
                                       setNewBalanceValue(u.balance.toString());
                                       setBalancePrompt({ uid: u.uid, currentBalance: u.balance });
                                     }}
-                                    className="p-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
+                                    className="p-0.5 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 transition-colors"
                                   >
                                     <Plus className="w-3 h-3" />
                                   </button>
                                 </div>
                               )}
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-3 py-3 text-right whitespace-nowrap">
                               {(() => {
                                 if (!u.createdAt) {
-                                  return <span className="text-xs text-slate-400 font-medium">Unknown</span>;
+                                  return <span className="text-[10px] text-slate-400 font-medium">Unknown</span>;
                                 }
                                 const dateVal = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
-                                
-                                const daysInBengali = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
-                                const dayNameBn = daysInBengali[dateVal.getDay()];
-                                
-                                const dayNameEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dateVal.getDay()];
                                 const dateStrEn = dateVal.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
                                 const timeStrEn = dateVal.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
                                 
                                 return (
-                                  <div className="flex flex-col items-end text-right">
-                                    <div className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md inline-block text-right mb-0.5">
-                                      {dayNameBn} • {dayNameEn}
-                                    </div>
-                                    <span className="text-xs font-semibold text-slate-700">{dateStrEn}</span>
-                                    <span className="text-[10px] text-slate-500 font-mono">{timeStrEn}</span>
+                                  <div className="flex flex-col items-end">
+                                    <span className="text-[11px] font-semibold text-slate-700">{dateStrEn}</span>
+                                    <span className="text-[9px] text-slate-500 font-mono">{timeStrEn}</span>
                                   </div>
                                 );
                               })()}
@@ -3381,7 +3444,7 @@ https://all-services-roan.vercel.app/`;
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">হোয়াটসঅ্যাপ নম্বর</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ডিভাইস ও আইপি তথ্য</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">পাসওয়ার্ড</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">রেজিস্ট্রেশন তারিখ ও সময়</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">রেজিঃ/অ্যাপ্রুভ তারিখ</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">স্ট্যাটাস</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-20">অ্যাকশন</th>
                         </tr>
@@ -3494,7 +3557,10 @@ https://all-services-roan.vercel.app/`;
                                 </td>
                                 <td className="px-6 py-4">
                                   {(() => {
-                                    if (!u.createdAt) {
+                                    const createdDate = u.createdAt ? (u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt)) : null;
+                                    const approvedDate = u.approvedAt ? (u.approvedAt.toDate ? u.approvedAt.toDate() : new Date(u.approvedAt)) : null;
+
+                                    if (!createdDate && !approvedDate) {
                                       return <span className="text-xs text-slate-400">N/A</span>;
                                     }
                                     const dateVal = u.createdAt.toDate ? u.createdAt.toDate() : new Date(u.createdAt);
@@ -3857,9 +3923,19 @@ https://all-services-roan.vercel.app/`;
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
                       </span>
                       <ArrowRightLeft className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span>সকল কলাম ও অ্যাকশন দেখতে ডানে-বামে স্ক্রোল করুন অথবা পাশের বাটন চাপুন</span>
+                      <span>সবগুলো কলাম দেখতে ডানে-বামে স্ক্রোল করুন বা পাশের বাটনগুলো ব্যবহার করুন</span>
                     </div>
+
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('start')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="একদম শুরুতে যান (First)"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>শুরুতে</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => scrollTrashTable('left')}
@@ -3872,10 +3948,19 @@ https://all-services-roan.vercel.app/`;
                       <button
                         type="button"
                         onClick={() => scrollTrashTable('right')}
-                        className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-500/20 active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
-                        title="Scroll Right (ডানে যান - অ্যাকশন দেখতে)"
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Right (ডানে যান)"
                       >
-                        <span>ডানে যান (অ্যাকশন)</span>
+                        <span>ডানে যান</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('end')}
+                        className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-500/20 active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll to End (অ্যাকশন বাটন দেখতে সবার ডানে যান)"
+                      >
+                        <span>অ্যাকশন দেখতে ডানে যান</span>
                         <ChevronRight className="w-4 h-4" />
                       </button>
 
@@ -3907,16 +3992,37 @@ https://all-services-roan.vercel.app/`;
                     ref={trashTableRef}
                     className="overflow-x-auto scroll-smooth pb-2 [scrollbar-width:auto] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-500"
                   >
-                    <table className="w-full min-w-[1250px] text-left border-collapse">
+                    <table className="w-full min-w-[1300px] text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order ID</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Data</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deleted Date</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Approve Date</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Date</th>
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order ID</th>
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Data</th>
+                          {/* 1. Order Date (অর্ডারের তারিখ) */}
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                              <span>Order Date</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-normal lowercase block">অর্ডারের তারিখ</span>
+                          </th>
+                          {/* 2. Approve Date (কত তারিখে approve হয়েছিল) */}
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="flex items-center gap-1">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Approve Date</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-normal lowercase block">অ্যাপ্রুভের তারিখ</span>
+                          </th>
+                          {/* 3. Delete Date (কবে delete হলো) */}
+                          <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <div className="flex items-center gap-1">
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                              <span>Delete Date</span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-normal lowercase block">কবে ডিলিট হলো</span>
+                          </th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-20">Actions</th>
                         </tr>
                       </thead>
@@ -3945,145 +4051,185 @@ https://all-services-roan.vercel.app/`;
                             </td>
                           </tr>
                         ) : (
-                          filteredTrashItems.map((item, i) => (
-                            <tr key={item.id || `trash-${i}`} className="hover:bg-slate-50 transition-colors group">
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                <span className={cn(
-                                  "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                  item.type === 'user' ? "bg-blue-100 text-blue-700" :
-                                  item.type === 'order' ? "bg-amber-100 text-amber-700" :
-                                  "bg-purple-100 text-purple-700"
-                                )}>
-                                  {item.type}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap">
-                                {item.type === 'order' ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg text-xs">
-                                      A{item.id?.slice(0, 3)}
+                          filteredTrashItems.map((item, i) => {
+                            // Order Date
+                            const rawOrderDate = item.type === 'order' ? (item.data.createdAt || item.data.date) : item.data.createdAt;
+                            const ordDateFormatted = formatDateTime(rawOrderDate);
+
+                            // Approve Date
+                            const isOrderCompleted = item.type === 'order' && item.data.status === 'completed';
+                            const rawApproveDate = item.type === 'order'
+                              ? (item.data.approvedAt || item.data.completedAt || (isOrderCompleted ? item.data.updatedAt : null))
+                              : (item.type === 'user' ? item.data.approvedAt : null);
+                            const apprDateFormatted = formatDateTime(rawApproveDate);
+
+                            // Delete Date
+                            const delDateFormatted = formatDateTime(item.deletedAt);
+
+                            return (
+                              <tr key={item.id || `trash-${i}`} className="hover:bg-slate-50 transition-colors group">
+                                {/* Type */}
+                                <td className="px-5 py-4 whitespace-nowrap">
+                                  <span className={cn(
+                                    "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                    item.type === 'user' ? "bg-blue-100 text-blue-700" :
+                                    item.type === 'order' ? "bg-amber-100 text-amber-700" :
+                                    "bg-purple-100 text-purple-700"
+                                  )}>
+                                    {item.type}
+                                  </span>
+                                </td>
+
+                                {/* Order ID */}
+                                <td className="px-5 py-4 whitespace-nowrap">
+                                  {item.type === 'order' ? (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg text-xs">
+                                        A{item.id?.slice(0, 3)}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          navigator.clipboard.writeText(item.id || '');
+                                          alert('Order ID copied: ' + item.id);
+                                        }}
+                                        className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-indigo-50 transition-colors cursor-pointer"
+                                        title={`Full ID: ${item.id} (Click to copy)`}
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ) : item.type === 'user' ? (
+                                    <span className="font-mono font-bold text-slate-700 text-xs">
+                                      UID: {item.data.userId || item.id?.slice(0, 6) || 'N/A'}
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        navigator.clipboard.writeText(item.id || '');
-                                        alert('Order ID copied: ' + item.id);
-                                      }}
-                                      className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-indigo-50 transition-colors cursor-pointer"
-                                      title={`Full ID: ${item.id} (Click to copy)`}
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                    </button>
+                                  ) : (
+                                    <span className="font-mono text-xs text-slate-500">
+                                      PID: {item.id?.slice(0, 6)}
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Details */}
+                                <td className="px-5 py-4">
+                                  <div className="text-sm font-bold text-slate-900">
+                                    {item.type === 'user' ? item.data.displayName : 
+                                     item.type === 'order' ? item.data.serviceTitle : 
+                                     (item.data.titleBn || item.data.titleEn)}
                                   </div>
-                                ) : item.type === 'user' ? (
-                                  <span className="font-mono font-bold text-slate-700 text-xs">
-                                    UID: {item.data.userId || item.id?.slice(0, 6) || 'N/A'}
-                                  </span>
-                                ) : (
-                                  <span className="font-mono text-xs text-slate-500">
-                                    PID: {item.id?.slice(0, 6)}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="text-sm font-bold text-slate-900">
-                                  {item.type === 'user' ? item.data.displayName : 
-                                   item.type === 'order' ? item.data.serviceTitle : 
-                                   (item.data.titleBn || item.data.titleEn)}
-                                </div>
-                                <div className="text-xs text-slate-500 mt-1 space-y-0.5">
-                                  {item.type === 'user' ? (
-                                    <>
-                                      <div className="truncate max-w-[220px]">{item.data.email}</div>
-                                      <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || 'N/A'}</span>
-                                      {item.data.orders && item.data.orders.length > 0 && (
-                                        <div className="mt-2 p-2 bg-slate-100 rounded-lg max-h-20 overflow-y-auto">
-                                          <p className="font-bold text-slate-700 text-[10px]">Orders ({item.data.orders.length}):</p>
-                                          {item.data.orders.map((o: any, j: number) => (
-                                            <p key={o.id || `trash-order-${j}`} className="text-[10px] text-slate-600">{o.serviceTitle} - {o.status}</p>
+                                  <div className="text-xs text-slate-500 mt-1 space-y-0.5">
+                                    {item.type === 'user' ? (
+                                      <>
+                                        <div className="truncate max-w-[220px]">{item.data.email}</div>
+                                        <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || 'N/A'}</span>
+                                        {item.data.orders && item.data.orders.length > 0 && (
+                                          <div className="mt-2 p-2 bg-slate-100 rounded-lg max-h-20 overflow-y-auto">
+                                            <p className="font-bold text-slate-700 text-[10px]">Orders ({item.data.orders.length}):</p>
+                                            {item.data.orders.map((o: any, j: number) => (
+                                              <p key={o.id || `trash-order-${j}`} className="text-[10px] text-slate-600">{o.serviceTitle} - {o.status}</p>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : item.type === 'order' ? (
+                                      <>
+                                        <p className="text-slate-600">User: <span className="font-medium text-slate-800">{item.data.userEmail}</span></p>
+                                        <p className="font-mono font-bold text-indigo-600">User ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</p>
+                                      </>
+                                    ) : (
+                                      <p className="text-slate-500">Product ID: {item.id}</p>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Order Data */}
+                                <td className="px-5 py-4">
+                                  {item.type === 'order' ? (
+                                    <div className="space-y-2">
+                                      {item.data.data && (
+                                        <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
+                                          {item.data.data}
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(item.data.data || '');
+                                            }}
+                                            className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm cursor-pointer"
+                                            title="Copy Data"
+                                          >
+                                            <Copy className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      )}
+                                      {(!item.data.data && (!item.data.fileURLs || item.data.fileURLs.length === 0)) && '-'}
+                                      {item.data.fileURLs && item.data.fileURLs.length > 0 && (
+                                        <div className="grid gap-1 mt-2">
+                                          {item.data.fileURLs.map((url: string, urlIndex: number) => (
+                                            <button
+                                              type="button"
+                                              key={`trash-file-${urlIndex}`}
+                                              onClick={() => {
+                                                const safeTitle = (item.data.serviceTitle || 'order').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                                const ext = getExtensionFromUrl(url);
+                                                downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
+                                              }}
+                                              className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max cursor-pointer"
+                                            >
+                                              <Download className="w-3 h-3" />
+                                              Document {urlIndex + 1}
+                                            </button>
                                           ))}
                                         </div>
                                       )}
-                                    </>
-                                  ) : item.type === 'order' ? (
-                                    <>
-                                      <p className="text-slate-600">User: <span className="font-medium text-slate-800">{item.data.userEmail}</span></p>
-                                      <p className="font-mono font-bold text-indigo-600">User ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</p>
-                                    </>
+                                    </div>
                                   ) : (
-                                    <p className="text-slate-500">Product ID: {item.id}</p>
+                                    <span className="text-xs text-slate-400 italic">N/A</span>
                                   )}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                {item.type === 'order' ? (
-                                  <div className="space-y-2">
-                                    {item.data.data && (
-                                      <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
-                                        {item.data.data}
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            navigator.clipboard.writeText(item.data.data || '');
-                                          }}
-                                          className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm cursor-pointer"
-                                          title="Copy Data"
-                                        >
-                                          <Copy className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    )}
-                                    {(!item.data.data && (!item.data.fileURLs || item.data.fileURLs.length === 0)) && '-'}
-                                    {item.data.fileURLs && item.data.fileURLs.length > 0 && (
-                                      <div className="grid gap-1 mt-2">
-                                        {item.data.fileURLs.map((url: string, urlIndex: number) => (
-                                          <button
-                                            type="button"
-                                            key={`trash-file-${urlIndex}`}
-                                            onClick={() => {
-                                              const safeTitle = (item.data.serviceTitle || 'order').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                                              const ext = getExtensionFromUrl(url);
-                                              downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
-                                            }}
-                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max cursor-pointer"
-                                          >
-                                            <Download className="w-3 h-3" />
-                                            Document {urlIndex + 1}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-slate-400 italic">N/A</span>
-                                )}
-                              </td>
-                              {/* 1. Deleted Date (কবে ডিলিট হলো) */}
-                              <td className="px-6 py-4 whitespace-nowrap text-xs">
-                                {item.deletedAt ? (() => {
-                                  const d = item.deletedAt.toDate ? item.deletedAt.toDate() : new Date(item.deletedAt);
-                                  return (
+                                </td>
+
+                                {/* 1. Order Date (অর্ডারের মূল তারিখ) */}
+                                <td className="px-5 py-4 whitespace-nowrap text-xs text-slate-600">
+                                  {ordDateFormatted ? (
                                     <div className="space-y-0.5">
-                                      <div className="flex items-center gap-1.5 font-bold text-rose-700">
-                                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                        <span>{d.toLocaleDateString()}</span>
+                                      <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                                        <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                        <span>{ordDateFormatted.dateStr}</span>
                                       </div>
-                                      <p className="text-[10px] text-slate-400 font-medium pl-5">
-                                        {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      <p className="text-[10px] text-slate-400 font-medium pl-5 font-mono">
+                                        {ordDateFormatted.timeStr}
                                       </p>
                                     </div>
-                                  );
-                                })() : (
-                                  <span className="text-slate-400 italic">N/A</span>
-                                )}
-                              </td>
+                                  ) : item.type === 'order' && item.data.date ? (
+                                    <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                                      <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                      <span>{item.data.date}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-400 italic">-</span>
+                                  )}
+                                </td>
 
-                              {/* 2. Approve Date (কত তারিখে approve হয়েছিল) */}
-                              <td className="px-6 py-4 whitespace-nowrap text-xs">
-                                {item.type === 'order' ? (() => {
-                                  const rawApproveDate = item.data.approvedAt || item.data.completedAt || (item.data.status === 'completed' ? item.data.updatedAt : null);
-                                  if (!rawApproveDate) {
-                                    return (
+                                {/* 2. Approve Date (কত তারিখে approve হয়েছিল) */}
+                                <td className="px-5 py-4 whitespace-nowrap text-xs">
+                                  {item.type === 'order' ? (
+                                    isOrderCompleted || apprDateFormatted ? (
+                                      apprDateFormatted ? (
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-center gap-1.5 font-bold text-emerald-700">
+                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            <span>{apprDateFormatted.dateStr}</span>
+                                          </div>
+                                          <p className="text-[10px] text-slate-400 font-medium pl-5 font-mono">
+                                            {apprDateFormatted.timeStr}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                          অনুমোদিত (অ্যাপ্রুভড)
+                                        </span>
+                                      )
+                                    ) : (
                                       <span className={cn(
                                         "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold",
                                         item.data.status === 'rejected' ? "bg-red-50 text-red-600 border border-red-200" :
@@ -4091,120 +4237,93 @@ https://all-services-roan.vercel.app/`;
                                         "bg-amber-50 text-amber-700 border border-amber-200"
                                       )}>
                                         {item.data.status === 'rejected' ? 'বাতিলকৃত' : 
-                                         item.data.status === 'processing' ? 'প্রসেসিং' : 'পেন্ডিং / অ্যাপ্রুভ হয়নি'}
+                                         item.data.status === 'processing' ? 'প্রসেসিং' : 'পেন্ডিং / অনুমোদন হয়নি'}
                                       </span>
-                                    );
-                                  }
-                                  const d = rawApproveDate.toDate ? rawApproveDate.toDate() : new Date(rawApproveDate);
-                                  return (
+                                    )
+                                  ) : item.type === 'user' ? (
+                                    item.data.isApproved === true ? (
+                                      apprDateFormatted ? (
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-center gap-1.5 font-bold text-emerald-700">
+                                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                            <span>{apprDateFormatted.dateStr}</span>
+                                          </div>
+                                          <p className="text-[10px] text-slate-400 font-medium pl-5 font-mono">
+                                            {apprDateFormatted.timeStr}
+                                          </p>
+                                        </div>
+                                      ) : (
+                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                          অনুমোদিত
+                                        </span>
+                                      )
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        পেন্ডিং অনুমোদন
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-slate-400 italic">-</span>
+                                  )}
+                                </td>
+
+                                {/* 3. Delete Date (কবে ডিলিট হলো) */}
+                                <td className="px-5 py-4 whitespace-nowrap text-xs">
+                                  {delDateFormatted ? (
                                     <div className="space-y-0.5">
-                                      <div className="flex items-center gap-1.5 font-bold text-emerald-700">
-                                        <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                        <span>{d.toLocaleDateString()}</span>
+                                      <div className="flex items-center gap-1.5 font-bold text-rose-700">
+                                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                        <span>{delDateFormatted.dateStr}</span>
                                       </div>
-                                      <p className="text-[10px] text-slate-400 font-medium pl-5">
-                                        {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      <p className="text-[10px] text-slate-400 font-medium pl-5 font-mono">
+                                        {delDateFormatted.timeStr}
                                       </p>
                                     </div>
-                                  );
-                                })() : item.type === 'user' ? (() => {
-                                  const isAppr = item.data.isApproved === true;
-                                  const rawApproveDate = item.data.approvedAt;
-                                  if (!isAppr) {
-                                    return (
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                        পেন্ডিং / অ্যাপ্রুভ হয়নি
-                                      </span>
-                                    );
-                                  }
-                                  if (rawApproveDate) {
-                                    const d = rawApproveDate.toDate ? rawApproveDate.toDate() : new Date(rawApproveDate);
-                                    return (
-                                      <div className="space-y-0.5">
-                                        <div className="flex items-center gap-1.5 font-bold text-emerald-700">
-                                          <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                          <span>{d.toLocaleDateString()}</span>
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-medium pl-5">
-                                          {d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      <CheckCircle className="w-3 h-3 text-emerald-600" />
-                                      অনুমোদিত
-                                    </span>
-                                  );
-                                })() : (
-                                  <span className="text-slate-400 italic">-</span>
-                                )}
-                              </td>
+                                  ) : (
+                                    <span className="text-slate-400 italic">N/A</span>
+                                  )}
+                                </td>
 
-                              {/* 3. Order Date (অর্ডারের তারিখ) */}
-                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
-                                {item.type === 'order' ? (() => {
-                                  const rawDate = item.data.createdAt;
-                                  if (!rawDate) return <span>{item.data.date || '-'}</span>;
-                                  const d = rawDate.toDate ? rawDate.toDate() : new Date(rawDate);
-                                  return (
-                                    <div className="space-y-0.5">
-                                      <p className="font-bold text-slate-800">{d.toLocaleDateString()}</p>
-                                      <p className="text-[10px] text-slate-400">{d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                    </div>
-                                  );
-                                })() : item.type === 'user' ? (() => {
-                                  const rawDate = item.data.createdAt;
-                                  if (!rawDate) return <span className="text-slate-400 italic">-</span>;
-                                  const d = rawDate.toDate ? rawDate.toDate() : new Date(rawDate);
-                                  return (
-                                    <div className="space-y-0.5">
-                                      <p className="font-bold text-slate-800">{d.toLocaleDateString()}</p>
-                                      <p className="text-[10px] text-slate-400">রেজিস্ট্রেশন তারিখ</p>
-                                    </div>
-                                  );
-                                })() : (
-                                  <span className="text-slate-400 italic">-</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right space-x-1.5 sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-10">
-                                {/* Eye view button (Red circle in screenshot) */}
-                                <button 
-                                  type="button"
-                                  onClick={() => setViewingTrashItem(item)}
-                                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
-                                  title="View Details (কি অ্যাড করা আছে দেখুন)"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => handleDownloadTrashFile(item)}
-                                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
-                                  title="Download Data"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => restoreItem(item)}
-                                  className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-emerald-200"
-                                  title="Restore"
-                                >
-                                  <RotateCcw className="w-4 h-4" />
-                                </button>
-                                <button 
-                                  type="button"
-                                  onClick={() => permanentDeleteItem(item)}
-                                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-red-200"
-                                  title="Delete Permanently"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                                {/* Actions Column (Sticky on right side) */}
+                                <td className="px-6 py-4 whitespace-nowrap text-right space-x-1.5 sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-10">
+                                  {/* Eye view button */}
+                                  <button 
+                                    type="button"
+                                    onClick={() => setViewingTrashItem(item)}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
+                                    title="View Details (সম্পূর্ণ তথ্য ও টাইমলাইন দেখুন)"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => handleDownloadTrashFile(item)}
+                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
+                                    title="Download Data"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => restoreItem(item)}
+                                    className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-emerald-200"
+                                    title="Restore (রিস্টোর করুন)"
+                                  >
+                                    <RotateCcw className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    onClick={() => permanentDeleteItem(item)}
+                                    className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-red-200"
+                                    title="Delete Permanently (স্থায়ীভাবে ডিলিট)"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
@@ -4213,9 +4332,18 @@ https://all-services-roan.vercel.app/`;
                   {/* Bottom Horizontal & Vertical Scroll Controls */}
                   <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 gap-2">
                     <span className="font-medium text-slate-500">
-                      মোট আইটেম: {filteredTrashItems.length} টি • সম্পূর্ণ তথ্য দেখতে ডানে-বামে বা উপরে-নিচে স্ক্রোল করুন
+                      মোট আইটেম: {filteredTrashItems.length} টি • সম্পূর্ণ তথ্য ও অ্যাকশন দেখতে ডানে-বামে বা উপরে-নিচে স্ক্রোল করুন
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('start')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="একদম শুরুতে যান (First)"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>শুরুতে</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => scrollTrashTable('left')}
@@ -4228,18 +4356,29 @@ https://all-services-roan.vercel.app/`;
                       <button
                         type="button"
                         onClick={() => scrollTrashTable('right')}
-                        className="px-2.5 py-1 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
                         title="Scroll Right"
                       >
                         <span>ডানে</span>
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('end')}
+                        className="px-2.5 py-1 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll to End (অ্যাকশন দেখতে ডানে যান)"
+                      >
+                        <span>অ্যাকশন দেখতে ডানে যান</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+
                       <div className="h-4 w-px bg-slate-300 mx-0.5" />
+
                       <button
                         type="button"
                         onClick={() => scrollVertical('up')}
                         className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
-                        title="Scroll Up (উপরে যান)"
+                        title="উপরে যান"
                       >
                         <ChevronUp className="w-3.5 h-3.5" />
                         <span>উপরে</span>
@@ -4248,7 +4387,7 @@ https://all-services-roan.vercel.app/`;
                         type="button"
                         onClick={() => scrollVertical('down')}
                         className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
-                        title="Scroll Down (নিচে যান)"
+                        title="নিচে যান"
                       >
                         <span>নিচে</span>
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -6706,28 +6845,51 @@ https://all-services-roan.vercel.app/`;
                           {ord.createdAt && <span><strong>Ordered At:</strong> {ord.createdAt?.toDate?.().toLocaleString?.() || 'N/A'}</span>}
                           {ord.option && <span><strong>Option:</strong> {typeof ord.option === 'object' ? ord.option.name : ord.option}</span>}
                         </div>
-                        {/* Timeline Date Cards */}
+                        {/* Timeline Date Cards (Order Date, Approve Date, Delete Date) */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                           <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                            <span className="text-[10px] font-bold uppercase text-slate-400 block">Order Date</span>
-                            <span className="text-xs font-bold text-slate-800">
-                              {ord.createdAt?.toDate ? ord.createdAt.toDate().toLocaleString() : (ord.date || 'N/A')}
-                            </span>
-                          </div>
-                          <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
-                            <span className="text-[10px] font-bold uppercase text-emerald-600 block">Approve Date</span>
-                            <span className="text-xs font-bold text-emerald-800">
+                            <div className="flex items-center gap-1 mb-1">
+                              <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                              <span className="text-[10px] font-bold uppercase text-slate-500">Order Date (অর্ডারের তারিখ)</span>
+                            </div>
+                            <span className="text-xs font-bold text-slate-800 block">
                               {(() => {
-                                const ad = ord.approvedAt || ord.completedAt || (ord.status === 'completed' ? ord.updatedAt : null);
-                                if (!ad) return ord.status === 'completed' ? 'Approved' : 'Not Approved / Pending';
-                                return ad.toDate ? ad.toDate().toLocaleString() : new Date(ad).toLocaleString();
+                                const f = formatDateTime(ord.createdAt || ord.date);
+                                if (f) return `${f.dateStr} (${f.timeStr})`;
+                                return ord.date || 'N/A';
                               })()}
                             </span>
                           </div>
+
+                          <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                            <div className="flex items-center gap-1 mb-1">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                              <span className="text-[10px] font-bold uppercase text-emerald-700">Approve Date (অ্যাপ্রুভের তারিখ)</span>
+                            </div>
+                            <span className="text-xs font-bold text-emerald-800 block">
+                              {(() => {
+                                const ad = ord.approvedAt || ord.completedAt || (ord.status === 'completed' ? ord.updatedAt : null);
+                                const f = formatDateTime(ad);
+                                if (f) return `${f.dateStr} (${f.timeStr})`;
+                                if (ord.status === 'completed') return 'অনুমোদিত (অ্যাপ্রুভড)';
+                                if (ord.status === 'rejected') return 'বাতিলকৃত (Rejected)';
+                                if (ord.status === 'processing') return 'প্রসেসিং (Processing)';
+                                return 'পেন্ডিং / অনুমোদন হয়নি';
+                              })()}
+                            </span>
+                          </div>
+
                           <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/80 shadow-2xs">
-                            <span className="text-[10px] font-bold uppercase text-rose-600 block">Deleted Date</span>
-                            <span className="text-xs font-bold text-rose-800">
-                              {viewingTrashItem.deletedAt?.toDate ? viewingTrashItem.deletedAt.toDate().toLocaleString() : (viewingTrashItem.deletedAt ? new Date(viewingTrashItem.deletedAt).toLocaleString() : 'N/A')}
+                            <div className="flex items-center gap-1 mb-1">
+                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                              <span className="text-[10px] font-bold uppercase text-rose-700">Delete Date (কবে ডিলিট হলো)</span>
+                            </div>
+                            <span className="text-xs font-bold text-rose-800 block">
+                              {(() => {
+                                const f = formatDateTime(viewingTrashItem.deletedAt);
+                                if (f) return `${f.dateStr} (${f.timeStr})`;
+                                return 'N/A';
+                              })()}
                             </span>
                           </div>
                         </div>
@@ -6915,6 +7077,52 @@ https://all-services-roan.vercel.app/`;
                         <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                           <span className="text-[10px] uppercase font-bold text-slate-400 block">Role</span>
                           <span className="text-xs font-bold uppercase text-slate-700 block">{u.role || 'user'}</span>
+                        </div>
+                      </div>
+
+                      {/* User Timeline Date Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                            <span className="text-[10px] font-bold uppercase text-slate-500">Registration Date</span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 block">
+                            {(() => {
+                              const f = formatDateTime(u.createdAt);
+                              if (f) return `${f.dateStr} (${f.timeStr})`;
+                              return 'N/A';
+                            })()}
+                          </span>
+                        </div>
+
+                        <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 shadow-2xs">
+                          <div className="flex items-center gap-1 mb-1">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-bold uppercase text-emerald-700">Approve Date</span>
+                          </div>
+                          <span className="text-xs font-bold text-emerald-800 block">
+                            {(() => {
+                              const f = formatDateTime(u.approvedAt);
+                              if (f) return `${f.dateStr} (${f.timeStr})`;
+                              if (u.isApproved === true) return 'অনুমোদিত';
+                              return 'পেন্ডিং অনুমোদন';
+                            })()}
+                          </span>
+                        </div>
+
+                        <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/80 shadow-2xs">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span className="text-[10px] font-bold uppercase text-rose-700">Deleted Date</span>
+                          </div>
+                          <span className="text-xs font-bold text-rose-800 block">
+                            {(() => {
+                              const f = formatDateTime(viewingTrashItem.deletedAt);
+                              if (f) return `${f.dateStr} (${f.timeStr})`;
+                              return 'N/A';
+                            })()}
+                          </span>
                         </div>
                       </div>
 

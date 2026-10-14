@@ -1052,6 +1052,7 @@ export default function App() {
         }
       }
 
+      const now = new Date();
       // Immediately update local state & cached orders
       setOrders(prevOrders => {
         const next = prevOrders.map(o => {
@@ -1059,7 +1060,9 @@ export default function App() {
             return {
               ...o,
               ...updates,
-              updatedAt: new Date().toISOString()
+              completedAt: status === "completed" ? (o.completedAt || now) : o.completedAt,
+              approvedAt: status === "completed" ? (o.approvedAt || now) : o.approvedAt,
+              updatedAt: now
             };
           }
           return o;
