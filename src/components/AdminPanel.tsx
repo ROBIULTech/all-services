@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -12,6 +12,7 @@ import {
   Menu, 
   X, 
   ArrowUpRight, 
+  ArrowRightLeft,
   DollarSign, 
   Clock, 
   MoreVertical, 
@@ -23,6 +24,10 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUp,
+  ChevronsDown,
   UserCheck, 
   ShieldCheck,
   Send,
@@ -479,6 +484,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Product | null>(null);
   const [serviceSearchQuery, setServiceSearchQuery] = useState('');
+
+  // Trash Search & View States
+  const [trashSearchQuery, setTrashSearchQuery] = useState('');
+  const [trashTypeFilter, setTrashTypeFilter] = useState<'all' | 'order' | 'user' | 'product'>('all');
+  const [viewingTrashItem, setViewingTrashItem] = useState<TrashItem | null>(null);
+
+  const filteredTrashItems = trashItems.filter(item => {
+    if (trashTypeFilter !== 'all' && item.type !== trashTypeFilter) {
+      return false;
+    }
+    if (!trashSearchQuery.trim()) return true;
+    const q = trashSearchQuery.toLowerCase().trim();
+
+    if (item.id?.toLowerCase().includes(q)) return true;
+    if (item.type === 'order' && `a${item.id?.slice(0, 3)}`.toLowerCase().includes(q)) return true;
+
+    const data = item.data || {};
+    if (data.serviceTitle?.toLowerCase().includes(q)) return true;
+    if (data.titleEn?.toLowerCase().includes(q)) return true;
+    if (data.titleBn?.toLowerCase().includes(q)) return true;
+    if (data.displayName?.toLowerCase().includes(q)) return true;
+    if (data.email?.toLowerCase().includes(q)) return true;
+    if (data.userEmail?.toLowerCase().includes(q)) return true;
+    if (data.userId?.toLowerCase().includes(q)) return true;
+    if (data.data?.toLowerCase().includes(q)) return true;
+    if (data.successLink?.toLowerCase().includes(q)) return true;
+    if (data.category?.toLowerCase().includes(q)) return true;
+    if (data.status?.toLowerCase().includes(q)) return true;
+    if (item.type?.toLowerCase().includes(q)) return true;
+
+    return false;
+  });
   
   const filteredPremiumUsers = allUsers.filter(u => u.isPremium && (
     u.displayName?.toLowerCase().includes(premiumSearchQuery.toLowerCase()) ||
@@ -524,6 +561,102 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [approvalStatusFilter, setApprovalStatusFilter] = useState<'pending' | 'approved' | 'all'>('pending');
   const [newBlacklistInput, setNewBlacklistInput] = useState('');
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const approvalTableRef = useRef<HTMLDivElement>(null);
+  const trashTableRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  const scrollApprovalTable = (direction: 'left' | 'right') => {
+    if (approvalTableRef.current) {
+      const delta = direction === 'right' ? 380 : -380;
+      approvalTableRef.current.scrollBy({
+        left: delta,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollTrashTable = (direction: 'left' | 'right') => {
+    if (trashTableRef.current) {
+      const delta = direction === 'right' ? 380 : -380;
+      trashTableRef.current.scrollBy({
+        left: delta,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollActiveTable = (direction: 'left' | 'right') => {
+    const delta = direction === 'right' ? 380 : -380;
+    if (activeTab === 'trash' && trashTableRef.current) {
+      trashTableRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+    } else if (activeTab === 'user-approvals' && approvalTableRef.current) {
+      approvalTableRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+    } else {
+      if (trashTableRef.current) trashTableRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+      if (approvalTableRef.current) approvalTableRef.current.scrollBy({ left: delta, behavior: 'smooth' });
+    }
+  };
+
+  const scrollVertical = (direction: 'up' | 'down') => {
+    const delta = direction === 'down' ? 450 : -450;
+    
+    // Always scroll window and document root (where the main page scrollbar is)
+    try {
+      window.scrollBy({ top: delta, behavior: 'smooth' });
+    } catch (e) {}
+    try {
+      if (document.documentElement && typeof document.documentElement.scrollBy === 'function') {
+        document.documentElement.scrollBy({ top: delta, behavior: 'smooth' });
+      }
+    } catch (e) {}
+    try {
+      if (document.body && typeof document.body.scrollBy === 'function') {
+        document.body.scrollBy({ top: delta, behavior: 'smooth' });
+      }
+    } catch (e) {}
+
+    // Also scroll mainContentRef in case it has overflow
+    if (mainContentRef.current) {
+      try {
+        mainContentRef.current.scrollBy({
+          top: delta,
+          behavior: 'smooth'
+        });
+      } catch (e) {}
+    }
+  };
+
+  const scrollToEdge = (edge: 'top' | 'bottom') => {
+    const maxScroll = Math.max(
+      document.documentElement?.scrollHeight || 0,
+      document.body?.scrollHeight || 0,
+      mainContentRef.current?.scrollHeight || 0,
+      100000
+    );
+    const targetTop = edge === 'top' ? 0 : maxScroll;
+
+    try {
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    } catch (e) {}
+    try {
+      if (document.documentElement && typeof document.documentElement.scrollTo === 'function') {
+        document.documentElement.scrollTo({ top: targetTop, behavior: 'smooth' });
+      }
+    } catch (e) {}
+    try {
+      if (document.body && typeof document.body.scrollTo === 'function') {
+        document.body.scrollTo({ top: targetTop, behavior: 'smooth' });
+      }
+    } catch (e) {}
+    if (mainContentRef.current) {
+      try {
+        mainContentRef.current.scrollTo({
+          top: edge === 'top' ? 0 : mainContentRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      } catch (e) {}
+    }
+  };
 
   const pendingApprovalsCount = allUsers.filter(u => u.role === 'user' && u.isApproved !== true).length;
 
@@ -1341,7 +1474,7 @@ https://all-services-roan.vercel.app/`;
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+        <div ref={mainContentRef} className="flex-1 overflow-y-auto p-4 lg:p-8 scroll-smooth">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
@@ -1773,8 +1906,10 @@ https://all-services-roan.vercel.app/`;
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Info</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order ID</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User (ID)</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Data</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order Date</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
                         </tr>
@@ -1783,13 +1918,34 @@ https://all-services-roan.vercel.app/`;
                         {filteredOrders.map((order, i) => (
                           <tr key={order.id || `order-${i}`} className="hover:bg-slate-50 transition-colors">
                             <td className="px-6 py-4">
-                              <p className="text-sm font-bold">
+                              <p className="text-sm font-bold text-slate-900">
                                 {order.serviceTitle}
                               </p>
-                              <p className="text-[10px] text-slate-400">৳{order.price || 0} • {order.createdAt?.toDate?.()?.toLocaleString()}</p>
+                              <p className="text-xs font-bold text-emerald-600 mt-0.5">৳{order.price || 0}</p>
+                              {order.category && <span className="text-[10px] text-slate-400 block">{order.category}</span>}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100">
+                                  A{order.id?.slice(0, 3)}
+                                </span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(order.id || '');
+                                    alert('Order ID কপি করা হয়েছে: ' + (order.id || ''));
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                  title="Copy full Order ID"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5 max-w-[120px] truncate" title={order.id}>
+                                {order.id}
+                              </span>
                             </td>
                             <td className="px-6 py-4">
-                              <p className="text-sm text-slate-600">{order.userEmail}</p>
+                              <p className="text-sm text-slate-600 font-medium">{order.userEmail}</p>
                               <p className="text-[10px] text-indigo-600 font-mono font-bold mt-1">ID: {allUsers.find(u => u.uid === order.uid)?.userId || 'N/A'}</p>
                             </td>
                             <td className="px-6 py-4">
@@ -1827,6 +1983,17 @@ https://all-services-roan.vercel.app/`;
                                     ))}
                                   </div>
                                 )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-xs text-slate-700">
+                                <div className="font-semibold text-slate-800 flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-slate-400" />
+                                  {order.createdAt?.toDate?.() ? order.createdAt.toDate().toLocaleDateString('en-GB') : 'N/A'}
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5 pl-4">
+                                  {order.createdAt?.toDate?.() ? order.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -3152,8 +3319,61 @@ https://all-services-roan.vercel.app/`;
 
                 {/* Table */}
                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  {/* Top Horizontal Scroll Helper Bar */}
+                  <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 border-b border-slate-200 text-xs">
+                    <div className="flex items-center gap-2 text-slate-700 font-medium">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                      </span>
+                      <ArrowRightLeft className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>সবগুলো কলাম ও অ্যাকশন বাটন দেখতে নিচের স্ক্রোলবার টানুন অথবা পাশের বাটনে ক্লিক করুন</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => scrollApprovalTable('left')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Left (বামে স্ক্রোল করুন)"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>বামে যান</span>
+                      </button>
+                      <button
+                        onClick={() => scrollApprovalTable('right')}
+                        className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-500/20 active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Right (ডানে স্ক্রোল করুন - অ্যাকশন দেখতে)"
+                      >
+                        <span>ডানে যান (অ্যাকশন)</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+
+                      <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
+                      <button
+                        onClick={() => scrollVertical('up')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Up (উপরে স্ক্রোল করুন)"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                        <span>উপরে যান</span>
+                      </button>
+                      <button
+                        onClick={() => scrollVertical('down')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Down (নিচে স্ক্রোল করুন)"
+                      >
+                        <span>নিচে যান</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Scrollable Table Wrapper */}
+                  <div 
+                    ref={approvalTableRef}
+                    className="overflow-x-auto scroll-smooth pb-2 [scrollbar-width:auto] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-500"
+                  >
+                    <table className="w-full min-w-[1250px] text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">ইউজার তথ্য</th>
@@ -3163,7 +3383,7 @@ https://all-services-roan.vercel.app/`;
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">পাসওয়ার্ড</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">রেজিস্ট্রেশন তারিখ ও সময়</th>
                           <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">স্ট্যাটাস</th>
-                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">অ্যাকশন</th>
+                          <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 text-right sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-20">অ্যাকশন</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -3307,12 +3527,12 @@ https://all-services-roan.vercel.app/`;
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-6 py-4 text-right sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-10">
                                   <div className="flex items-center justify-end gap-2">
                                     {isPending ? (
                                       <button
                                         onClick={() => handleApproveUser(u)}
-                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95"
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95 cursor-pointer whitespace-nowrap"
                                         title="এপ্রুভ করুন এবং গ্রাহকের হোয়াটসঅ্যাপে মেসেজ পাঠান"
                                       >
                                         <CheckCircle className="w-3.5 h-3.5" />
@@ -3326,7 +3546,7 @@ https://all-services-roan.vercel.app/`;
                                           const msg = `অভিনন্দন! আপনার অ্যাকাউন্ট কনফার্ম ও অ্যাপ্রুভ করা হয়েছে।\n\nইউজার আইডি: ${u.userId || 'N/A'}\nইমেইল: ${u.email}\n\nলগইন লিংক:\nhttps://all-services-roan.vercel.app/`;
                                           if (raw) window.open(`https://wa.me/${raw}?text=${encodeURIComponent(msg)}`, '_blank');
                                         }}
-                                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1"
+                                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer whitespace-nowrap"
                                         title="মেসেজ পাঠান ও সার্ভিসের স্ট্যাটাস দেখুন"
                                       >
                                         <MessageSquare className="w-3 h-3" />
@@ -3336,7 +3556,7 @@ https://all-services-roan.vercel.app/`;
 
                                     <button
                                       onClick={() => handleAddBlacklist(u.whatsapp)}
-                                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
                                       title="এই নম্বরটি সরাসরি ব্লকলিস্টে যুক্ত করুন"
                                     >
                                       <Ban className="w-4 h-4" />
@@ -3344,7 +3564,7 @@ https://all-services-roan.vercel.app/`;
 
                                     <button
                                       onClick={() => setDeleteConfirm({ type: 'user', id: u.uid })}
-                                      className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors"
+                                      className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors cursor-pointer"
                                       title="ডিলিট / বাতিল করুন"
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -3376,7 +3596,51 @@ https://all-services-roan.vercel.app/`;
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Bottom Horizontal & Vertical Scroll Controls */}
+                  <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 gap-2">
+                    <span className="font-medium text-slate-500">
+                      মোট ইউজার: {filteredApprovalUsers.length} জন • সম্পূর্ণ তথ্য দেখতে ডানে-বামে বা উপরে-নিচে স্ক্রোল করুন
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => scrollApprovalTable('left')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Left"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>বামে</span>
+                      </button>
+                      <button
+                        onClick={() => scrollApprovalTable('right')}
+                        className="px-2.5 py-1 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Right"
+                      >
+                        <span>ডানে</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="h-4 w-px bg-slate-300 mx-0.5" />
+                      <button
+                        onClick={() => scrollVertical('up')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Up (উপরে যান)"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>উপরে</span>
+                      </button>
+                      <button
+                        onClick={() => scrollVertical('down')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Down (নিচে যান)"
+                      >
+                        <span>নিচে</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                
 
                 {/* Blacklist Management Modal */}
                 <AnimatePresence>
@@ -3539,52 +3803,197 @@ https://all-services-roan.vercel.app/`;
                     <h1 className="text-2xl font-bold tracking-tight">Trash</h1>
                     <p className="text-slate-500">Manage deleted items. You can restore or permanently delete them.</p>
                   </div>
+
+                  {/* Search and Filter Section (Red rectangle in screenshot) */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                      {(['all', 'order', 'user', 'product'] as const).map(type => (
+                        <button
+                          key={type}
+                          onClick={() => setTrashTypeFilter(type)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg font-bold capitalize transition-all",
+                            trashTypeFilter === type 
+                              ? "bg-white text-indigo-600 shadow-sm" 
+                              : "text-slate-500 hover:text-slate-900"
+                          )}
+                        >
+                          {type === 'all' ? `All (${trashItems.length})` : 
+                           type === 'order' ? `Orders (${trashItems.filter(t => t.type === 'order').length})` :
+                           type === 'user' ? `Users (${trashItems.filter(t => t.type === 'user').length})` :
+                           `Products (${trashItems.filter(t => t.type === 'product').length})`}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="relative min-w-[240px] sm:min-w-[300px]">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search trash items..."
+                        value={trashSearchQuery}
+                        onChange={(e) => setTrashSearchQuery(e.target.value)}
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-9 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm text-slate-900"
+                      />
+                      {trashSearchQuery && (
+                        <button
+                          onClick={() => setTrashSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full"
+                          title="Clear search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  {/* Top Horizontal & Vertical Scroll Helper Bar */}
+                  <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-gradient-to-r from-slate-50 via-indigo-50/40 to-slate-50 border-b border-slate-200 text-xs">
+                    <div className="flex items-center gap-2 text-slate-700 font-medium">
+                      <span className="flex h-2 w-2 relative">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+                      </span>
+                      <ArrowRightLeft className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span>সকল কলাম ও অ্যাকশন দেখতে ডানে-বামে স্ক্রোল করুন অথবা পাশের বাটন চাপুন</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('left')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Left (বামে যান)"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>বামে যান</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('right')}
+                        className="px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-500/20 active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Right (ডানে যান - অ্যাকশন দেখতে)"
+                      >
+                        <span>ডানে যান (অ্যাকশন)</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+
+                      <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
+
+                      <button
+                        type="button"
+                        onClick={() => scrollVertical('up')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Up (উপরে যান)"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                        <span>উপরে যান</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollVertical('down')}
+                        className="px-2.5 py-1.5 bg-white text-slate-700 hover:text-indigo-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all shadow-sm active:scale-95 flex items-center gap-1 font-bold text-xs cursor-pointer"
+                        title="Scroll Down (নিচে যান)"
+                      >
+                        <span>নিচে যান</span>
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Scrollable Table Wrapper */}
+                  <div 
+                    ref={trashTableRef}
+                    className="overflow-x-auto scroll-smooth pb-2 [scrollbar-width:auto] [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-track]:bg-slate-100 [&::-webkit-scrollbar-thumb]:bg-indigo-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-indigo-500"
+                  >
+                    <table className="w-full min-w-[1250px] text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50 border-b border-slate-200">
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order ID</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Details</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Data</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Order Date</th>
                           <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Deleted At</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right sticky right-0 bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-20">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {trashItems.length === 0 ? (
+                        {filteredTrashItems.length === 0 ? (
                           <tr>
-                            <td colSpan={5} className="px-6 py-12 text-center text-slate-500">
+                            <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
                               <Trash2 className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                              <p className="font-medium">Trash is empty</p>
-                              <p className="text-xs">Deleted items will appear here.</p>
+                              <p className="font-medium">
+                                {trashItems.length === 0 ? "Trash is empty" : "No matching items found"}
+                              </p>
+                              <p className="text-xs mt-1">
+                                {trashItems.length === 0 
+                                  ? "Deleted items will appear here." 
+                                  : `No items matched "${trashSearchQuery}".`}
+                              </p>
+                              {trashSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setTrashSearchQuery('')}
+                                  className="mt-3 px-4 py-1.5 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-lg hover:bg-indigo-100 transition-colors cursor-pointer"
+                                >
+                                  Clear Search
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ) : (
-                          trashItems.map((item, i) => (
+                          filteredTrashItems.map((item, i) => (
                             <tr key={item.id || `trash-${i}`} className="hover:bg-slate-50 transition-colors group">
                               <td className="px-6 py-4 whitespace-nowrap">
                                 <span className={cn(
-                                  "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                  item.type === 'user' ? "bg-blue-100 text-blue-600" :
-                                  item.type === 'order' ? "bg-amber-100 text-amber-600" :
-                                  "bg-purple-100 text-purple-600"
+                                  "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                  item.type === 'user' ? "bg-blue-100 text-blue-700" :
+                                  item.type === 'order' ? "bg-amber-100 text-amber-700" :
+                                  "bg-purple-100 text-purple-700"
                                 )}>
                                   {item.type}
                                 </span>
                               </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                {item.type === 'order' ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded-lg text-xs">
+                                      A{item.id?.slice(0, 3)}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(item.id || '');
+                                        alert('Order ID copied: ' + item.id);
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-indigo-50 transition-colors cursor-pointer"
+                                      title={`Full ID: ${item.id} (Click to copy)`}
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                ) : item.type === 'user' ? (
+                                  <span className="font-mono font-bold text-slate-700 text-xs">
+                                    UID: {item.data.userId || item.id?.slice(0, 6) || 'N/A'}
+                                  </span>
+                                ) : (
+                                  <span className="font-mono text-xs text-slate-500">
+                                    PID: {item.id?.slice(0, 6)}
+                                  </span>
+                                )}
+                              </td>
                               <td className="px-6 py-4">
-                                <div className="text-sm font-medium text-slate-900">
+                                <div className="text-sm font-bold text-slate-900">
                                   {item.type === 'user' ? item.data.displayName : 
                                    item.type === 'order' ? item.data.serviceTitle : 
-                                   item.data.titleEn}
+                                   (item.data.titleBn || item.data.titleEn)}
                                 </div>
-                                <div className="text-xs text-slate-500 mt-1">
+                                <div className="text-xs text-slate-500 mt-1 space-y-0.5">
                                   {item.type === 'user' ? (
                                     <>
-                                      {item.data.email} <br/>
+                                      <div className="truncate max-w-[220px]">{item.data.email}</div>
                                       <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || 'N/A'}</span>
                                       {item.data.orders && item.data.orders.length > 0 && (
                                         <div className="mt-2 p-2 bg-slate-100 rounded-lg max-h-20 overflow-y-auto">
@@ -3597,11 +4006,12 @@ https://all-services-roan.vercel.app/`;
                                     </>
                                   ) : item.type === 'order' ? (
                                     <>
-                                      Order ID: A{item.id.slice(0, 3)} <br/>
-                                      User: {item.data.userEmail} <br/>
-                                      <span className="font-mono font-bold text-indigo-600">ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</span>
+                                      <p className="text-slate-600">User: <span className="font-medium text-slate-800">{item.data.userEmail}</span></p>
+                                      <p className="font-mono font-bold text-indigo-600">User ID: {item.data.userId || allUsers.find(u => u.uid === item.data.uid)?.userId || 'N/A'}</p>
                                     </>
-                                  ) : `Product ID: ${item.id}`}
+                                  ) : (
+                                    <p className="text-slate-500">Product ID: {item.id}</p>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-6 py-4">
@@ -3611,10 +4021,11 @@ https://all-services-roan.vercel.app/`;
                                       <div className="p-2 bg-slate-50 border border-slate-200 rounded-lg whitespace-pre-wrap text-xs text-slate-600 font-mono relative group max-h-32 overflow-y-auto w-64 md:w-80">
                                         {item.data.data}
                                         <button
+                                          type="button"
                                           onClick={() => {
                                             navigator.clipboard.writeText(item.data.data || '');
                                           }}
-                                          className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm"
+                                          className="absolute top-1 right-1 p-1.5 bg-white border border-slate-200 rounded-md text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-indigo-600 hover:border-indigo-200 shadow-sm cursor-pointer"
                                           title="Copy Data"
                                         >
                                           <Copy className="w-3.5 h-3.5" />
@@ -3626,13 +4037,14 @@ https://all-services-roan.vercel.app/`;
                                       <div className="grid gap-1 mt-2">
                                         {item.data.fileURLs.map((url: string, urlIndex: number) => (
                                           <button
+                                            type="button"
                                             key={`trash-file-${urlIndex}`}
                                             onClick={() => {
                                               const safeTitle = (item.data.serviceTitle || 'order').replace(/[^a-z0-9]/gi, '_').toLowerCase();
                                               const ext = getExtensionFromUrl(url);
                                               downloadFile(url, `${safeTitle}_user_file_${urlIndex + 1}.${ext}`);
                                             }}
-                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max"
+                                            className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 p-1.5 rounded-md border border-indigo-100 w-max cursor-pointer"
                                           >
                                             <Download className="w-3 h-3" />
                                             Document {urlIndex + 1}
@@ -3645,27 +4057,65 @@ https://all-services-roan.vercel.app/`;
                                   <span className="text-xs text-slate-400 italic">N/A</span>
                                 )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                                {item.deletedAt?.toDate?.().toLocaleString() || 'Unknown'}
+                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-600">
+                                {item.type === 'order' ? (
+                                  item.data.createdAt?.toDate ? (
+                                    <div>
+                                      <p className="font-bold text-slate-800">{item.data.createdAt.toDate().toLocaleDateString()}</p>
+                                      <p className="text-[10px] text-slate-400">{item.data.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                  ) : (
+                                    <span>{item.data.date || '-'}</span>
+                                  )
+                                ) : item.type === 'user' && item.data.createdAt?.toDate ? (
+                                  <div>
+                                    <p className="font-bold text-slate-800">{item.data.createdAt.toDate().toLocaleDateString()}</p>
+                                    <p className="text-[10px] text-slate-400">রেজিস্ট্রেশন</p>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-400 italic">-</span>
+                                )}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-right space-x-2">
+                              <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
+                                {item.deletedAt?.toDate ? (
+                                  <div>
+                                    <p className="font-semibold text-slate-700">{item.deletedAt.toDate().toLocaleDateString()}</p>
+                                    <p className="text-[10px] text-slate-400">{item.deletedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                  </div>
+                                ) : (
+                                  <span>{item.deletedAt?.toDate?.().toLocaleString() || 'Unknown'}</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-right space-x-1.5 sticky right-0 bg-white/95 group-hover:bg-slate-50/95 backdrop-blur-sm shadow-[-8px_0_12px_rgba(0,0,0,0.06)] z-10">
+                                {/* Eye view button (Red circle in screenshot) */}
                                 <button 
+                                  type="button"
+                                  onClick={() => setViewingTrashItem(item)}
+                                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
+                                  title="View Details (কি অ্যাড করা আছে দেখুন)"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  type="button"
                                   onClick={() => handleDownloadTrashFile(item)}
-                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-indigo-200"
                                   title="Download Data"
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>
                                 <button 
+                                  type="button"
                                   onClick={() => restoreItem(item)}
-                                  className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                  className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-emerald-200"
                                   title="Restore"
                                 >
                                   <RotateCcw className="w-4 h-4" />
                                 </button>
                                 <button 
+                                  type="button"
                                   onClick={() => permanentDeleteItem(item)}
-                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                  className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer shadow-sm border border-slate-200 hover:border-red-200"
                                   title="Delete Permanently"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -3676,6 +4126,52 @@ https://all-services-roan.vercel.app/`;
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Bottom Horizontal & Vertical Scroll Controls */}
+                  <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-600 gap-2">
+                    <span className="font-medium text-slate-500">
+                      মোট আইটেম: {filteredTrashItems.length} টি • সম্পূর্ণ তথ্য দেখতে ডানে-বামে বা উপরে-নিচে স্ক্রোল করুন
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('left')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Left"
+                      >
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                        <span>বামে</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollTrashTable('right')}
+                        className="px-2.5 py-1 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Right"
+                      >
+                        <span>ডানে</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="h-4 w-px bg-slate-300 mx-0.5" />
+                      <button
+                        type="button"
+                        onClick={() => scrollVertical('up')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Up (উপরে যান)"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                        <span>উপরে</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollVertical('down')}
+                        className="px-2.5 py-1 bg-white text-slate-700 hover:text-indigo-600 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1 font-bold cursor-pointer transition-colors"
+                        title="Scroll Down (নিচে যান)"
+                      >
+                        <span>নিচে</span>
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -5312,6 +5808,62 @@ https://all-services-roan.vercel.app/`;
             </div>
           )}
         </AnimatePresence>
+        {/* Global Floating Side Scroll Dock (Always accessible for easy scrolling on right side) */}
+        <div className="fixed right-3 sm:right-5 top-1/2 -translate-y-1/2 z-[45] flex flex-col items-center gap-1.5 bg-white/95 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200 shadow-2xl shadow-slate-900/15">
+          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 rotate-90 my-2 select-none">
+            SCROLL
+          </span>
+          <button
+            type="button"
+            onClick={() => scrollToEdge('top')}
+            className="w-9 h-9 bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="একদম উপরে যান (Top)"
+          >
+            <ChevronsUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollVertical('up')}
+            className="w-9 h-9 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="উপরে যান (Scroll Up)"
+          >
+            <ChevronUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
+          <div className="w-6 h-px bg-slate-200 my-0.5" />
+          <button
+            type="button"
+            onClick={() => scrollVertical('down')}
+            className="w-9 h-9 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="নিচে যান (Scroll Down)"
+          >
+            <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollToEdge('bottom')}
+            className="w-9 h-9 bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="একদম নিচে যান (Bottom)"
+          >
+            <ChevronsDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+          </button>
+          <div className="w-6 h-px bg-slate-200 my-0.5" />
+          <button
+            type="button"
+            onClick={() => scrollActiveTable('left')}
+            className="w-9 h-9 bg-slate-50 hover:bg-indigo-600 text-slate-500 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="টেবিল বামে স্ক্রোল (Table Left)"
+          >
+            <ChevronLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollActiveTable('right')}
+            className="w-9 h-9 bg-slate-50 hover:bg-indigo-600 text-slate-500 hover:text-white rounded-xl transition-all active:scale-90 flex items-center justify-center cursor-pointer shadow-sm group"
+            title="টেবিল ডানে স্ক্রোল (Table Right)"
+          >
+            <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          </button>
+        </div>
       </main>
 
       {/* Completed Orders Picker Modal */}
@@ -5972,6 +6524,372 @@ https://all-services-roan.vercel.app/`;
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Trash Item View Details Modal */}
+      <AnimatePresence>
+        {viewingTrashItem && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-2xl flex items-center justify-center font-bold text-base shadow-sm",
+                    viewingTrashItem.type === 'order' ? "bg-amber-100 text-amber-600" :
+                    viewingTrashItem.type === 'user' ? "bg-blue-100 text-blue-600" :
+                    "bg-purple-100 text-purple-600"
+                  )}>
+                    <Eye className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-slate-900 text-lg">Trash Item Details</h3>
+                      <span className={cn(
+                        "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        viewingTrashItem.type === 'order' ? "bg-amber-100 text-amber-700" :
+                        viewingTrashItem.type === 'user' ? "bg-blue-100 text-blue-700" :
+                        "bg-purple-100 text-purple-700"
+                      )}>
+                        {viewingTrashItem.type}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Deleted At: {viewingTrashItem.deletedAt?.toDate?.().toLocaleString() || 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingTrashItem(null)}
+                  className="p-2 hover:bg-slate-200/60 rounded-xl text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-800 text-sm">
+                {viewingTrashItem.type === 'order' && (() => {
+                  const ord = viewingTrashItem.data || {};
+                  return (
+                    <div className="space-y-5">
+                      {/* Basic Meta Cards */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Order ID</span>
+                          <span className="font-mono font-bold text-slate-900 text-sm">A{viewingTrashItem.id?.slice(0, 3)}</span>
+                          <span className="text-[9px] text-slate-400 block truncate font-mono">({viewingTrashItem.id})</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Status</span>
+                          <span className={cn(
+                            "inline-block px-2 py-0.5 rounded-md text-xs font-bold capitalize mt-0.5",
+                            ord.status === 'completed' ? "bg-emerald-100 text-emerald-700" :
+                            ord.status === 'rejected' ? "bg-red-100 text-red-700" :
+                            ord.status === 'processing' ? "bg-blue-100 text-blue-700" :
+                            "bg-amber-100 text-amber-700"
+                          )}>
+                            {ord.status || 'Pending'}
+                          </span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Price</span>
+                          <span className="font-bold text-slate-900 text-sm">৳{ord.price ?? 0}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">User ID</span>
+                          <span className="font-mono font-bold text-indigo-600 text-sm">{ord.userId || allUsers.find(u => u.uid === ord.uid)?.userId || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      {/* Service & User Details */}
+                      <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Service Name</span>
+                            <h4 className="font-bold text-slate-900 text-base">{ord.serviceTitle || 'N/A'}</h4>
+                          </div>
+                          {ord.category && (
+                            <span className="px-2.5 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold">
+                              {ord.category}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 pt-1 border-t border-slate-200/60 flex flex-wrap gap-x-4 gap-y-1">
+                          <span><strong>User Email:</strong> {ord.userEmail || 'N/A'}</span>
+                          {ord.createdAt && <span><strong>Ordered At:</strong> {ord.createdAt?.toDate?.().toLocaleString?.() || 'N/A'}</span>}
+                          {ord.option && <span><strong>Option:</strong> {typeof ord.option === 'object' ? ord.option.name : ord.option}</span>}
+                        </div>
+                      </div>
+
+                      {/* Submitted Order Data */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                            Submitted Order Data (ইউজারের দেওয়া তথ্য)
+                          </label>
+                          {ord.data && (
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(ord.data);
+                                alert('অর্ডার ডাটা কপি করা হয়েছে!');
+                              }}
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 transition-colors cursor-pointer"
+                            >
+                              <Copy className="w-3 h-3" />
+                              Copy Data
+                            </button>
+                          )}
+                        </div>
+                        {ord.data ? (
+                          <div className="p-4 bg-slate-900 text-emerald-400 rounded-2xl font-mono text-xs whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed shadow-inner">
+                            {ord.data}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">কোনো টেক্সট তথ্য দেওয়া হয়নি।</p>
+                        )}
+                      </div>
+
+                      {/* User Uploaded Documents */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                          <FileUp className="w-3.5 h-3.5 text-indigo-500" />
+                          User Uploaded Files / Documents (সংযুক্ত ফাইল)
+                        </label>
+                        {((ord.fileURLs && ord.fileURLs.length > 0) || ord.fileURL) ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {(ord.fileURLs || [ord.fileURL]).map((url: string, idx: number) => {
+                              const isImg = url.startsWith('data:image/') || url.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i);
+                              return (
+                                <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {isImg ? (
+                                      <img src={url} alt="file" className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0" />
+                                    ) : (
+                                      <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                        <FileText className="w-5 h-5" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-bold text-slate-800 truncate">Document {idx + 1}</p>
+                                      <span className="text-[10px] text-slate-400">Attached file</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                      title="Open in new tab"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </a>
+                                    <button
+                                      onClick={() => {
+                                        const safeTitle = (ord.serviceTitle || 'order').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                        const ext = getExtensionFromUrl(url);
+                                        downloadFile(url, `${safeTitle}_doc_${idx + 1}.${ext}`);
+                                      }}
+                                      className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                      title="Download"
+                                    >
+                                      <Download className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic bg-slate-50 p-3 rounded-xl border border-slate-100">কোনো ফাইল সংযুক্ত নেই।</p>
+                        )}
+                      </div>
+
+                      {/* Admin Delivery Result / Success Link / Rejection Reason */}
+                      {(ord.successLink || ord.resultFile || ord.rejectionReason) && (
+                        <div className="space-y-2 pt-2 border-t border-slate-200/80">
+                          <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            Delivered Result / Status Info (ডেলিভারি করা ডাটা বা ফলাফল)
+                          </label>
+                          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200/80 space-y-3">
+                            {ord.successLink && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Success Link / Delivery Link:</span>
+                                <div className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-emerald-200">
+                                  <span className="text-xs font-mono text-emerald-700 truncate flex-1">{ord.successLink}</span>
+                                  <a 
+                                    href={ord.successLink} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="px-2.5 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 flex items-center gap-1 shrink-0"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    Open
+                                  </a>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(ord.successLink);
+                                      alert('ডেলিভারি লিংক কপি করা হয়েছে!');
+                                    }}
+                                    className="px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 flex items-center gap-1 shrink-0 cursor-pointer"
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                    Copy
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {ord.resultFile && (
+                              <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Result File:</span>
+                                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-emerald-200">
+                                  <span className="text-xs font-medium text-slate-700 truncate">Result document attached</span>
+                                  <button
+                                    onClick={() => {
+                                      const safeTitle = (ord.serviceTitle || 'result').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+                                      const ext = getExtensionFromUrl(ord.resultFile);
+                                      downloadFile(ord.resultFile, `${safeTitle}_result.${ext}`);
+                                    }}
+                                    className="px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 flex items-center gap-1 shrink-0 cursor-pointer"
+                                  >
+                                    <Download className="w-3.5 h-3.5" />
+                                    Download Result
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {ord.rejectionReason && (
+                              <div className="p-3 bg-red-50 text-red-700 rounded-xl border border-red-200 text-xs">
+                                <strong className="block font-bold mb-0.5">Rejection Reason:</strong>
+                                {ord.rejectionReason}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {viewingTrashItem.type === 'user' && (() => {
+                  const u = viewingTrashItem.data || {};
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">User Name</span>
+                          <span className="font-bold text-slate-900 text-sm">{u.displayName || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">User ID</span>
+                          <span className="font-mono font-bold text-indigo-600 text-sm">{u.userId || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Balance</span>
+                          <span className="font-bold text-emerald-600 text-sm">৳{u.balance || 0}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Email</span>
+                          <span className="text-xs text-slate-700 truncate block">{u.email || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">WhatsApp / Phone</span>
+                          <span className="text-xs text-slate-700 block">{u.whatsapp || u.phone || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Role</span>
+                          <span className="text-xs font-bold uppercase text-slate-700 block">{u.role || 'user'}</span>
+                        </div>
+                      </div>
+
+                      {u.orders && u.orders.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">Deleted Orders of User ({u.orders.length})</h4>
+                          <div className="max-h-60 overflow-y-auto space-y-2">
+                            {u.orders.map((o: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+                                <div>
+                                  <span className="font-bold text-slate-800">{o.serviceTitle}</span>
+                                  <span className="text-slate-400 block text-[10px]">ID: {o.id}</span>
+                                </div>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">
+                                  {o.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {viewingTrashItem.type === 'product' && (() => {
+                  const p = viewingTrashItem.data || {};
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Title (English)</span>
+                          <span className="font-bold text-slate-900 text-sm">{p.titleEn || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Title (Bangla)</span>
+                          <span className="font-bold text-slate-900 text-sm">{p.titleBn || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Category</span>
+                          <span className="font-bold text-slate-900 text-sm">{p.category || 'N/A'}</span>
+                        </div>
+                        <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block">Price</span>
+                          <span className="font-bold text-emerald-600 text-sm">৳{p.price || 0}</span>
+                        </div>
+                      </div>
+                      {p.description && (
+                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
+                          <strong>Description:</strong> {p.description}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/70 flex items-center justify-between gap-3">
+                <button
+                  onClick={() => {
+                    const item = viewingTrashItem;
+                    setViewingTrashItem(null);
+                    restoreItem(item);
+                  }}
+                  className="px-5 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs sm:text-sm hover:bg-emerald-700 transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Restore This Item
+                </button>
+                <button
+                  onClick={() => setViewingTrashItem(null)}
+                  className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs sm:text-sm transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Service Modal */}
       <ServiceModal 
         isOpen={isServiceModalOpen}

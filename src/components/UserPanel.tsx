@@ -1155,6 +1155,7 @@ Mobile-
           <button 
             onClick={() => setShowRechargeModal(true)}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium text-emerald-600 hover:bg-emerald-50"
+
             title={!isSidebarOpen ? "Recharge Balance" : ""}
           >
             <Wallet className="w-5 h-5 flex-shrink-0" />
@@ -1180,6 +1181,7 @@ Mobile-
           <button 
             onClick={() => setSmartVoterModalOpen(true)}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all font-medium text-teal-600 hover:bg-teal-50"
+
             title={!isSidebarOpen ? "স্মার্ট ভোটার অনুসন্ধান" : ""}
           >
             <UserCheck className="w-5 h-5 flex-shrink-0" />
@@ -1206,8 +1208,8 @@ Mobile-
                     selectedCategory === cat && activeTab === 'services' 
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" 
                       : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                  )}
-                  title={!isSidebarOpen ? cat : ""}
+            )}
+            title={!isSidebarOpen ? cat : ""}
                 >
                   <Tag className={cn("w-4 h-4 flex-shrink-0", selectedCategory === cat && activeTab === 'services' ? "text-white" : "text-indigo-400")} />
                   {isSidebarOpen && <span className="truncate">{cat}</span>}
@@ -1247,6 +1249,7 @@ Mobile-
               <button 
                 onClick={() => setShowRechargeModal(true)}
                 className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20"
+
                 title="Recharge Now"
               >
                 <Plus className="w-5 h-5" />
@@ -1273,6 +1276,7 @@ Mobile-
           <button 
             onClick={onSignOut}
             className="w-full flex items-center gap-3 px-3 py-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium"
+
             title={!isSidebarOpen ? "Sign Out" : ""}
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
@@ -1333,13 +1337,15 @@ Mobile-
                     }
                   }}
                   className="ml-1 p-1 text-slate-400 hover:text-indigo-600 transition-colors"
-                  title="Refresh Balance"
+
+            title="Refresh Balance"
                 >
                   <History className="w-3 h-3" />
                 </button>
                 <button 
                   onClick={() => setShowRechargeModal(true)}
                   className="ml-1 p-1 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all"
+
                   title="Recharge"
                 >
                   <Plus className="w-2.5 h-2.5" />
@@ -1579,6 +1585,8 @@ Mobile-
                 })()}
               </div>
             </div>
+
+
           )}
 
           {activeTab === 'services' && (
@@ -1615,7 +1623,7 @@ Mobile-
                       className={cn(
                         "bg-white rounded-3xl border border-slate-200 p-6 space-y-4 transition-all group relative overflow-hidden shadow-sm",
                         product.isActive ? "hover:border-indigo-500/50 cursor-pointer" : "opacity-75 cursor-not-allowed"
-                      )}
+                          )}
                       onClick={() => {
                         if (!product.isActive) return;
                         if (product.id === 105) {
@@ -1634,7 +1642,7 @@ Mobile-
                           </div>
                           <p className="text-xs text-slate-900 font-medium">কাজ বন্ধ আছে</p>
                         </div>
-                      )}
+            )}
                       <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg", product.color || 'bg-indigo-600')}>
                         {(() => {
                           const Icon = getIcon(product);
@@ -1648,13 +1656,13 @@ Mobile-
                             <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-0.5 rounded-lg border border-emerald-100">
                               OFFER
                             </span>
-                          )}
+            )}
                         </div>
                         <h3 className="text-lg font-black group-hover:text-indigo-600 transition-colors leading-tight text-slate-900">{product.titleBn}</h3>
                         <p className="text-xs text-slate-500 mt-1 font-medium">{product.titleEn}</p>
                         {product.shortDescription && (
                           <p className="text-xs text-slate-500 mt-3 line-clamp-2 leading-relaxed">{product.shortDescription}</p>
-                        )}
+            )}
                       </div>
                       <div className="flex items-center justify-end pt-4 border-t border-slate-100">
                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", product.isActive ? "bg-slate-50 group-hover:bg-indigo-600 shadow-lg group-hover:shadow-indigo-500/20" : "bg-slate-50")}>
@@ -1667,8 +1675,10 @@ Mobile-
               </div>
             )}
           </div>
-        )}
+
           
+          )}
+
           {activeTab === 'history' && (
             <div className="space-y-8">
               <div>
@@ -1718,7 +1728,7 @@ Mobile-
                                 <button
                                   onClick={() => handleDeleteOrder(order.id!)}
                                   className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Delete Order"
+                          title="Delete Order"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1739,7 +1749,7 @@ Mobile-
                                 </div>
                               ) : (
                                 <span className="text-[10px] text-slate-400 italic">No files</span>
-                              )}
+            )}
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-xs text-slate-400 italic">
@@ -1758,12 +1768,14 @@ Mobile-
                             </div>
                           </td>
                         </tr>
-                      )}
+            )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+
+
           )}
 
           {activeTab === 'completed-orders' && (
@@ -1819,6 +1831,7 @@ Mobile-
                                       <button 
                                         onClick={() => handleSecureDownload(order, 'view')}
                                         className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+
                                         title="View Result"
                                       >
                                         <Eye className="w-5 h-5" />
@@ -1827,44 +1840,48 @@ Mobile-
                                         onClick={() => handleSecureDownload(order, 'resultFile')}
                                         disabled={downloadingOrderId === order.id}
                                         className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+
                                         title="Download Result"
                                       >
                                         {downloadingOrderId === order.id ? (
                                           <Loader2 className="w-5 h-5 animate-spin" />
                                         ) : (
                                           <Download className="w-5 h-5" />
-                                        )}
+            )}
                                       </button>
                                     </>
-                                  )}
 
+            )}
                                   {order.successLink && (
                                     <>
                                       {!order.resultFile && (
                                         <button 
                                           onClick={() => handleSecureDownload(order, 'view')}
                                           className="w-10 h-10 bg-emerald-600 text-white rounded-xl flex items-center justify-center hover:bg-emerald-700 transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
+
                                           title="View File"
                                         >
                                           <Eye className="w-5 h-5" />
                                         </button>
-                                      )}
+            )}
                                       <button 
                                         onClick={() => handleSecureDownload(order, 'successLink')}
                                         disabled={downloadingOrderId === order.id}
                                         className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+
                                         title="Download File"
                                       >
                                         {downloadingOrderId === order.id ? (
                                           <Loader2 className="w-5 h-5 animate-spin" />
                                         ) : (
                                           <Download className="w-5 h-5" />
-                                        )}
+            )}
                                       </button>
                                       {!order.isCopyExpired && !order.oneTimeDownload ? (
                                         <button 
                                           onClick={() => handleCopyOrderLink(order)}
                                           className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
+
                                           title="Copy Link (One-Time Copy Limit)"
                                         >
                                           <Copy className="w-5 h-5" />
@@ -1873,20 +1890,21 @@ Mobile-
                                         <button 
                                           disabled
                                           className="w-10 h-10 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center cursor-not-allowed"
+
                                           title="Already Copied - Locked (One-Time Copy Limit)"
                                         >
                                           <Lock className="w-5 h-5" />
                                         </button>
-                                      )}
+            )}
                                     </>
-                                  )}
+            )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
                                   <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">No File</span>
                                 </div>
-                              )}
+            )}
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -1896,6 +1914,7 @@ Mobile-
                                 <button
                                   onClick={() => handleDeleteOrder(order.id!)}
                                   className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+
                                   title="Delete Order"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1914,12 +1933,15 @@ Mobile-
                             </div>
                           </td>
                         </tr>
-                      )}
+
+                        )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+
+
           )}
 
           {activeTab === 'premium-orders' && (
@@ -1975,6 +1997,7 @@ Mobile-
                                       <button 
                                         onClick={() => handleSecureDownload(order, 'view')}
                                         className="w-10 h-10 bg-amber-600 text-white rounded-xl flex items-center justify-center hover:bg-amber-700 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+
                                         title="View Result"
                                       >
                                         <Eye className="w-5 h-5" />
@@ -1983,35 +2006,38 @@ Mobile-
                                         onClick={() => handleSecureDownload(order, 'resultFile')}
                                         disabled={downloadingOrderId === order.id}
                                         className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 text-center disabled:opacity-50 cursor-pointer"
+
                                         title="Download Result"
                                       >
                                         {downloadingOrderId === order.id ? (
                                           <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                                         ) : (
                                           <Download className="w-5 h-5 mx-auto" />
-                                        )}
+            )}
                                       </button>
                                     </>
-                                  )}
 
+            )}
                                   {order.successLink && (
                                     <>
                                       <button 
                                         onClick={() => handleSecureDownload(order, 'successLink')}
                                         disabled={downloadingOrderId === order.id}
                                         className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer"
+
                                         title="Download File"
                                       >
                                         {downloadingOrderId === order.id ? (
                                           <Loader2 className="w-5 h-5 animate-spin" />
                                         ) : (
                                           <Download className="w-5 h-5" />
-                                        )}
+            )}
                                       </button>
                                       {!order.isCopyExpired && !order.oneTimeDownload ? (
                                         <button 
                                           onClick={() => handleCopyOrderLink(order)}
                                           className="w-10 h-10 bg-slate-600 text-white rounded-xl flex items-center justify-center hover:bg-slate-700 transition-all shadow-md shadow-slate-500/20 cursor-pointer"
+
                                           title="Copy Link (One-Time Copy Limit)"
                                         >
                                           <Copy className="w-5 h-5" />
@@ -2020,20 +2046,21 @@ Mobile-
                                         <button 
                                           disabled
                                           className="w-10 h-10 bg-slate-200 text-slate-400 rounded-xl flex items-center justify-center cursor-not-allowed"
+
                                           title="Already Copied - Locked (One-Time Copy Limit)"
                                         >
                                           <Lock className="w-5 h-5" />
                                         </button>
-                                      )}
+            )}
                                     </>
-                                  )}
+            )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center gap-1 opacity-40">
                                   <XCircle className="w-5 h-5 text-slate-400" />
                                   <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">No File</span>
                                 </div>
-                              )}
+            )}
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -2043,6 +2070,7 @@ Mobile-
                                 <button
                                   onClick={() => handleDeleteOrder(order.id!)}
                                   className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+
                                   title="Delete Order"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -2061,12 +2089,15 @@ Mobile-
                             </div>
                           </td>
                         </tr>
-                      )}
+
+                        )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+
+
           )}
 
           {activeTab === 'rejected' && (
@@ -2123,7 +2154,8 @@ Mobile-
                                 <button
                                   onClick={() => handleDeleteOrder(order.id!)}
                                   className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Delete Order"
+
+            title="Delete Order"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -2137,13 +2169,16 @@ Mobile-
                             No rejected orders found.
                           </td>
                         </tr>
-                      )}
+
+                        )}
                     </tbody>
                   </table>
                 </div>
               </div>
             </div>
+
           )}
+
           {activeTab === 'premium' && (
             <div className="space-y-8">
               <div>
@@ -2189,7 +2224,7 @@ Mobile-
                         <Crown className="w-5 h-5" />
                         Unlock for ৳{globalSettings?.premiumUnlockFee || 500}
                       </>
-                    )}
+            )}
                   </button>
                 </div>
               ) : (
@@ -2204,7 +2239,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
                         <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
                       </div>
-                    )}
+            )}
                     {!(products.find(p => p.id === 101)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -2213,7 +2248,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
                         <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
                       </div>
-                    )}
+            )}
                     <div className="p-6 border-b border-slate-200">
                       <h3 className="text-xl font-bold text-orange-500 flex items-center gap-2">
                         <FileText className="w-6 h-6" />
@@ -2261,10 +2296,10 @@ Mobile-
                                       <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (
                                       <Download className="w-5 h-5" />
-                                    )}
+            )}
                                     ফাইল ডাউনলোড করুন
                                   </button>
-                                )}
+            )}
                                 {order.successLink && (
                                   <button 
                                     onClick={() => handleSecureDownload(order, 'successLink')}
@@ -2275,10 +2310,10 @@ Mobile-
                                       <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (
                                       <Download className="w-5 h-5" />
-                                    )}
+            )}
                                     ফাইল ডাউনলোড করুন
                                   </button>
-                                )}
+            )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 101])}
                                   className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -2375,7 +2410,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
                         <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
                       </div>
-                    )}
+            )}
                     {!(products.find(p => p.id === 102)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -2384,7 +2419,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
                         <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
                       </div>
-                    )}
+            )}
                     <div className="p-6 border-b border-slate-200">
                       <h3 className="text-xl font-bold text-emerald-600 flex items-center gap-2 border-b-2 border-emerald-500 pb-2 w-fit">
                         <Search className="w-6 h-6" />
@@ -2427,7 +2462,7 @@ Mobile-
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Result Summary</p>
                                     <p className="text-xs font-bold text-slate-700">{order.note}</p>
                                   </div>
-                                )}
+            )}
                                 {order.resultFile && (
                                   <div className="flex flex-col w-full gap-2 mt-2">
                                     <button 
@@ -2439,11 +2474,11 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ফাইল দেখুন / ডাউনলোড
                                     </button>
                                   </div>
-                                )}
+            )}
                                 {order.successLink && (
                                   <div className="flex w-full gap-2 mt-2">
                                     <button 
@@ -2455,23 +2490,31 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ডাউনলোড করুন
                                     </button>
-                                    {!order.oneTimeDownload && (
-                                      <button 
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(order.successLink || '');
-                                          alert('লিঙ্ক কপি করা হয়েছে!');
-                                        }}
-                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                                        title="Copy Link"
-                                      >
-                                        <Copy className="w-5 h-5" />
-                                      </button>
-                                    )}
+                                    {!order.isCopyExpired ? (
+                                       <button 
+                                         onClick={() => handleCopyOrderLink(order)}
+                                         className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+
+                                         title="Copy Link (One-Time Copy Limit)"
+                                       >
+                                         <Copy className="w-5 h-5" />
+                                       </button>
+                                     ) : (
+                                       <button 
+                                         disabled
+                                         className="p-3 bg-slate-200 text-slate-400 rounded-xl cursor-not-allowed flex items-center justify-center"
+
+                                         title="Already Copied & Locked (One-Time Limit)"
+                                       >
+                                         <Lock className="w-5 h-5 text-slate-400" />
+                                       </button>
+
+            )}
                                   </div>
-                                )}
+            )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 102])}
                                   className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -2511,7 +2554,7 @@ Mobile-
                                       <option>Mobile Number</option>
                                       <option>Form Number</option>
                                     </>
-                                  )}
+            )}
                                 </select>
                               </div>
                               <div className="space-y-2">
@@ -2591,7 +2634,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
                         <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
                       </div>
-                    )}
+            )}
                     {!(products.find(p => p.id === 103)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -2600,7 +2643,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
                         <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
                       </div>
-                    )}
+            )}
                     <div className="p-6 border-b border-slate-200">
                       <h3 className="text-xl font-bold text-blue-600 flex items-center gap-2">
                         <Search className="w-6 h-6" />
@@ -2648,11 +2691,11 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ফাইল ডাউনলোড করুন
                                     </button>
                                   </div>
-                                )}
+            )}
                                 {order.successLink && (
                                   <div className="flex w-full gap-2 mt-2">
                                     <button 
@@ -2664,23 +2707,31 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ডাউনলোড করুন
                                     </button>
-                                    {!order.oneTimeDownload && (
-                                      <button 
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(order.successLink || '');
-                                          alert('লিঙ্ক কপি করা হয়েছে!');
-                                        }}
-                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                                        title="Copy Link"
-                                      >
-                                        <Copy className="w-5 h-5" />
-                                      </button>
-                                    )}
+                                    {!order.isCopyExpired ? (
+                                       <button 
+                                         onClick={() => handleCopyOrderLink(order)}
+                                         className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+
+                                         title="Copy Link (One-Time Copy Limit)"
+                                       >
+                                         <Copy className="w-5 h-5" />
+                                       </button>
+                                     ) : (
+                                       <button 
+                                         disabled
+                                         className="p-3 bg-slate-200 text-slate-400 rounded-xl cursor-not-allowed flex items-center justify-center"
+
+                                         title="Already Copied & Locked (One-Time Limit)"
+                                       >
+                                         <Lock className="w-5 h-5 text-slate-400" />
+                                       </button>
+
+            )}
                                   </div>
-                                )}
+            )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 103])}
                                   className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -2783,7 +2834,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">সার্ভার মেইনটেন্যান্স</h4>
                         <p className="text-slate-300 text-xs mt-1">সার্ভারের কাজ চলছে, কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
                       </div>
-                    )}
+            )}
                     {!(products.find(p => p.id === 104)?.isActive ?? true) && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-6 text-center">
                         <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center mb-3">
@@ -2792,7 +2843,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
                         <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
                       </div>
-                    )}
+            )}
                     <div className="p-6 border-b border-slate-200">
                       <h3 className="text-xl font-bold text-purple-600 flex items-center gap-2">
                         <CreditCard className="w-6 h-6" />
@@ -2841,11 +2892,11 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ডাউনলোড করুন
                                     </button>
                                   </div>
-                                )}
+            )}
                                 {order.successLink && (
                                   <div className="flex w-full gap-2 mt-2">
                                     <button 
@@ -2857,23 +2908,31 @@ Mobile-
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                       ) : (
                                         <Download className="w-5 h-5" />
-                                      )}
+            )}
                                       ডাউনলোড করুন
                                     </button>
-                                    {!order.oneTimeDownload && (
-                                      <button 
-                                        onClick={() => {
-                                          navigator.clipboard.writeText(order.successLink || '');
-                                          alert('লিঙ্ক কপি করা হয়েছে!');
-                                        }}
-                                        className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                                        title="Copy Link"
-                                      >
-                                        <Copy className="w-5 h-5" />
-                                      </button>
-                                    )}
+                                    {!order.isCopyExpired ? (
+                                       <button 
+                                         onClick={() => handleCopyOrderLink(order)}
+                                         className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+
+                                         title="Copy Link (One-Time Copy Limit)"
+                                       >
+                                         <Copy className="w-5 h-5" />
+                                       </button>
+                                     ) : (
+                                       <button 
+                                         disabled
+                                         className="p-3 bg-slate-200 text-slate-400 rounded-xl cursor-not-allowed flex items-center justify-center"
+
+                                         title="Already Copied & Locked (One-Time Limit)"
+                                       >
+                                         <Lock className="w-5 h-5 text-slate-400" />
+                                       </button>
+
+            )}
                                   </div>
-                                )}
+            )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 104])}
                                   className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -2972,7 +3031,7 @@ Mobile-
                         <h4 className="text-white font-bold text-lg">কাজ বন্ধ আছে</h4>
                         <p className="text-slate-300 text-xs mt-1">এই সার্ভিসটি সাময়িকভাবে বন্ধ রাখা হয়েছে।</p>
                       </div>
-                    )}
+            )}
                     <div className="p-6 border-b border-slate-200">
                       <h3 className="text-xl font-bold text-teal-600 flex items-center gap-2">
                         <UserCheck className="w-6 h-6" />
@@ -3020,10 +3079,10 @@ Mobile-
                                       <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (
                                       <Download className="w-5 h-5" />
-                                    )}
+            )}
                                     ফাইল ডাউনলোড করুন
                                   </button>
-                                )}
+            )}
                                 {order.successLink && (
                                   <button 
                                     onClick={() => handleSecureDownload(order, 'successLink')}
@@ -3034,10 +3093,10 @@ Mobile-
                                       <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (
                                       <Download className="w-5 h-5" />
-                                    )}
+            )}
                                     ডাউনলোড করুন
                                   </button>
-                                )}
+            )}
                                 <button 
                                   onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
                                   className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -3064,8 +3123,10 @@ Mobile-
                     </div>
                   </div>
                 </div>
-              )}
+            )}
             </div>
+
+
           )}
 
           {activeTab === 'settings' && (
@@ -3096,14 +3157,14 @@ Mobile-
                             className={cn(
                               "relative w-10 h-10 rounded-xl overflow-hidden border-2 transition-all hover:scale-110",
                               profileForm.photoURL === avatar ? "border-indigo-500 ring-2 ring-indigo-500/20" : "border-slate-200 hover:border-slate-400"
-                            )}
+                          )}
                           >
                             <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                             {profileForm.photoURL === avatar && (
                               <div className="absolute inset-0 bg-indigo-600/20 flex items-center justify-center">
                                 <CheckCircle className="w-4 h-4 text-white shadow-sm" />
                               </div>
-                            )}
+            )}
                           </button>
                         ))}
                         <div className="relative w-10 h-10 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 hover:border-indigo-500 transition-all cursor-pointer flex items-center justify-center bg-slate-50 hover:bg-slate-100">
@@ -3165,7 +3226,7 @@ Mobile-
                           >
                             Copy
                           </button>
-                        )}
+            )}
                       </div>
                       <p className="text-[10px] text-slate-400">Contact admin if you need an API Key for reselling.</p>
                     </div>
@@ -3240,7 +3301,8 @@ Mobile-
                             selectedThemeColor === theme.color ? "ring-4 ring-offset-2 ring-brand" : ""
                           )}
                           style={{ backgroundColor: theme.color }}
-                          title={theme.name}
+
+            title={theme.name}
                         />
                       ))}
                     </div>
@@ -3364,7 +3426,7 @@ Mobile-
                                   <span className="font-bold text-slate-800 truncate block max-w-[80px] font-mono">{sess.id}</span>
                                   {sess.id === localStorage.getItem('sessionId') && (
                                     <span className="text-[8px] font-black bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Current</span>
-                                  )}
+            )}
                                 </div>
                                 <p className="text-[8px] text-slate-500 leading-tight max-w-[120px] line-clamp-3">{sess.userAgent}</p>
                               </div>
@@ -3382,10 +3444,10 @@ Mobile-
                                 >
                                   <XCircle className="w-4 h-4" />
                                 </button>
-                              )}
+            )}
                               {sess.id === localStorage.getItem('sessionId') && (
                                 <span className="text-slate-300">—</span>
-                              )}
+            )}
                             </td>
                           </tr>
                         ))}
@@ -3424,7 +3486,7 @@ Mobile-
                 </div>
               </div>
             </motion.div>
-          )}
+            )}
         </div>
       </main>
 
@@ -3497,7 +3559,7 @@ Mobile-
               </div>
             </motion.div>
           </div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Order Modal */}
@@ -3550,8 +3612,8 @@ Mobile-
                       <Eye className="w-4 h-4" />
                       View Demo / ডেমো দেখুন
                     </button>
-                  )}
 
+            )}
                   <button 
                     onClick={() => setSelectedProduct(null)}
                     className="p-2 hover:bg-slate-800 rounded-xl transition-all border border-transparent hover:border-slate-700"
@@ -3572,8 +3634,8 @@ Mobile-
                         </h3>
                         <p className="text-slate-300 leading-relaxed">{selectedProduct.shortDescription}</p>
                       </div>
-                    )}
 
+            )}
                     {selectedProduct.fullDescription && (
                       <div className="space-y-3">
                         <h3 className="text-sm font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
@@ -3582,8 +3644,8 @@ Mobile-
                         </h3>
                         <p className="text-slate-400 text-sm leading-relaxed whitespace-pre-wrap">{selectedProduct.fullDescription}</p>
                       </div>
-                    )}
 
+            )}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-4 bg-slate-800/50 rounded-2xl border border-slate-700">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Delivery Time</p>
@@ -3618,8 +3680,8 @@ Mobile-
                           </ul>
                         </div>
                       </div>
-                    )}
 
+            )}
                     {selectedProduct.instructions && (
                       <div className="space-y-3">
                         <h3 className="text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2">
@@ -3630,7 +3692,7 @@ Mobile-
                           <p className="text-sm text-slate-300 leading-relaxed">{selectedProduct.instructions}</p>
                         </div>
                       </div>
-                    )}
+            )}
                   </div>
 
                   {/* Right Side: Form */}
@@ -3655,7 +3717,7 @@ Mobile-
                                 isSelected 
                                   ? "bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
                                   : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
-                              )}
+                          )}
                             >
                               <span>{option.name}</span>
                               <span className={cn("text-xs", isSelected ? "text-indigo-200" : "text-emerald-400")}>
@@ -3666,8 +3728,8 @@ Mobile-
                           })}
                         </div>
                       </div>
-                    )}
 
+            )}
                     <div className="space-y-4">
                       <label className="text-sm font-bold text-slate-400 flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -3706,7 +3768,7 @@ Mobile-
                           placeholder={selectedProduct.defaultData ? "Fill in the template below..." : "Enter the required information for this service..."}
                           className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-4 text-sm text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all min-h-[200px] resize-none font-medium"
                         />
-                      )}
+            )}
                     </div>
 
                     {(selectedProduct.showFileUpload !== false) && (
@@ -3722,8 +3784,8 @@ Mobile-
                             <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                             <span className="text-xs font-semibold text-indigo-400">{uploadProgressMsg}</span>
                           </div>
-                        )}
 
+            )}
                         <div className="flex flex-wrap items-center justify-start w-full gap-4">
                           {orderFiles.length === 0 ? (
                           <div className="relative flex flex-col items-center justify-center w-full h-28 border-2 border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-800/50 hover:bg-slate-800 transition-all overflow-hidden">
@@ -3781,7 +3843,7 @@ Mobile-
                                     <CheckCircle className="w-8 h-8 text-emerald-400 mb-1" />
                                     <span className="text-[10px] font-bold text-slate-300 break-words px-1 cursor-pointer text-center truncate w-full" onClick={() => window.open(file, '_blank')}>Doc {index + 1}</span>
                                   </>
-                                )}
+            )}
                                 <button
                                   type="button"
                                   onClick={(e) => { e.preventDefault(); setOrderFiles(orderFiles.filter((_, i) => i !== index)); }}
@@ -3833,10 +3895,10 @@ Mobile-
                               />
                             </div>
                           </div>
-                        )}
+            )}
                       </div>
                     </div>
-                    )}
+            )}
                   </div>
                 </div>
               </div>
@@ -3849,7 +3911,7 @@ Mobile-
                       <p className="text-3xl font-black text-emerald-400">৳{currentPrice}</p>
                       {selectedProduct.discountPrice && (
                         <span className="text-sm text-slate-500 line-through">৳{selectedProduct.price * quantity}</span>
-                      )}
+            )}
                     </div>
                   </div>
                   <div className="h-10 w-px bg-slate-700 hidden sm:block" />
@@ -3886,18 +3948,18 @@ Mobile-
                           <ShoppingCart className="w-5 h-5" />
                           {selectedProduct.orderButtonText || 'অর্ডার করুন'}
                         </>
-                      )}
+            )}
                     </button>
                     {(!orderData && orderFiles.length === 0) && (
                       <p className="text-[10px] text-amber-500 font-bold italic animate-pulse">
                         * দয়া করে তথ্য দিন অথবা ফাইল আপলোড করুন
                       </p>
-                    )}
+            )}
                     {((selectedProduct.showFileUpload !== false) && selectedProduct.requiresFileUpload && orderFiles.length === 0) && (
                       <p className="text-[10px] text-red-500 font-bold italic animate-pulse">
                         * এই সার্ভিসের জন্য ফাইল আপলোড করা বাধ্যতামূলক
                       </p>
-                    )}
+            )}
                   </div>
                 </div>
               </div>
@@ -3914,52 +3976,52 @@ Mobile-
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'dashboard' ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <Home className={cn("w-6 h-6 transition-transform", activeTab === 'dashboard' && "scale-110")} />
           <span className="text-[10px] font-bold">Dashboard</span>
           {activeTab === 'dashboard' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />
-          )}
+            )}
         </button>
         <button 
           onClick={() => setActiveTab('services')} 
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'services' ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <LayoutDashboard className={cn("w-6 h-6 transition-transform", activeTab === 'services' && "scale-110")} />
           <span className="text-[10px] font-bold">Services</span>
           {activeTab === 'services' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />
-          )}
+            )}
         </button>
         <button 
           onClick={() => setActiveTab('history')} 
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'history' ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <History className={cn("w-6 h-6 transition-transform", activeTab === 'history' && "scale-110")} />
           <span className="text-[10px] font-bold">History</span>
           {activeTab === 'history' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />
-          )}
+            )}
         </button>
         <button 
           onClick={() => setActiveTab('rejected')} 
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'rejected' ? "text-red-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <XCircle className={cn("w-6 h-6 transition-transform", activeTab === 'rejected' && "scale-110")} />
           <span className="text-[10px] font-bold">Rejected</span>
           {activeTab === 'rejected' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-red-600 rounded-full" />
-          )}
+            )}
         </button>
         <button 
           onClick={() => setShowRechargeModal(true)} 
@@ -3975,26 +4037,26 @@ Mobile-
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'premium' ? "text-yellow-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <Crown className={cn("w-6 h-6 transition-transform", activeTab === 'premium' && "scale-110")} />
           <span className="text-[10px] font-bold">Premium</span>
           {activeTab === 'premium' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-yellow-600 rounded-full" />
-          )}
+            )}
         </button>
         <button 
           onClick={() => setActiveTab('settings')} 
           className={cn(
             "flex flex-col items-center gap-1 p-2 rounded-2xl transition-all relative",
             activeTab === 'settings' ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"
-          )}
+                          )}
         >
           <Settings className={cn("w-6 h-6 transition-transform", activeTab === 'settings' && "scale-110")} />
           <span className="text-[10px] font-bold">Settings</span>
           {activeTab === 'settings' && (
             <motion.div layoutId="mobile-nav-active" className="absolute -bottom-2 w-1 h-1 bg-indigo-600 rounded-full" />
-          )}
+            )}
         </button>
       </div>
 
@@ -4030,7 +4092,7 @@ Mobile-
               </button>
             </motion.div>
           </div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* Recharge Modal */}
@@ -4064,19 +4126,19 @@ Mobile-
                     <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Bkash</span>
                     <span className="font-black text-slate-900 text-lg">{globalSettings.bkashNumber}</span>
                   </div>
-                )}
+            )}
                 {globalSettings?.nagadNumber && (
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Nagad</span>
                     <span className="font-black text-slate-900 text-lg">{globalSettings.nagadNumber}</span>
                   </div>
-                )}
+            )}
                 {globalSettings?.rocketNumber && (
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-200">
                     <span className="text-sm font-bold text-slate-500 uppercase tracking-wider">Rocket</span>
                     <span className="font-black text-slate-900 text-lg">{globalSettings.rocketNumber}</span>
                   </div>
-                )}
+            )}
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
                   <Info className="w-5 h-5 text-amber-600 flex-shrink-0" />
                   <p className="text-xs text-amber-700 font-medium">Minimum recharge amount is ৳100.</p>
@@ -4149,7 +4211,7 @@ Mobile-
               </div>
             </motion.div>
           </div>
-        )}
+            )}
       </AnimatePresence>
 
         {smartVoterModalOpen && (
@@ -4207,11 +4269,11 @@ Mobile-
                                 <Loader2 className="w-5 h-5 animate-spin" />
                               ) : (
                                 <Download className="w-5 h-5" />
-                              )}
+            )}
                               ফাইল ডাউনলোড করুন
                             </button>
                           </div>
-                        )}
+            )}
                         {order.successLink && (
                           <div className="flex w-full gap-2 mt-2">
                             <button 
@@ -4223,23 +4285,31 @@ Mobile-
                                 <Loader2 className="w-5 h-5 animate-spin" />
                               ) : (
                                 <Download className="w-5 h-5" />
-                              )}
+            )}
                               ডাউনলোড করুন
                             </button>
-                            {!order.oneTimeDownload && (
-                              <button 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(order.successLink || '');
-                                  alert('লিঙ্ক কপি করা হয়েছে!');
-                                }}
-                                className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
-                                title="Copy Link"
-                              >
-                                <Copy className="w-5 h-5" />
-                              </button>
-                            )}
+                            {!order.isCopyExpired ? (
+                                       <button 
+                                         onClick={() => handleCopyOrderLink(order)}
+                                         className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all cursor-pointer"
+
+            title="Copy Link (One-Time Copy Limit)"
+                                       >
+                                         <Copy className="w-5 h-5" />
+                                       </button>
+                                     ) : (
+                                       <button 
+                                         disabled
+                                         className="p-3 bg-slate-200 text-slate-400 rounded-xl cursor-not-allowed flex items-center justify-center"
+
+                                         title="Already Copied & Locked (One-Time Limit)"
+                                       >
+                                         <Lock className="w-5 h-5 text-slate-400" />
+                                       </button>
+
+            )}
                           </div>
-                        )}
+            )}
                         <button 
                           onClick={() => setDismissedCompletedServices(prev => [...prev, 105])}
                           className="text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors pt-2 underline underline-offset-4"
@@ -4290,8 +4360,8 @@ Mobile-
               })()}
             </motion.div>
           </div>
-        )}
 
+            )}
       {/* Demo View Modal */}
       <AnimatePresence>
         {showDemoModal && selectedProduct?.demoUrl && (
@@ -4325,6 +4395,7 @@ Mobile-
                   <iframe 
                     src={selectedProduct.demoUrl} 
                     className="w-full h-full min-h-[60vh] rounded-xl"
+
                     title="Service Demo PDF"
                   />
                 ) : (
@@ -4334,7 +4405,7 @@ Mobile-
                     className="max-w-full h-auto rounded-xl shadow-2xl"
                     referrerPolicy="no-referrer"
                   />
-                )}
+            )}
               </div>
 
               <div className="p-6 border-t border-slate-800 bg-slate-900/50 flex justify-end gap-3">
@@ -4358,7 +4429,7 @@ Mobile-
               </div>
             </motion.div>
           </div>
-        )}
+            )}
       </AnimatePresence>
 
       {/* In-App Document Preview Modal (No new tab, no browser history leak) */}
@@ -4386,13 +4457,14 @@ Mobile-
                     onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
                     disabled={downloadingOrderId === previewModal.order.id}
                     className="h-11 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white flex items-center gap-2 flex-shrink-0 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer group disabled:opacity-50"
+
                     title="মূল ফাইল সরাসরি ডাউনলোড করুন (Download Original File)"
                   >
                     {downloadingOrderId === previewModal.order.id ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       <Download className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                    )}
+            )}
                     <span className="font-bold text-xs sm:text-sm">ডাউনলোড করুন</span>
                   </button>
 
@@ -4421,6 +4493,7 @@ Mobile-
                       }
                     }}
                     className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+
                     title="প্রিন্ট করুন"
                   >
                     <Printer className="w-4 h-4" />
@@ -4430,18 +4503,20 @@ Mobile-
                     onClick={() => handleSecureDownload(previewModal.order, previewModal.order.resultFile ? 'resultFile' : 'successLink')}
                     disabled={downloadingOrderId === previewModal.order.id}
                     className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+
                     title="ডাউনলোড করুন"
                   >
                     {downloadingOrderId === previewModal.order.id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Download className="w-4 h-4" />
-                    )}
+            )}
                     <span className="hidden sm:inline">ডাউনলোড</span>
                   </button>
                   <button
                     onClick={() => setPreviewModal(null)}
                     className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer"
+
                     title="বন্ধ করুন"
                   >
                     <X className="w-5 h-5" />
@@ -4496,16 +4571,17 @@ Mobile-
                     <iframe 
                       id="preview-iframe"
                       src={previewModal.url} 
+
                       title="Document preview" 
                       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads"
                       className="w-full h-full border-0 bg-white"
                     />
                   </div>
-                )}
+            )}
               </div>
             </motion.div>
           </div>
-        )}
+            )}
       </AnimatePresence>
 
       {isAdmin && onBackToAdmin && (
@@ -4516,7 +4592,7 @@ Mobile-
           <LayoutDashboard className="w-4 h-4" />
           Back to Admin
         </button>
-      )}
+            )}
     </div>
   );
 };
